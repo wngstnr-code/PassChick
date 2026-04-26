@@ -6284,6 +6284,14 @@ canvas.game {
   .score-card {
     width: 100%;
   }
+
+  #score {
+    display: inline-block !important;
+    position: static !important;
+    padding: 0 !important;
+    font-size: 10px !important;
+    letter-spacing: normal !important;
+  }
 }
 
 @media (max-width: 360px) {
@@ -6351,17 +6359,55 @@ canvas.game {
   }
   
   .play-wallet-trigger { font-size: 10px; }
-  .play-menu-trigger-label { font-size: 10px; }
+  
+  .play-menu-trigger { justify-content: center; align-items: center; gap: 8px; padding: 0; }
+  .play-menu-trigger-label { font-size: 10px; margin-top: 1px; }
   .hamburger-icon { width: 20px; gap: 3px; }
+  
   .play-nav-deposit { font-size: 10px; min-height: 40px; }
   .play-status-mobile-kicker { font-size: 10px; }
   .play-status-mobile-label { font-size: 10px; }
   
-  #top-bar-center > .stat-card:not(.timer-card) { width: 180px; }
-  #timer-card { width: 100px; }
+  #top-bar-center > .stat-card:not(.timer-card) { 
+    width: 180px; 
+    height: var(--play-mobile-header-height);
+    min-height: var(--play-mobile-header-height);
+    max-height: var(--play-mobile-header-height);
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  .play-balance-card {
+    box-sizing: border-box;
+    padding: 0;
+  }
+  .play-balance-card .stat-label { font-size: 9px; }
+  .play-balance-card .stat-value { font-size: 15px; margin-top: 2px; }
+  
+  #timer-card { 
+    width: 100px; 
+    height: var(--play-mobile-header-height); 
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+  }
+  #timer-card .stat-label { font-size: 9px; }
+  #timer-card .stat-value { font-size: 15px; margin-top: 2px; }
+  
   #bet-btn { font-size: 14px; min-height: 80px; }
   
   .score-metric { transform: scale(1.2); transform-origin: left center; }
+  #score { font-size: 14px !important; }
   .bet-hud-metric-label { font-size: 8px; }
   .bet-hud-metric-value { font-size: 16px; }
+}
+
+/* ============================================================
+   MOBILE GAMEPLAY ZOOM
+============================================================ */
+@media (max-width: 480px) and (orientation: portrait) {
+  canvas.game {
+    transform: scale(1.3);
+    transform-origin: center center;
+  }
 }
