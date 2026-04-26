@@ -7,7 +7,6 @@
       "es2020"
     ],
     "allowJs": false,
-    "baseUrl": ".",
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
