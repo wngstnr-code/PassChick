@@ -2093,6 +2093,10 @@ canvas.game {
   padding: 0;
 }
 
+.play-menu-trigger-label {
+  display: none;
+}
+
 .hamburger-icon {
   display: flex;
   flex-direction: column;
@@ -5933,6 +5937,7 @@ canvas.game {
   :root {
     --play-mobile-edge-gutter: 8px;
     --play-mobile-top-action-width: 92px;
+    --play-mobile-right-action-width: 84px;
     --play-mobile-header-height: 30px;
     --play-mobile-menu-size: 42px;
     --play-mobile-side-gap: 10px;
@@ -5969,12 +5974,16 @@ canvas.game {
 
   .play-status-mobile {
     position: fixed;
-    top: 104px;
-    left: 8px;
+    top: calc(
+      var(--play-mobile-edge-gutter) +
+        (var(--play-mobile-header-height) * 2) +
+        (var(--play-mobile-side-gap) * 2)
+    );
+    left: var(--play-mobile-edge-gutter);
     z-index: 27;
-    width: 42px;
-    min-height: 42px;
-    padding: 4px 3px;
+    width: var(--play-mobile-top-action-width);
+    min-height: var(--play-mobile-header-height);
+    padding: 4px 8px;
     border: 2px solid rgba(184, 212, 255, 0.45);
     border-radius: 10px;
     background: linear-gradient(
@@ -5987,18 +5996,8 @@ canvas.game {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 1px;
     font-family: inherit;
-    clip-path: polygon(
-      22% 0,
-      78% 0,
-      100% 22%,
-      100% 78%,
-      78% 100%,
-      22% 100%,
-      0 78%,
-      0 22%
-    );
     pointer-events: auto;
   }
 
@@ -6053,15 +6052,19 @@ canvas.game {
   }
 
   .play-status-mobile-kicker {
-    font-size: 5.5px;
-    letter-spacing: 0.35px;
+    width: 100%;
+    font-size: 7px;
+    letter-spacing: 0.45px;
     line-height: 1;
+    text-align: center;
     color: rgba(224, 237, 255, 0.8);
   }
 
   .play-status-mobile-label {
-    font-size: 6px;
-    line-height: 1.15;
+    width: 100%;
+    font-size: 7px;
+    letter-spacing: 0.45px;
+    line-height: 1;
     text-align: center;
     color: #edf5ff;
   }
@@ -6096,7 +6099,7 @@ canvas.game {
   .play-wallet-trigger {
     height: var(--play-nav-control-height);
     min-height: var(--play-nav-control-height);
-    padding: 0 8px;
+    padding: 0 12px;
     font-size: 6.5px;
     letter-spacing: 0.35px;
     border-radius: 10px;
@@ -6104,26 +6107,35 @@ canvas.game {
 
   .play-menu-container {
     position: fixed;
-    top: calc(
-      var(--play-mobile-edge-gutter) + var(--play-mobile-header-height) +
-        var(--play-mobile-side-gap)
-    );
-    left: var(--play-mobile-edge-gutter);
-    width: var(--play-mobile-menu-size);
+    top: var(--play-mobile-edge-gutter);
+    right: var(--play-mobile-edge-gutter);
+    left: auto;
+    width: var(--play-mobile-right-action-width);
     display: block;
     pointer-events: auto;
   }
 
   .play-menu-trigger {
-    width: var(--play-mobile-menu-size);
-    height: var(--play-mobile-menu-size);
-    min-height: var(--play-mobile-menu-size);
-    padding: 0;
+    width: var(--play-mobile-right-action-width);
+    height: var(--play-mobile-header-height);
+    min-height: var(--play-mobile-header-height);
+    justify-content: flex-start;
+    gap: 7px;
+    padding: 0 9px;
+  }
+
+  .play-menu-trigger-label {
+    display: inline-block;
+    font-size: 6.5px;
+    letter-spacing: 0.45px;
+    line-height: 1;
+    color: #223142;
   }
 
   .hamburger-icon {
     width: 16px;
     gap: 2px;
+    flex-shrink: 0;
   }
 
   .hamburger-icon span {
@@ -6132,8 +6144,12 @@ canvas.game {
 
   .play-nav-deposit {
     position: fixed;
-    top: var(--play-mobile-edge-gutter);
-    right: var(--play-mobile-edge-gutter);
+    top: calc(
+      var(--play-mobile-edge-gutter) + var(--play-mobile-header-height) +
+        var(--play-mobile-side-gap)
+    );
+    left: var(--play-mobile-edge-gutter);
+    right: auto;
     width: var(--play-mobile-top-action-width);
     min-height: var(--play-nav-control-height);
     padding: 0 10px;
@@ -6154,7 +6170,7 @@ canvas.game {
     grid-template-columns:
       var(--play-mobile-top-action-width)
       minmax(0, 1fr)
-      var(--play-mobile-top-action-width);
+      var(--play-mobile-right-action-width);
     grid-template-rows: var(--play-mobile-header-height) auto var(
         --play-mobile-header-height
       );
@@ -6244,7 +6260,8 @@ canvas.game {
     min-width: 0;
     min-height: 72px;
     padding: 6px 8px;
-    font-size: 9px;
+    font-size: 10px;
+    letter-spacing: 0.55px;
     line-height: 1.15;
     white-space: normal;
     word-break: break-word;
@@ -6274,22 +6291,24 @@ canvas.game {
   }
 
   .play-wallet-menu {
+    left: 6px;
+    width: 84px;
+  }
+
+  .play-menu-container {
+    right: 6px;
     width: 84px;
   }
 
   .play-nav-deposit {
+    left: 6px;
     width: 84px;
     padding: 0 8px;
   }
 
   .play-status-mobile {
-    width: 40px;
-    min-height: 40px;
-    top: 102px;
-    left: 6px;
-  }
-
-  .play-menu-container {
+    width: 84px;
+    min-height: 30px;
     left: 6px;
   }
 
@@ -6312,6 +6331,6 @@ canvas.game {
 
   #bet-btn {
     min-height: 68px;
-    font-size: 9px;
+    font-size: 10px;
   }
 }

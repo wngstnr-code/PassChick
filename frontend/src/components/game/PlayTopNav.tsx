@@ -689,6 +689,7 @@ export function PlayTopNav() {
                 <span></span>
                 <span></span>
               </div>
+              <span className="play-menu-trigger-label">MENU</span>
             </button>
 
             {isMenuOpen && (
