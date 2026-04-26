@@ -348,12 +348,8 @@ function toNumberAmount(value: bigint) {
 }
 
 function formatUsdcDisplayAmount(value: number) {
-  if (!Number.isFinite(value)) return "0.00";
-  const absolute = Math.abs(value);
-  if (absolute > 0 && absolute < 0.01) {
-    return value.toFixed(4);
-  }
-  return value.toFixed(2);
+  if (!Number.isFinite(value)) return "0.0000";
+  return value.toFixed(4);
 }
 
 function rejectPendingRequest<T>(

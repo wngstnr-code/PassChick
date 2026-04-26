@@ -42,7 +42,7 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
                 <div className="bet-hud-metric bet-hud-metric-primary">
                   <span className="bet-hud-metric-label">STAKE</span>
                   <span id="bet-stake" className="bet-hud-metric-value">
-                    $0.00
+                    $0.0000
                   </span>
                 </div>
                 <div className="bet-hud-metric bet-hud-metric-primary">
@@ -50,7 +50,7 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
                   <span
                     id="bet-payout"
                     className="bet-hud-metric-value payout-value">
-                    $0.00
+                    $0.0000
                   </span>
                 </div>
                 <div className="bet-hud-metric bet-hud-metric-wide">
@@ -91,7 +91,7 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
           <div className="stat-card play-balance-card">
             <div className="stat-label">BALANCE</div>
             <div className="stat-value" id="balance">
-              $0.00
+              $0.0000
             </div>
           </div>
           <div className="stat-card timer-card" id="timer-card">
@@ -212,8 +212,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               type="number"
               id="deposit-amount"
               defaultValue="100"
-              min="0.1"
-              step="0.1"
+              min="0.0001"
+              step="0.0001"
             />
           </div>
 

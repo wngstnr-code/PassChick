@@ -91,10 +91,7 @@ function formatUsdcAmount(value: bigint | undefined) {
   const formatted = formatUnits(value, USDC_DECIMALS);
   const numeric = Number(formatted);
   if (!Number.isFinite(numeric)) return formatted;
-  if (numeric > 0 && numeric < 0.01) {
-    return numeric.toFixed(4);
-  }
-  return numeric.toFixed(2);
+  return numeric.toFixed(4);
 }
 
 export function useOnchainDepositFlow(): DepositFlowViewModel {

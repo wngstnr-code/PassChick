@@ -298,9 +298,7 @@ function saveBalance() {
 
 function formatUsdAmount(amount) {
   const value = Number(amount || 0);
-  const absolute = Math.abs(value);
-  const decimals = absolute > 0 && absolute < 0.01 ? 4 : 2;
-  return "$" + value.toFixed(decimals);
+  return "$" + value.toFixed(4);
 }
 
 function formatSignedUsdAmount(amount) {
@@ -2452,7 +2450,6 @@ function initBettingUI() {
   function setDepositBusy(nextBusy) {
     depositBusy = nextBusy;
     if (depositConfirm) depositConfirm.disabled = nextBusy;
-    if (depositFaucet) depositFaucet.disabled = nextBusy;
     if (depositManageFunds) {
       if (nextBusy) {
         depositManageFunds.setAttribute("aria-disabled", "true");
@@ -3007,13 +3004,13 @@ function initBettingUI() {
     if (depositVaultAvailable) {
       depositVaultAvailable.innerText = formatDepositAmount(
         snapshot?.availableBalance,
-        "$0.00",
+        "$0.0000",
       );
     }
     if (depositVaultLocked) {
       depositVaultLocked.innerText = formatDepositAmount(
         snapshot?.lockedBalance,
-        "$0.00",
+        "$0.0000",
       );
     }
     if (depositAllowance) {
@@ -3021,7 +3018,8 @@ function initBettingUI() {
       if (!isFinite(allowance)) depositAllowance.innerText = "-";
       else if (allowance > 999999)
         depositAllowance.innerText = "Unlimited (approved)";
-      else depositAllowance.innerText = formatDepositAmount(allowance, "$0.00");
+      else
+        depositAllowance.innerText = formatDepositAmount(allowance, "$0.0000");
     }
   }
 

@@ -25,10 +25,7 @@ function formatWalletUsdcDisplay(value: bigint | undefined) {
   if (value === undefined) return "-";
   const numeric = Number(formatUnits(value, USDC_DECIMALS));
   if (!Number.isFinite(numeric)) return "-";
-  if (numeric > 0 && numeric < 0.01) {
-    return numeric.toFixed(4);
-  }
-  return numeric.toFixed(2);
+  return numeric.toFixed(4);
 }
 
 export default function DashboardPage() {
