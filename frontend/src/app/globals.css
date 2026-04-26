@@ -6348,7 +6348,7 @@ canvas.game {
 /* ============================================================
    IPAD & TABLET PORTRAIT HUD (Variables Override)
 ============================================================ */
-@media (min-width: 481px) and (max-width: 850px) and (orientation: portrait) {
+@media (min-width: 650px) and (max-width: 1024px) and (orientation: portrait) {
   :root {
     --play-mobile-edge-gutter: 16px;
     --play-mobile-top-action-width: 160px;
@@ -6409,5 +6409,13 @@ canvas.game {
   canvas.game {
     transform: scale(1.3);
     transform-origin: center center;
+  }
+  
+  #controls {
+    bottom: 40px !important;
+  }
+  
+  .fixed-help {
+    bottom: 40px !important;
   }
 }
