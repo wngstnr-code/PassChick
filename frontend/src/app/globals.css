@@ -523,6 +523,11 @@ canvas.game {
   box-shadow: 3px 5px 0 rgba(0, 0, 0, 0.4);
 }
 
+#start-bet-btn {
+  white-space: nowrap;
+  letter-spacing: 1px;
+}
+
 .modal-actions button.primary:active {
   transform: translate(2px, 3px);
   box-shadow: 1px 2px 0 rgba(0, 0, 0, 0.4);
@@ -951,6 +956,11 @@ canvas.game {
     font-size: 10px;
     padding: 12px 14px;
     letter-spacing: 1px;
+  }
+
+  #start-bet-btn {
+    font-size: 9px;
+    letter-spacing: 0.4px;
   }
 
   .modal-actions a {
@@ -1881,7 +1891,8 @@ canvas.game {
 }
 
 .modal-box-bet {
-  width: min(700px, calc(100vw - 28px));
+  width: min(460px, calc(100vw - 28px));
+  max-width: 460px;
 }
 
 .modal-box-deposit {
@@ -3506,7 +3517,7 @@ canvas.game {
   isolation: isolate;
 }
 
-@media (min-width: 769px) and (max-width: 1280px) {
+@media (min-width: 769px) {
   .money-page {
     display: flex;
     align-items: center;
