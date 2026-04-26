@@ -21,6 +21,7 @@ import {
 } from "~/lib/web3/contracts";
 import { MINIPAY_UNSUPPORTED_CHAIN_MESSAGE } from "~/lib/web3/minipay";
 import { explorerTxUrl } from "~/lib/web3/celo";
+import { CELO_CHAIN } from "~/lib/web3/celo";
 import type { DepositFlowViewModel } from "./types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
@@ -444,6 +445,16 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
     isDepositBusy ||
     isWithdrawBusy;
 
+  const configMessage = isMiniPay
+    ? MINIPAY_UNSUPPORTED_CHAIN_MESSAGE
+    : !isConnected
+      ? "Connect wallet first to manage vault balance."
+      : !isCeloChain
+        ? `Wrong network. Switch wallet to ${CELO_CHAIN.chainName} (${CELO_CHAIN.chainIdHex}).`
+        : !hasValidContracts
+          ? "Contract config is invalid. Fill valid USDC and vault addresses in `frontend/.env.local`."
+          : "";
+
   return {
     source: "onchain",
     amount,
@@ -481,10 +492,6 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
     onApprove,
     onDeposit,
     onWithdraw,
-    configMessage: isMiniPay
-      ? MINIPAY_UNSUPPORTED_CHAIN_MESSAGE
-      : !hasValidContracts
-        ? "Contract config is invalid. Fill valid USDC and vault addresses in `frontend/.env.local`."
-        : "",
+    configMessage,
   };
 }
