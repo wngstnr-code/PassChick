@@ -9,8 +9,8 @@ import {
   STEP_INCREMENT_BP,
   CP_BONUS_NUM,
   CP_BONUS_DEN,
-  MIN_STAKE,
-  MAX_STAKE,
+  FIXED_STAKE,
+  FIXED_STAKE_UNITS,
   GRACE_PERIOD_MS,
 } from "../config/constants.js";
 import {
@@ -51,12 +51,18 @@ const gatewayPublicClient = createPublicClient({
   transport: http(env.CELO_RPC_URL),
 });
 
+function formatUsdcValue(value: number) {
+  const absolute = Math.abs(value);
+  if (absolute > 0 && absolute < 0.01) {
+    return value.toFixed(4);
+  }
+  return value.toFixed(2);
+}
+
 function isValidUsdcStakeAmount(stake: number): boolean {
   if (!Number.isFinite(stake)) return false;
-  if (stake < MIN_STAKE || stake > MAX_STAKE) return false;
-
   const units = stake * 1_000_000;
-  return Math.abs(units - Math.round(units)) < 1e-6;
+  return Math.abs(units - FIXED_STAKE_UNITS) < 1e-6;
 }
 
 async function signSettlementWithTimeout(params: Parameters<typeof signSettlement>[0]) {
@@ -123,7 +129,7 @@ export function setupGameGateway(httpServer: HttpServer): SocketServer {
 async function handleGameStart(socket: Socket, walletAddress: string, stake: number): Promise<void> {
   if (!isValidUsdcStakeAmount(stake)) {
     socket.emit("game:error", {
-      message: `Invalid stake. Must be between $${MIN_STAKE} and $${MAX_STAKE} with max 6 decimals.`,
+      message: `Invalid stake. This build uses a fixed ${FIXED_STAKE} USDC stake per run.`,
     });
     return;
   }
@@ -509,7 +515,7 @@ async function handleGameCashout(socket: Socket, walletAddress: string): Promise
   const finalMultiplier = finalMultiplierBp / 10000;
   const payoutAmount = calculatePayout(state.stake, finalMultiplierBp);
   const profit = payoutAmount - state.stake;
-  console.log(`💰 CASH OUT: ${walletAddress} | ${finalMultiplier.toFixed(4)}x | $${payoutAmount.toFixed(2)}`);
+  console.log(`💰 CASH OUT: ${walletAddress} | ${finalMultiplier.toFixed(4)}x | $${formatUsdcValue(payoutAmount)}`);
 
   let settlementResult;
   let settlementTxHash: string | null = null;
@@ -572,8 +578,8 @@ async function handleGameCashout(socket: Socket, walletAddress: string): Promise
     sessionId: state.sessionId,
     onchainSessionId: state.onchainSessionId,
     multiplier: finalMultiplier.toFixed(4),
-    payoutAmount: payoutAmount.toFixed(2),
-    profit: profit.toFixed(2),
+    payoutAmount,
+    profit,
     settlementSignature: settlementResult.signature,
     resolution: settlementResult.resolution,
     signature: settlementResult.signature,
@@ -668,7 +674,7 @@ async function handleAutoCashout(walletAddress: string): Promise<void> {
   const finalMultiplier = finalMultiplierBp / 10000;
   const payoutAmount = calculatePayout(state.stake, finalMultiplierBp);
   const profit = payoutAmount - state.stake;
-  console.log(`🤖 AUTO CASH OUT: ${walletAddress} | ${finalMultiplier.toFixed(4)}x | $${payoutAmount.toFixed(2)}`);
+  console.log(`🤖 AUTO CASH OUT: ${walletAddress} | ${finalMultiplier.toFixed(4)}x | $${formatUsdcValue(payoutAmount)}`);
 
   let settlementResult;
   let settlementTxHash: string | null = null;
