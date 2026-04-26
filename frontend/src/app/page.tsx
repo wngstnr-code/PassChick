@@ -146,7 +146,21 @@ function toNumber(value: unknown, fallback = 0) {
 }
 
 function formatMoney(value: unknown) {
-  return `$${toNumber(value).toFixed(2)}`;
+  const numeric = toNumber(value);
+  if (numeric > 0 && numeric < 0.01) {
+    return `$${numeric.toFixed(4)}`;
+  }
+  return `$${numeric.toFixed(2)}`;
+}
+
+function formatWalletUsdcDisplay(value: bigint | undefined) {
+  if (value === undefined) return "-";
+  const numeric = Number(formatUnits(value, USDC_DECIMALS));
+  if (!Number.isFinite(numeric)) return "-";
+  if (numeric > 0 && numeric < 0.01) {
+    return numeric.toFixed(4);
+  }
+  return numeric.toFixed(2);
 }
 
 function readBestScore(entry: ChickenBridgeLeaderboardEntry) {
@@ -199,9 +213,7 @@ export default function Home() {
   });
 
   const walletUsdcDisplay =
-    walletUsdcData === undefined
-      ? "-"
-      : formatUnits(walletUsdcData, USDC_DECIMALS);
+    walletUsdcData === undefined ? "-" : formatWalletUsdcDisplay(walletUsdcData);
 
   useEffect(() => {
     if (!showProfilePopover) return;

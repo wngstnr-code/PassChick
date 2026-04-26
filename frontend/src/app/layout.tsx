@@ -7,6 +7,10 @@ import { WalletProvider } from "~/components/web3/WalletProvider";
 export const metadata: Metadata = {
   title: "Pass Chick | Celo Sepolia Demo",
   description: "Pass Chick game with mock betting HUD on Next.js.",
+  other: {
+    "talentapp:project_verification":
+      "1e9ca83c2b5b363dc890ad9caf2a30688a2a2988338135257e7881b2c3f5822ba0c4311ed792540dc971ba6d6f3d52ef2fe3f2c9966bf1f1e5f99208a787499f",
+  },
 };
 
 export const viewport: Viewport = {

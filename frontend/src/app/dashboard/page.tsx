@@ -21,6 +21,16 @@ function shortAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function formatWalletUsdcDisplay(value: bigint | undefined) {
+  if (value === undefined) return "-";
+  const numeric = Number(formatUnits(value, USDC_DECIMALS));
+  if (!Number.isFinite(numeric)) return "-";
+  if (numeric > 0 && numeric < 0.01) {
+    return numeric.toFixed(4);
+  }
+  return numeric.toFixed(2);
+}
+
 export default function DashboardPage() {
   const [showHelp, setShowHelp] = useState(false);
   const [showProfilePopover, setShowProfilePopover] = useState(false);
@@ -54,9 +64,7 @@ export default function DashboardPage() {
   });
 
   const walletUsdcDisplay =
-    walletUsdcData === undefined
-      ? "-"
-      : formatUnits(walletUsdcData, USDC_DECIMALS);
+    walletUsdcData === undefined ? "-" : formatWalletUsdcDisplay(walletUsdcData);
 
   useEffect(() => {
     if (!showProfilePopover) return;
