@@ -64,6 +64,7 @@ export function ManageMoneyPage() {
   const returnLabel = "HOME";
   const walletPreset = readQuickAmount(flow.walletBalanceDisplay);
   const vaultPreset = readQuickAmount(flow.availableBalanceDisplay);
+  const hasFaucet = Boolean(flow.faucetAddress);
 
   const quickAmounts = useMemo<QuickAmountPreset[]>(() => {
     const presets: QuickAmountPreset[] = [
@@ -107,7 +108,7 @@ export function ManageMoneyPage() {
           hash: flow.withdrawTxHash,
           url: flow.withdrawTxUrl,
         },
-      ].filter((item) => item.hash),
+      ].filter((item) => item.hash && (item.label !== "Latest Faucet" || hasFaucet)),
     [
       flow.approveTxHash,
       flow.approveTxUrl,
@@ -117,6 +118,7 @@ export function ManageMoneyPage() {
       flow.faucetTxUrl,
       flow.withdrawTxHash,
       flow.withdrawTxUrl,
+      hasFaucet,
     ],
   );
 
@@ -161,9 +163,11 @@ export function ManageMoneyPage() {
           <div className="money-head-top">
             <p className="flow-eyebrow">CHICKEN VAULT</p>
             <div className="money-head-badges">
-              <span className="money-head-badge">
-                FAUCET {flow.faucetClaimAmountDisplay} USDC
-              </span>
+              {hasFaucet ? (
+                <span className="money-head-badge">
+                  FAUCET {flow.faucetClaimAmountDisplay} USDC
+                </span>
+              ) : null}
               <span
                 className={`money-head-badge ${
                   flow.needsApproval
@@ -177,7 +181,7 @@ export function ManageMoneyPage() {
           </div>
           <h1 className="flow-title money-title">MANAGE MONEY</h1>
           <p className="money-subtitle">
-            Mint faucet, deposit to vault, and withdraw your available balance.
+            Deposit to vault, then withdraw only from your available balance.
           </p>
         </header>
 
@@ -268,14 +272,16 @@ export function ManageMoneyPage() {
             </button>
 
             <div className="money-secondary-actions">
-              <button
-                className="flow-btn money-secondary-btn money-faucet-btn"
-                type="button"
-                disabled={flow.disableFaucetButton}
-                onClick={handleFaucetClick}
-              >
-                {flow.isFaucetBusy ? "MINTING..." : "MINT FAUCET"}
-              </button>
+              {hasFaucet ? (
+                <button
+                  className="flow-btn money-secondary-btn money-faucet-btn"
+                  type="button"
+                  disabled={flow.disableFaucetButton}
+                  onClick={handleFaucetClick}
+                >
+                  {flow.isFaucetBusy ? "MINTING..." : "MINT FAUCET"}
+                </button>
+              ) : null}
               <button
                 className="flow-btn money-secondary-btn money-withdraw-btn"
                 type="button"

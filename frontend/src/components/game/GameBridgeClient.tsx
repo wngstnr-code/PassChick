@@ -419,6 +419,11 @@ export function GameBridgeClient({
   }, [backgroundMode]);
 
   useEffect(() => {
+    const depositFaucetButton = document.getElementById("deposit-faucet");
+    if (depositFaucetButton instanceof HTMLElement) {
+      depositFaucetButton.style.display = isAddress(USDC_FAUCET_ADDRESS) ? "" : "none";
+    }
+
     if (backgroundMode) {
       window.__CHICKEN_GAME_BRIDGE__ = {
         backgroundMode: true,
@@ -462,7 +467,7 @@ export function GameBridgeClient({
           );
         },
         claimFaucet: async () => {
-          throw new Error("Background mode does not support faucet claim.");
+          throw new Error("Faucet is disabled in background mode.");
         },
         depositToVault: async () => {
           throw new Error("Background mode does not support deposit.");
@@ -754,7 +759,7 @@ export function GameBridgeClient({
         throw new Error("Connect wallet first before playing.");
       }
       if (!isCeloChain) {
-        throw new Error("Switch wallet to Celo Sepolia first before playing.");
+        throw new Error(`Switch wallet to ${CELO_CHAIN.chainName} first before playing.`);
       }
       if (!hasGameContractConfig()) {
         throw new Error("Frontend contract config is incomplete.");
@@ -1369,7 +1374,7 @@ export function GameBridgeClient({
       claimFaucet: async () => {
         const playerAddress = await requireOnchainWallet();
         if (!isAddress(USDC_FAUCET_ADDRESS)) {
-          throw new Error("Faucet contract config is invalid.");
+          throw new Error("Faucet is disabled in this build.");
         }
 
         let txHash: string;
@@ -1424,7 +1429,7 @@ export function GameBridgeClient({
         });
 
         if (walletBalanceUnits < amountUnits) {
-          throw new Error("Insufficient wallet USDC balance. Claim faucet first.");
+          throw new Error("Insufficient wallet USDC balance. Top up wallet first.");
         }
 
         let approveTxHash: string | undefined;

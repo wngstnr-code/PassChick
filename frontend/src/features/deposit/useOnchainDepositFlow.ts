@@ -124,8 +124,9 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
     ? (GAME_VAULT_ADDRESS as Address)
     : undefined;
   const hasValidContracts = hasDepositContractConfig();
+  const hasFaucet = Boolean(faucetAddress);
   const canTransact = Boolean(
-    isConnected && isCeloChain && ownerAddress && usdcAddress && faucetAddress && vaultAddress
+    isConnected && isCeloChain && ownerAddress && usdcAddress && vaultAddress
   );
 
   const parsedAmount = useMemo(() => {
@@ -146,7 +147,7 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
     abi: USDC_FAUCET_ABI,
     functionName: "claimAmount",
     query: {
-      enabled: canTransact,
+      enabled: canTransact && hasFaucet,
     },
   });
 
@@ -361,8 +362,12 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
   ]);
 
   async function onClaimFaucet() {
+    if (!hasFaucet) {
+      setUiError("Faucet is disabled in this build.");
+      return;
+    }
     if (!canTransact || !faucetAddress) {
-      setUiError("Make sure wallet is connected, on Celo Sepolia, and faucet config is valid.");
+      setUiError("Make sure wallet is connected, on the supported Celo network, and faucet config is valid.");
       return;
     }
 
@@ -388,7 +393,7 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
 
   async function onApprove() {
     if (!canTransact || !usdcAddress || !vaultAddress) {
-      setUiError("Make sure wallet is connected, on Celo Sepolia, and contract config is valid.");
+      setUiError("Make sure wallet is connected, on the supported Celo network, and contract config is valid.");
       return;
     }
     if (!parsedAmount) {
@@ -419,7 +424,7 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
 
   async function onDeposit() {
     if (!canTransact || !vaultAddress) {
-      setUiError("Make sure wallet is connected, on Celo Sepolia, and contract config is valid.");
+      setUiError("Make sure wallet is connected, on the supported Celo network, and contract config is valid.");
       return;
     }
     if (!parsedAmount) {
@@ -473,7 +478,7 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
 
   async function onWithdraw() {
     if (!canTransact || !vaultAddress) {
-      setUiError("Make sure wallet is connected, on Celo Sepolia, and contract config is valid.");
+      setUiError("Make sure wallet is connected, on the supported Celo network, and contract config is valid.");
       return;
     }
     if (!parsedAmount) {
@@ -516,7 +521,7 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
   const isDepositBusy = isDepositSubmitting || isDepositConfirming;
   const isWithdrawBusy = isWithdrawSubmitting || isWithdrawConfirming;
   const disableFaucetButton =
-    !canTransact || isFaucetBusy || isApproveBusy || isDepositBusy || isWithdrawBusy;
+    !hasFaucet || !canTransact || isFaucetBusy || isApproveBusy || isDepositBusy || isWithdrawBusy;
   const disableApproveButton =
     !canTransact || !parsedAmount || !needsApproval || isFaucetBusy || isApproveBusy || isDepositBusy || isWithdrawBusy;
   const disableDepositButton =
@@ -545,7 +550,11 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
     faucetAddress: USDC_FAUCET_ADDRESS,
     vaultAddress: GAME_VAULT_ADDRESS,
     faucetClaimAmountDisplay:
-      isFaucetClaimAmountFetching ? "loading..." : formatUsdcAmount(faucetClaimAmount),
+      hasFaucet
+        ? isFaucetClaimAmountFetching
+          ? "loading..."
+          : formatUsdcAmount(faucetClaimAmount)
+        : "-",
     walletBalanceDisplay: isWalletBalanceFetching ? "loading..." : formatUsdcAmount(walletBalance),
     allowanceDisplay: isAllowanceFetching ? "loading..." : formatUsdcAmount(allowance),
     availableBalanceDisplay:
@@ -578,7 +587,7 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
     configMessage: isMiniPay
       ? MINIPAY_UNSUPPORTED_CHAIN_MESSAGE
       : !hasValidContracts
-        ? "Contract config is invalid. Fill valid addresses including faucet in `frontend/.env.local`."
+        ? "Contract config is invalid. Fill valid USDC and vault addresses in `frontend/.env.local`."
         : "",
   };
 }

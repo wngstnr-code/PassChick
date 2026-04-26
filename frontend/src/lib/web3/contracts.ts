@@ -256,7 +256,6 @@ export const TRUST_PASSPORT_ABI = [
 export function hasDepositContractConfig() {
   return Boolean(
     isAddress(USDC_ADDRESS) &&
-      isAddress(USDC_FAUCET_ADDRESS) &&
       isAddress(GAME_VAULT_ADDRESS)
   );
 }
