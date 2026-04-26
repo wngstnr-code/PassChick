@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "~/components/web3/WalletProvider";
+import { CELO_CHAIN } from "~/lib/web3/celo";
 import { MINIPAY_UNSUPPORTED_CHAIN_MESSAGE } from "~/lib/web3/minipay";
 
 function shortAddress(address: string) {
@@ -585,7 +586,7 @@ export function PlayTopNav() {
     statusActionLabel = !isCeloChain ? "SWITCH" : "";
   } else if (!isCeloChain) {
     statusTone = "warning";
-    statusMessage = "SWITCH TO CELO SEPOLIA";
+    statusMessage = `SWITCH TO ${String(CELO_CHAIN.chainName || "CELO").toUpperCase()}`;
     statusActionLabel = "SWITCH";
   } else if (hasBackendApiConfig && isBackendAuthLoading) {
     statusTone = "busy";

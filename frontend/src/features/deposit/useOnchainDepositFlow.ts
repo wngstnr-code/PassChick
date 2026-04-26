@@ -436,7 +436,7 @@ export function useOnchainDepositFlow(): DepositFlowViewModel {
   const disableApproveButton =
     !canTransact || !parsedAmount || !needsApproval || isApproveBusy || isDepositBusy || isWithdrawBusy;
   const disableDepositButton =
-    !canTransact || !parsedAmount || isApproveBusy || isDepositBusy || isWithdrawBusy;
+    isApproveBusy || isDepositBusy || isWithdrawBusy;
   const disableWithdrawButton =
     !canTransact ||
     !parsedAmount ||
