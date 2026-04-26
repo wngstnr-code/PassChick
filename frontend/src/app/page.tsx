@@ -86,7 +86,7 @@ const ABOUT_FEATURES = [
   },
   {
     title: "CELO WALLET FLOW",
-    copy: "From faucet to deposit to live play, the Celo Sepolia flow stays quick and simple.",
+    copy: "From wallet deposit to live play, the Celo flow stays quick and simple.",
     tone: "wallet",
     imageSrc: "/images/about-stakes.png",
     imageAlt: "Pass Chick wallet flow preview",
@@ -96,8 +96,8 @@ const ABOUT_FEATURES = [
 const FLOW_STEPS = [
   {
     label: "STEP 1",
-    title: "Faucet + Deposit",
-    copy: "Mint mock USDC from faucet, then deposit to vault as your playable balance.",
+    title: "Deposit to Vault",
+    copy: "Deposit USDC to vault as your playable balance before starting a live run.",
   },
   {
     label: "STEP 2",
@@ -742,8 +742,7 @@ export default function Home() {
               </p>
             </div>
             <p>
-              Live contracts: USDC + Faucet + Vault + Settlement + Passport on
-              Celo Sepolia.
+              Live contracts: USDC + Vault + Settlement + Passport on Celo.
             </p>
           </div>
         </div>
@@ -780,7 +779,7 @@ export default function Home() {
           <div>
             <p className="home-preview-title">PASS CHICK</p>
             <h3 className="home-footer-title">
-              Fast arcade risk demo for Celo Sepolia energy.
+              Fast arcade risk with fixed-stake runs on Celo.
             </h3>
           </div>
 
@@ -810,7 +809,7 @@ export default function Home() {
                 <div>
                   <p className="step-title">MANAGE MONEY</p>
                   <p>
-                    Mint faucet if needed, then deposit USDC into the vault.
+                    Deposit USDC into the vault before starting a paid run.
                   </p>
                 </div>
               </div>

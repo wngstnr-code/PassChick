@@ -1,9 +1,11 @@
 "use client";
 
+import { CELO_CHAIN } from "./celo";
+
 export const MINIPAY_ADD_CASH_URL = "https://minipay.opera.com/add_cash";
 
 export const MINIPAY_UNSUPPORTED_CHAIN_MESSAGE =
-  "MiniPay is detected, but this build expects Celo Sepolia. Enable MiniPay testnet mode and configure Celo Sepolia contract addresses for the app.";
+  `MiniPay is detected, but this build expects ${CELO_CHAIN.chainName}. Open MiniPay on that network and configure matching contract addresses for the app.`;
 
 type Eip1193RequestArguments = {
   method: string;

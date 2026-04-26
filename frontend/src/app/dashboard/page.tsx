@@ -319,7 +319,7 @@ export default function DashboardPage() {
                 <span className="step-num">1</span>
                 <div>
                   <p className="step-title">MANAGE MONEY</p>
-                  <p>Claim faucet if needed, then deposit USDC into your vault.</p>
+                  <p>Deposit USDC into your vault, then use available balance for live runs.</p>
                 </div>
               </div>
               <div className="help-step">

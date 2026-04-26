@@ -278,7 +278,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
 
     if (isMiniPay) {
       setError(
-        "MiniPay cannot be switched from the dApp. Enable MiniPay testnet mode to use Celo Sepolia.",
+        `MiniPay cannot be switched from the dApp. Open this app from MiniPay on ${CELO_CHAIN.chainName}.`,
       );
       return;
     }
@@ -416,7 +416,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     if (isMiniPay) {
       if (!isCeloChain) {
         setBackendAuthError(
-          "MiniPay must be in Celo Sepolia testnet mode before game data can sync.",
+          `MiniPay must be on ${CELO_CHAIN.chainName} before game data can sync.`,
         );
         return false;
       }
@@ -427,7 +427,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       try {
         await backendPost<{ success: boolean; address: string }>("/auth/minipay", {
           address: account,
-          chainId: chainId || CELO_CHAIN.chainIdDecimal || 11142220,
+          chainId: chainId || CELO_CHAIN.chainIdDecimal || 42220,
           walletProvider: "minipay",
         });
 
@@ -467,7 +467,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       const { nonce } = await backendFetch<{ nonce: string }>("/auth/nonce");
       const domain = window.location.host;
       const origin = window.location.origin;
-      const chainIdToUse = chainId || CELO_CHAIN.chainIdDecimal || 11142220;
+      const chainIdToUse = chainId || CELO_CHAIN.chainIdDecimal || 42220;
       const statement = "Sign in to Pass Chick backend.";
       const siweMessage = new SiweMessage({
         domain,

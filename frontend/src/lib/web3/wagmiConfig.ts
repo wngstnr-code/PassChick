@@ -1,10 +1,10 @@
 import type { Chain } from "viem";
-import { celoSepolia } from "viem/chains";
+import { celo } from "viem/chains";
 import { CELO_CHAIN } from "./celo";
 
-const FALLBACK_CHAIN_ID = celoSepolia.id;
-const FALLBACK_RPC_URL = celoSepolia.rpcUrls.default.http[0] || "";
-const FALLBACK_EXPLORER_URL = celoSepolia.blockExplorers.default.url;
+const FALLBACK_CHAIN_ID = celo.id;
+const FALLBACK_RPC_URL = celo.rpcUrls.default.http[0] || "";
+const FALLBACK_EXPLORER_URL = celo.blockExplorers.default.url;
 
 function buildCeloWagmiChain(): Chain {
   const chainId =
@@ -14,7 +14,7 @@ function buildCeloWagmiChain(): Chain {
 
   return {
     id: chainId,
-    name: CELO_CHAIN.chainName || celoSepolia.name,
+    name: CELO_CHAIN.chainName || celo.name,
     nativeCurrency: {
       name: CELO_CHAIN.nativeCurrency.name,
       symbol: CELO_CHAIN.nativeCurrency.symbol,
@@ -32,7 +32,7 @@ function buildCeloWagmiChain(): Chain {
           },
         }
       : undefined,
-    testnet: true,
+    testnet: chainId !== celo.id,
   };
 }
 
@@ -44,7 +44,7 @@ export const projectId = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "demo-proje
 
 export const appKitMetadata = {
   name: "Pass Chick",
-  description: "Crossy chicken game with mock betting HUD on Celo Sepolia.",
+  description: "Crossy chicken game with fixed-stake paid runs on Celo.",
   url: "http://localhost:3000",
   icons: ["https://avatars.githubusercontent.com/u/37784886"],
 };
