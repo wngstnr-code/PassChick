@@ -7,8 +7,12 @@ import { useWallet } from "~/components/web3/WalletProvider";
 import { CELO_CHAIN } from "~/lib/web3/celo";
 import { MINIPAY_UNSUPPORTED_CHAIN_MESSAGE } from "~/lib/web3/minipay";
 
-function shortAddress(address: string) {
+function shortAddress(address: string, isMobile: boolean = false) {
   if (!address) return "NO WALLET";
+  if (isMobile) {
+    // Shorter format for mobile to prevent overflow (e.g., 0x12...34)
+    return `${address.slice(0, 4)}.${address.slice(-2)}`;
+  }
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
@@ -75,6 +79,7 @@ export function PlayTopNav() {
     kind: "none",
   });
   const [isResolvingPlayBlocker, setIsResolvingPlayBlocker] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const navRef = useRef<HTMLElement | null>(null);
   const walletMenuRef = useRef<HTMLDivElement | null>(null);
   const menuRootRef = useRef<HTMLDivElement | null>(null);
@@ -525,6 +530,7 @@ export function PlayTopNav() {
         "--play-nav-hud-offset",
         `${Math.ceil(bottom + 14)}px`,
       );
+      setIsMobile(window.innerWidth < 1024);
     };
 
     const scheduleUpdate = () => {
@@ -671,7 +677,7 @@ export function PlayTopNav() {
               {isConnecting
                 ? "CONNECTING..."
                 : isConnected
-                  ? shortAddress(account)
+                  ? shortAddress(account, isMobile)
                   : isMiniPay
                     ? "MINIPAY"
                     : "CONNECT WALLET"}
@@ -712,7 +718,9 @@ export function PlayTopNav() {
                   <div className="play-menu-modal-list">
                     <div className="play-menu-header">
                       <span className="play-menu-wallet">
-                        {isConnected ? shortAddress(account) : "NOT CONNECTED"}
+                        {isConnected
+                          ? shortAddress(account, isMobile)
+                          : "NOT CONNECTED"}
                       </span>
                       <button
                         type="button"
