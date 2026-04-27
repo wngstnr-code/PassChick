@@ -5933,7 +5933,7 @@ canvas.game {
   display: none;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   :root {
     --play-mobile-edge-gutter: 8px;
     --play-mobile-top-action-width: 88px;
@@ -6411,7 +6411,7 @@ canvas.game {
 ============================================================ */
 @media (max-width: 480px) and (orientation: portrait) {
   canvas.game {
-    transform: scale(1.3);
+    transform: scale(1.1);
     transform-origin: center center;
   }
   

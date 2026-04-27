@@ -37,7 +37,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
             <div
               id="bet-hud-active"
               className="bet-hud-active"
-              style={{ display: "none" }}>
+              style={{ display: "none" }}
+            >
               <div className="bet-hud-metric-grid">
                 <div className="bet-hud-metric bet-hud-metric-primary">
                   <span className="bet-hud-metric-label">STAKE</span>
@@ -49,7 +50,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
                   <span className="bet-hud-metric-label">CASH OUT</span>
                   <span
                     id="bet-payout"
-                    className="bet-hud-metric-value payout-value">
+                    className="bet-hud-metric-value payout-value"
+                  >
                     $0.0000
                   </span>
                 </div>
@@ -57,7 +59,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
                   <span className="bet-hud-metric-label">MULTIPLIER</span>
                   <span
                     id="bet-multiplier"
-                    className="bet-hud-metric-value multiplier-value">
+                    className="bet-hud-metric-value multiplier-value"
+                  >
                     0.00x
                   </span>
                 </div>
@@ -66,7 +69,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               <div
                 id="bet-hud-decay"
                 className="bet-hud-decay"
-                style={{ display: "none" }}>
+                style={{ display: "none" }}
+              >
                 <span className="bet-hud-decay-label">DECAYING</span>
                 <span id="bet-decay" className="bet-hud-decay-value">
                   -0.1x
@@ -82,7 +86,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               id="cash-out-btn"
               className="disabled"
               disabled
-              style={{ display: "none" }}>
+              style={{ display: "none" }}
+            >
               CASH OUT
             </button>
           </div>
@@ -121,7 +126,9 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
             X
           </button>
           <h2>CONFIRM PAID RUN</h2>
-          <p className="subtitle">Fixed stake, on-chain outcome, checkpoint cash out</p>
+          <p className="subtitle">
+            Fixed stake, on-chain outcome, checkpoint cash out
+          </p>
 
           <div className="odds-info">
             <p className="odds-title">FIXED STAKE</p>
@@ -139,8 +146,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
             <p className="odds-title">VALUE RISK</p>
             <div className="odds-note-list">
               <div className="odds-note-item">
-                <span className="dot dot-yellow" aria-hidden="true" /> Starting a
-                live run spends 0.0001 USDC from your vault balance.
+                <span className="dot dot-yellow" aria-hidden="true" /> Starting
+                a live run spends 0.0001 USDC from your vault balance.
               </div>
               <div className="odds-note-item">
                 <span className="dot dot-red" aria-hidden="true" /> If you lose
@@ -251,7 +258,11 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
             <button id="deposit-confirm" className="primary">
               DEPOSIT NOW
             </button>
-            <Link id="deposit-manage-funds" className="manage" href="/managemoney">
+            <Link
+              id="deposit-manage-funds"
+              className="manage"
+              href="/managemoney"
+            >
               MANAGE MONEY
             </Link>
           </div>
@@ -274,23 +285,27 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
         id="game-help-btn"
         className="fixed-help"
         type="button"
-        title="Game Rules">
+        title="Game Rules"
+      >
         ?
       </button>
 
       <div
         id="game-help-modal"
         className="info-modal-overlay"
-        style={{ display: "none" }}>
+        style={{ display: "none" }}
+      >
         <div
           className="info-modal-box"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="game-help-title">
+          aria-labelledby="game-help-title"
+        >
           <button
             className="info-modal-close"
             id="game-help-close"
-            aria-label="Close">
+            aria-label="Close"
+          >
             X
           </button>
           <h2 id="game-help-title">GAME RULES</h2>
@@ -346,7 +361,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
           <button
             className="flow-btn secondary info-modal-action"
             id="game-help-got-it"
-            type="button">
+            type="button"
+          >
             GOT IT
           </button>
         </div>
