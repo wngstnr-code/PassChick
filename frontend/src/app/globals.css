@@ -6006,16 +6006,18 @@ canvas.game {
     height: var(--play-mobile-header-height);
     min-height: var(--play-mobile-header-height);
     justify-content: flex-start;
+    align-items: center;
     gap: 7px;
     padding: 0 9px;
   }
 
   .play-menu-trigger-label {
     display: inline-block;
-    font-size: 6.5px;
-    letter-spacing: 0.45px;
+    font-size: 9px;
+    letter-spacing: 0.3px;
     line-height: 1;
     color: #223142;
+    margin-top: 1px;
   }
 
   .hamburger-icon {
@@ -6054,7 +6056,7 @@ canvas.game {
       var(--play-mobile-top-action-width) minmax(0, 1fr) var(--play-mobile-right-action-width);
     grid-template-rows: var(--play-mobile-header-height) auto var(--play-mobile-header-height);
     gap: var(--play-mobile-side-gap);
-    align-items: start;
+    align-items: stretch;
     justify-content: unset;
     padding: 0;
     pointer-events: none;
@@ -6069,7 +6071,9 @@ canvas.game {
     min-width: 0;
     grid-column: 2;
     grid-row: 2;
-    gap: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--play-mobile-side-gap);
   }
 
   #top-bar-center {
@@ -6086,13 +6090,14 @@ canvas.game {
     justify-self: center;
     width: min(132px, 100%);
     min-width: 0;
+    height: var(--play-mobile-header-height);
     min-height: var(--play-mobile-header-height);
     box-sizing: border-box;
   }
 
   .play-balance-card {
     position: relative;
-    border-color: rgba(214, 232, 255, 0.92);
+    border-color: rgba(255, 255, 255, 0.4);
     background: linear-gradient(180deg,
         rgba(20, 31, 58, 0.94) 0%,
         rgba(32, 48, 82, 0.94) 100%);
@@ -6103,12 +6108,7 @@ canvas.game {
   }
 
   .play-balance-card::after {
-    content: "";
-    position: absolute;
-    inset: 4px;
-    border-radius: 6px;
-    border: 1px solid rgba(124, 194, 255, 0.18);
-    pointer-events: none;
+    display: none;
   }
 
   .play-balance-card .stat-label {
@@ -6117,6 +6117,8 @@ canvas.game {
 
   .play-balance-card .stat-value {
     color: #ffe68b;
+    font-size: 13px;
+    margin-top: 3px;
   }
 
   #timer-card {
@@ -6125,6 +6127,7 @@ canvas.game {
     justify-self: center;
     width: 74px;
     min-width: 74px;
+    height: var(--play-mobile-header-height);
     min-height: var(--play-mobile-header-height);
     box-sizing: border-box;
   }
@@ -6136,7 +6139,7 @@ canvas.game {
     justify-self: stretch;
     min-width: 0;
     width: 100%;
-    min-height: 72px;
+    min-height: calc(var(--play-mobile-header-height) * 2 + var(--play-mobile-side-gap));
     padding: 6px 8px;
     font-size: 10px;
     letter-spacing: 0.55px;
@@ -6148,7 +6151,7 @@ canvas.game {
 
   #top-bar-left,
   #top-bar-center {
-    gap: 0;
+    gap: var(--play-mobile-side-gap);
   }
 
   #bet-hud {
