@@ -880,17 +880,7 @@ canvas.game {
   }
 
   #controls {
-    bottom: 16px;
-  }
-
-  #controls div {
-    grid-template-columns: 60px 60px 60px;
-    gap: 8px;
-  }
-
-  #controls button {
-    height: 48px;
-    font-size: 16px;
+    display: none !important;
   }
 
   .modal-box {
@@ -6336,14 +6326,6 @@ canvas.game {
   .bet-hud-metric-value {
     font-size: 16px;
   }
-
-  #controls {
-    bottom: 60px !important;
-  }
-
-  .fixed-help {
-    bottom: 60px !important;
-  }
 }
 
 /* ============================================================
@@ -6354,12 +6336,82 @@ canvas.game {
     transform: scale(1.0);
     transform-origin: center center;
   }
+}
 
-  #controls {
-    bottom: 40px !important;
+/* ==========================================================================
+   LOADING SCREEN
+   ========================================================================== */
+
+#loading-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #121c34;
+  z-index: 99999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  transition: opacity 0.5s ease;
+}
+
+#loading-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-content {
+  text-align: center;
+  color: #fff;
+  font-family: inherit;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #f7d046;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+.loading-content h2 {
+  font-size: 24px;
+  margin: 0 0 8px 0;
+  letter-spacing: 2px;
+  color: #f7d046;
+}
+
+.loading-content p {
+  color: #a3b8cc;
+  font-size: 14px;
+  margin: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .loading-spinner {
+    width: 44px;
+    height: 44px;
+    border-width: 4px;
+    margin-bottom: 16px;
   }
 
-  .fixed-help {
-    bottom: 40px !important;
+  .loading-content h2 {
+    font-size: 16px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .loading-content p {
+    font-size: 11px;
   }
 }

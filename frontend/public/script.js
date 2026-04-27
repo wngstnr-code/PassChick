@@ -1138,7 +1138,8 @@ function hideResult() {
 }
 
 function Camera() {
-  const size = 300;
+  const isMobile = window.innerWidth <= 768;
+  const size = isMobile ? 240 : 300;
   const viewRatio = window.innerWidth / window.innerHeight;
   const width = viewRatio < 1 ? size : size * viewRatio;
   const height = viewRatio < 1 ? size / viewRatio : size;
@@ -2372,8 +2373,10 @@ if (gameCanvas) {
       if (
         absX < SWIPE_MIN_DISTANCE_PX &&
         absY < SWIPE_MIN_DISTANCE_PX
-      )
+      ) {
+        queueMove("forward");
         return;
+      }
 
       if (absX > absY) {
         queueMove(dx > 0 ? "right" : "left");
@@ -3628,7 +3631,8 @@ const renderer = Renderer();
 renderer.setAnimationLoop(animate);
 
 window.addEventListener("resize", () => {
-  const size = 300;
+  const isMobile = window.innerWidth <= 768;
+  const size = isMobile ? 240 : 300;
   const viewRatio = window.innerWidth / window.innerHeight;
   const width = viewRatio < 1 ? size : size * viewRatio;
   const height = viewRatio < 1 ? size / viewRatio : size;
@@ -3638,6 +3642,9 @@ window.addEventListener("resize", () => {
   camera.top = height / 2;
   camera.bottom = height / -2;
   camera.updateProjectionMatrix();
+
+  camera.position.set(300, -300, 300);
+  camera.lookAt(0, 0, 0);
 
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -3650,3 +3657,14 @@ function animate() {
 
   renderer.render(scene, camera);
 }
+
+// Remove loading screen after a short delay
+setTimeout(() => {
+  const loader = document.getElementById("loading-screen");
+  if (loader) {
+    loader.classList.add("hidden");
+    setTimeout(() => {
+      loader.style.display = "none";
+    }, 500);
+  }
+}, 800);

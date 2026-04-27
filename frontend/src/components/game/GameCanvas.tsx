@@ -11,6 +11,15 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
     <>
       <GameBridgeClient backgroundMode={backgroundMode} />
       <canvas className="game" />
+
+      <div id="loading-screen">
+        <div className="loading-content">
+          <div className="loading-spinner" aria-hidden="true" />
+          <h2>LOADING GAME...</h2>
+          <p>Preparing the road ahead</p>
+        </div>
+      </div>
+
       <div id="hud-scrim" aria-hidden="true" />
 
       <div id="top-bar">
