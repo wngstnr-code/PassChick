@@ -2323,6 +2323,72 @@ window.addEventListener("keydown", (event) => {
   }
 });
 
+const SWIPE_MIN_DISTANCE_PX = 24;
+let swipeStartX = 0;
+let swipeStartY = 0;
+let swipeTracking = false;
+
+const gameCanvas = document.querySelector("canvas.game");
+if (gameCanvas) {
+  gameCanvas.addEventListener(
+    "touchstart",
+    (event) => {
+      if (event.touches.length !== 1) {
+        swipeTracking = false;
+        return;
+      }
+      const touch = event.touches[0];
+      swipeStartX = touch.clientX;
+      swipeStartY = touch.clientY;
+      swipeTracking = true;
+    },
+    { passive: true },
+  );
+
+  gameCanvas.addEventListener(
+    "touchmove",
+    (event) => {
+      if (!swipeTracking) return;
+      // Keep swipe interactions focused on gameplay (avoid browser pan gesture).
+      event.preventDefault();
+    },
+    { passive: false },
+  );
+
+  gameCanvas.addEventListener(
+    "touchend",
+    (event) => {
+      if (!swipeTracking) return;
+      swipeTracking = false;
+
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+
+      const dx = touch.clientX - swipeStartX;
+      const dy = touch.clientY - swipeStartY;
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+
+      if (
+        absX < SWIPE_MIN_DISTANCE_PX &&
+        absY < SWIPE_MIN_DISTANCE_PX
+      )
+        return;
+
+      if (absX > absY) {
+        queueMove(dx > 0 ? "right" : "left");
+      } else {
+        queueMove(dy > 0 ? "backward" : "forward");
+      }
+    },
+    { passive: true },
+  );
+
+  gameCanvas.addEventListener("touchcancel", () => {
+    swipeTracking = false;
+  });
+}
+
 function hitTest() {
   if (gameOver || settlementPending) return;
   const row = metadata[position.currentRow - 1];
