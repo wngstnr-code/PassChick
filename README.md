@@ -27,7 +27,7 @@ Click the image below to watch the demo:
 
 ## Live App
 
-Try it here: https://pass-chick-celo.vercel.app
+Try it here: https://passchick.vercel.app
 
 ## Status
 
