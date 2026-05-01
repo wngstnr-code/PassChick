@@ -10,7 +10,7 @@ The Pass Chick frontend is a Next.js application that handles:
 
 ## Live Deployment
 
-- App: https://pass-chick.vercel.app/
+- App: https://passchick.vercel.app
 
 ## Stack
 

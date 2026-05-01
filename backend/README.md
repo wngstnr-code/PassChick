@@ -30,6 +30,10 @@ npm run build
 npm run start
 ```
 
+## Live Development
+
+- Server: passchick-production.up.railway.app 
+
 ## Runtime
 
 Default local setup:
