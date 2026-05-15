@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction } from "express";
 import { getSession } from "../services/sessionStore.js";
 import cookie from "cookie";
 
-// Extend Express Request to include wallet address
 declare global {
   namespace Express {
     interface Request {
@@ -11,13 +10,8 @@ declare global {
   }
 }
 
-/** Cookie name for session token */
 export const SESSION_COOKIE = "chicken_session";
 
-/**
- * Express middleware: require authenticated session.
- * Reads HttpOnly cookie, validates session, injects walletAddress into req.
- */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const token = req.cookies?.[SESSION_COOKIE];
 
@@ -36,10 +30,6 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   next();
 }
 
-/**
- * Extract wallet address from Socket.io handshake cookies.
- * Used during WebSocket connection auth.
- */
 export function getWalletFromSocketCookies(cookieHeader: string | undefined): string | null {
   if (!cookieHeader) return null;
 
