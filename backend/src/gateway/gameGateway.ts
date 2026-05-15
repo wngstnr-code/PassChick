@@ -1,16 +1,23 @@
 import type { Server as HttpServer } from "node:http";
 import { Server as SocketServer, type Socket } from "socket.io";
 import { v4 as uuidv4 } from "uuid";
-import { createPublicClient, http, isAddress, type Hex } from "viem";
+import {
+  isZeroSessionId,
+  readActiveOnchainSession,
+  readTransactionStatus,
+} from "../lib/celo.js";
 import { getWalletFromSocketCookies } from "../middleware/auth.js";
 import { env } from "../config/env.js";
 import { supabase } from "../config/supabase.js";
+import { isValidEvmAddress, normalizeEvmAddress } from "../utils/celo.js";
 import {
   STEP_INCREMENT_BP,
   CP_BONUS_NUM,
   CP_BONUS_DEN,
-  FIXED_STAKE,
-  FIXED_STAKE_UNITS,
+  MIN_STAKE,
+  MAX_STAKE,
+  MIN_STAKE_UNITS,
+  MAX_STAKE_UNITS,
   GRACE_PERIOD_MS,
 } from "../config/constants.js";
 import {
@@ -25,7 +32,6 @@ import {
   isMoveToFast,
   isSpeedHack,
   getEffectiveMultiplierBp,
-  calculatePayout,
   isCheckpointRow,
 } from "../services/gameValidator.js";
 import {
@@ -47,11 +53,8 @@ import { submitSettlementOnchain } from "../services/settlementExecutor.js";
 
 let io: SocketServer;
 const SIGN_SETTLEMENT_TIMEOUT_MS = 10_000;
-const gatewayPublicClient = createPublicClient({
-  transport: http(env.CELO_RPC_URL),
-});
 
-type MiniPaySocketAuthPayload = {
+type SocialSocketAuthPayload = {
   walletAddress?: string;
   walletProvider?: string;
   chainId?: number | string;
@@ -67,8 +70,11 @@ function formatUsdcValue(value: number) {
 
 function isValidUsdcStakeAmount(stake: number): boolean {
   if (!Number.isFinite(stake)) return false;
-  const units = stake * 1_000_000;
-  return Math.abs(units - FIXED_STAKE_UNITS) < 1e-6;
+  const units = Math.round(stake * 1_000_000);
+  if (!Number.isInteger(units)) return false;
+  if (units < MIN_STAKE_UNITS || units > MAX_STAKE_UNITS) return false;
+  const normalizedStake = units / 1_000_000;
+  return Math.abs(normalizedStake - stake) < 1e-6;
 }
 
 async function signSettlementWithTimeout(params: Parameters<typeof signSettlement>[0]) {
@@ -82,33 +88,111 @@ async function signSettlementWithTimeout(params: Parameters<typeof signSettlemen
   ]);
 }
 
+function readGatewayErrorMessage(error: unknown) {
+  return String(
+    (error as { shortMessage?: string; message?: string })?.shortMessage ||
+      (error as { message?: string })?.message ||
+      "",
+  ).toLowerCase();
+}
+
+function isAlreadySettledLikeGatewayError(error: unknown) {
+  const raw = readGatewayErrorMessage(error);
+  return (
+    raw.includes("sessionalreadysettled") ||
+    raw.includes("sessionnotactive") ||
+    raw.includes("sessionnotfound")
+  );
+}
+
+function isZeroBytes32(value: string) {
+  return isZeroSessionId(value);
+}
+
+function usdcUnitsToNumber(amount: bigint) {
+  return Number(amount) / 1_000_000;
+}
+
+function calculatePayoutFromUnits(stake: number, multiplierBp: number) {
+  const stakeUnits = usdcToUint256(stake);
+  const payoutUnits = (stakeUnits * BigInt(multiplierBp)) / 10_000n;
+  const profitUnits = payoutUnits - stakeUnits;
+  return {
+    payoutAmount: usdcUnitsToNumber(payoutUnits),
+    profit: usdcUnitsToNumber(profitUnits),
+  };
+}
+
+
+
+async function clearActiveOnchainSession(walletAddress: string) {
+  const activeOnchainSession = await readActiveOnchainSession(walletAddress);
+  if (!activeOnchainSession) {
+    return null;
+  }
+
+  try {
+    const settlementResult = await signSettlementWithTimeout({
+      playerAddress: walletAddress,
+      onchainSessionId: activeOnchainSession.sessionId,
+      stakeAmount: usdcUnitsToNumber(activeOnchainSession.stakeAmountUnits),
+      payoutAmount: 0,
+      finalMultiplierBp: 0,
+      outcome: SETTLEMENT_OUTCOME.CRASHED,
+    });
+
+    const settlementTxHash = await submitSettlementOnchain({
+      resolution: settlementResult.resolution,
+      signature: settlementResult.signature,
+    });
+
+    return {
+      settlementResult,
+      settlementTxHash,
+    };
+  } catch (error) {
+    if (isAlreadySettledLikeGatewayError(error)) {
+      const stillActive = await readActiveOnchainSession(walletAddress).catch(() => null);
+      if (!stillActive) {
+        return {
+          settlementResult: null,
+          settlementTxHash: "already-settled-onchain",
+        };
+      }
+    }
+
+    throw error;
+  }
+}
+
 function getWalletFromSocketHandshake(socket: Socket): string | null {
   const cookieWallet = getWalletFromSocketCookies(socket.handshake.headers.cookie);
   if (cookieWallet) {
     return cookieWallet;
   }
 
-  if (!env.MINIPAY_UNVERIFIED_AUTH_ENABLED) {
+  if (!env.SOCIAL_AUTH_ENABLED) {
     return null;
   }
 
-  const auth = (socket.handshake.auth ?? {}) as MiniPaySocketAuthPayload;
+  const auth = (socket.handshake.auth ?? {}) as SocialSocketAuthPayload;
   const walletProvider = String(auth.walletProvider || "").toLowerCase();
   const claimedAddress = String(auth.walletAddress || "");
-  const claimedChainId = Number(auth.chainId);
+  void auth.chainId;
 
-  if (walletProvider !== "minipay" || !isAddress(claimedAddress)) {
+  const isSocialOrEmbedded =
+    walletProvider.includes("reown") ||
+    walletProvider.includes("appkit") ||
+    walletProvider === "google" ||
+    walletProvider === "apple" ||
+    walletProvider === "discord" ||
+    walletProvider === "x";
+
+  if (!isSocialOrEmbedded || !isValidEvmAddress(claimedAddress)) {
     return null;
   }
 
-  if (
-    Number.isFinite(claimedChainId) &&
-    claimedChainId !== env.CELO_CHAIN_ID
-  ) {
-    return null;
-  }
-
-  return claimedAddress.toLowerCase();
+  return normalizeEvmAddress(claimedAddress);
 }
 
 export function setupGameGateway(httpServer: HttpServer): SocketServer {
@@ -135,8 +219,8 @@ export function setupGameGateway(httpServer: HttpServer): SocketServer {
       return;
     }
 
-    socket.on("game:start", async (data: { stake: number }) => {
-      await handleGameStart(socket, walletAddress, data.stake);
+    socket.on("game:start", async (data: { stake: number; onchainSessionId?: string }) => {
+      await handleGameStart(socket, walletAddress, data.stake, data.onchainSessionId);
     });
     socket.on("game:abort_start", async (data: { sessionId?: string; txHash?: string }) => {
       await handleAbortStart(socket, walletAddress, data?.sessionId, data?.txHash);
@@ -160,10 +244,15 @@ export function setupGameGateway(httpServer: HttpServer): SocketServer {
   return io;
 }
 
-async function handleGameStart(socket: Socket, walletAddress: string, stake: number): Promise<void> {
+async function handleGameStart(
+  socket: Socket,
+  walletAddress: string,
+  stake: number,
+  expectedOnchainSessionId?: string,
+): Promise<void> {
   if (!isValidUsdcStakeAmount(stake)) {
     socket.emit("game:error", {
-      message: `Invalid stake. This build uses a fixed ${FIXED_STAKE} USDC stake per run.`,
+      message: `Invalid stake. Allowed range is ${MIN_STAKE} to ${MAX_STAKE} USDC.`,
     });
     return;
   }
@@ -180,45 +269,56 @@ async function handleGameStart(socket: Socket, walletAddress: string, stake: num
     .maybeSingle();
 
   if (stale) {
-    console.log(`🧹 Cleaning up stale session: ${stale.session_id}`);
-    try {
-      const signed = await signSettlementWithTimeout({
-        playerAddress: walletAddress,
-        onchainSessionId: stale.onchain_session_id,
-        stakeAmount: stale.stake_amount,
-        payoutAmount: 0,
-        finalMultiplierBp: 0,
-        outcome: SETTLEMENT_OUTCOME.CRASHED,
-      });
+    socket.emit("game:error", {
+      message: "Previous ACTIVE session still exists. Resolve settlement first.",
+    });
+    return;
+  }
 
-      await supabase
-        .from("game_sessions")
-        .update({
-          status: "CRASHED",
-          ended_at: new Date().toISOString(),
-          final_multiplier: 0,
-          payout_amount: 0,
-          settlement_signature: signed.signature,
-          settlement_deadline: signed.resolution.deadline,
-        })
-        .eq("session_id", stale.session_id);
-    } catch (err) {
-      console.error("❌ Failed to sign stale session cleanup:", err);
-      await supabase
-        .from("game_sessions")
-        .update({ status: "CRASHED", ended_at: new Date().toISOString() })
-        .eq("session_id", stale.session_id);
-    }
+  const activeOnchainSession = await readActiveOnchainSession(walletAddress).catch((error) => {
+    console.error("❌ Failed to verify on-chain session state before starting a new run:", error);
+    return null;
+  });
+
+  if (!activeOnchainSession) {
+    socket.emit("game:error", {
+      message: "No active on-chain session found. Start session transaction first.",
+    });
+    return;
+  }
+
+  if (
+    expectedOnchainSessionId &&
+    activeOnchainSession.sessionId.toLowerCase() !== expectedOnchainSessionId.toLowerCase()
+  ) {
+    socket.emit("game:error", {
+      message: "On-chain session mismatch. Re-sync and start again.",
+    });
+    return;
   }
 
   const sessionId = uuidv4();
-  const onchainSessionId = generateOnchainSessionId();
+  const onchainSessionId = activeOnchainSession.sessionId;
+  const onchainStake = Number(activeOnchainSession.stakeAmountUnits) / 1_000_000;
+
+  const { data: existingOnchain } = await supabase
+    .from("game_sessions")
+    .select("status")
+    .eq("onchain_session_id", onchainSessionId)
+    .maybeSingle();
+
+  if (existingOnchain) {
+    socket.emit("game:error", {
+      message: "Previous game settlement still pending on-chain. Please wait.",
+    });
+    return;
+  }
 
   const { error: dbError } = await supabase.from("game_sessions").insert({
     session_id: sessionId,
     onchain_session_id: onchainSessionId,
     wallet_address: walletAddress,
-    stake_amount: stake,
+    stake_amount: onchainStake,
     status: "ACTIVE",
   });
 
@@ -246,16 +346,16 @@ async function handleGameStart(socket: Socket, walletAddress: string, stake: num
       .eq("wallet_address", walletAddress);
   }
 
-  createGameState(sessionId, onchainSessionId, walletAddress, stake, socket.id);
+  createGameState(sessionId, onchainSessionId, walletAddress, onchainStake, socket.id);
 
   const mapSeed = Math.floor(Math.random() * 999999);
-  const stakeAmountUnits = usdcToUint256(stake).toString();
+  const stakeAmountUnits = activeOnchainSession.stakeAmountUnits.toString();
 
-  console.log(`🎮 Game started: ${walletAddress} | Stake: $${stake} | Session: ${sessionId} | Onchain: ${onchainSessionId}`);
+  console.log(`🎮 Game started: ${walletAddress} | Stake: $${onchainStake} | Session: ${sessionId} | Onchain: ${onchainSessionId}`);
   socket.emit("game:started", {
     sessionId,
     onchainSessionId,
-    stake,
+    stake: onchainStake,
     stakeAmountUnits,
     mapSeed,
     serverTime: Date.now(),
@@ -264,19 +364,17 @@ async function handleGameStart(socket: Socket, walletAddress: string, stake: num
 
 async function canAbortStartSession(txHash?: string): Promise<{ canAbort: boolean; message?: string }> {
   if (!txHash) {
-    // Pre-broadcast failure (e.g. user rejected signing). Safe to abort directly.
     return { canAbort: true };
   }
 
   try {
-    const receipt = await gatewayPublicClient.getTransactionReceipt({
-      hash: txHash as Hex,
-    });
-
-    if (receipt.status === "reverted") {
+    const status = await readTransactionStatus(txHash);
+    if (!status.found) {
+      throw new Error("transaction not found");
+    }
+    if (status.success === false) {
       return { canAbort: true };
     }
-
     return {
       canAbort: false,
       message:
@@ -408,6 +506,7 @@ function handleGameMove(socket: Socket, walletAddress: string, direction: string
       if (isCheckpointRow(state.currentRow)) {
         state.currentCp += 1;
         state.multiplierBp = Math.floor((state.multiplierBp * CP_BONUS_NUM) / CP_BONUS_DEN);
+        state.multiplierBp = getEffectiveMultiplierBp(state.multiplierBp, state.timer.segmentStart, now);
         state.timer = onReachCheckpoint(state.timer);
         state.cashoutWindow = true;
         state.cpRowIndex = state.currentRow;
@@ -544,11 +643,21 @@ async function handleGameCashout(socket: Socket, walletAddress: string): Promise
     socket.emit("game:error", { message: "Must be at checkpoint to cash out." });
     return;
   }
+  if (isCpStayExpired(state.timer)) {
+    state.cashoutWindow = false;
+    state.isAtCheckpoint = false;
+    state.timer = onLeaveCheckpoint(state.timer);
+    socket.emit("game:cp_expired", { message: "Checkpoint time expired. Keep moving!" });
+    socket.emit("game:error", { message: "Checkpoint time expired. Keep moving!" });
+    return;
+  }
 
   const finalMultiplierBp = state.multiplierBp;
   const finalMultiplier = finalMultiplierBp / 10000;
-  const payoutAmount = calculatePayout(state.stake, finalMultiplierBp);
-  const profit = payoutAmount - state.stake;
+  const { payoutAmount, profit } = calculatePayoutFromUnits(
+    state.stake,
+    finalMultiplierBp,
+  );
   console.log(`💰 CASH OUT: ${walletAddress} | ${finalMultiplier.toFixed(4)}x | $${formatUsdcValue(payoutAmount)}`);
 
   let settlementResult;
@@ -574,7 +683,6 @@ async function handleGameCashout(socket: Socket, walletAddress: string): Promise
       signature: settlementResult.signature,
     });
   } catch (submitError) {
-    // Keep game flow successful and let frontend/API retry settlement submission.
     console.error("⚠️ Cashout settlement submit failed (will remain pending):", submitError);
   }
 
@@ -706,8 +814,10 @@ async function handleAutoCashout(walletAddress: string): Promise<void> {
 
   const finalMultiplierBp = state.multiplierBp;
   const finalMultiplier = finalMultiplierBp / 10000;
-  const payoutAmount = calculatePayout(state.stake, finalMultiplierBp);
-  const profit = payoutAmount - state.stake;
+  const { payoutAmount, profit } = calculatePayoutFromUnits(
+    state.stake,
+    finalMultiplierBp,
+  );
   console.log(`🤖 AUTO CASH OUT: ${walletAddress} | ${finalMultiplier.toFixed(4)}x | $${formatUsdcValue(payoutAmount)}`);
 
   let settlementResult;
@@ -732,7 +842,6 @@ async function handleAutoCashout(walletAddress: string): Promise<void> {
       signature: settlementResult.signature,
     });
   } catch (submitError) {
-    // Preserve cashout outcome in DB and resolve settlement later.
     console.error("⚠️ Auto cashout settlement submit failed (will remain pending):", submitError);
   }
 
