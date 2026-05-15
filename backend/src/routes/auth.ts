@@ -1,6 +1,5 @@
 import { type Response, Router } from "express";
 import { SiweMessage } from "siwe";
-import { isAddress } from "viem";
 import {
   generateNonce,
   consumeNonce,
@@ -11,6 +10,7 @@ import {
 import { SESSION_COOKIE, requireAuth } from "../middleware/auth.js";
 import { env } from "../config/env.js";
 import { supabase } from "../config/supabase.js";
+import { isValidEvmAddress, normalizeEvmAddress } from "../utils/celo.js";
 
 const router = Router();
 
@@ -50,21 +50,11 @@ function createAuthenticatedSession(
   persistSessionCookie(res)(token);
 }
 
-/**
- * GET /auth/nonce
- * Generate a random nonce for SIWE message.
- */
 router.get("/nonce", (_req, res) => {
   const nonce = generateNonce();
   res.json({ nonce });
 });
 
-/**
- * POST /auth/verify
- * Verify a SIWE signature and create an authenticated session.
- *
- * Body: { message: string, signature: string }
- */
 router.post("/verify", async (req, res) => {
   try {
     const { message, signature } = req.body;
@@ -74,7 +64,6 @@ router.post("/verify", async (req, res) => {
       return;
     }
 
-    // Parse and verify the SIWE message
     const siweMessage = new SiweMessage(message);
     const result = await siweMessage.verify({ signature });
 
@@ -82,15 +71,18 @@ router.post("/verify", async (req, res) => {
       res.status(401).json({ error: "Invalid signature." });
       return;
     }
+    if (result.data.chainId !== env.CHAIN_ID) {
+      res.status(401).json({ error: `Unsupported chainId. Expected ${env.CHAIN_ID}.` });
+      return;
+    }
 
-    // Validate nonce
     const nonceValid = consumeNonce(result.data.nonce);
     if (!nonceValid) {
       res.status(401).json({ error: "Invalid or expired nonce." });
       return;
     }
 
-    const walletAddress = result.data.address.toLowerCase();
+    const walletAddress = normalizeEvmAddress(result.data.address);
 
     await ensurePlayerRecord(walletAddress);
     createAuthenticatedSession(res, walletAddress);
@@ -106,17 +98,11 @@ router.post("/verify", async (req, res) => {
   }
 });
 
-/**
- * POST /auth/minipay
- * Create a session for an injected MiniPay wallet without message signing.
- *
- * Body: { address: string, chainId?: number, walletProvider?: string }
- */
-router.post("/minipay", async (req, res) => {
+router.post("/social", async (req, res) => {
   try {
-    if (!env.MINIPAY_UNVERIFIED_AUTH_ENABLED) {
+    if (!env.SOCIAL_AUTH_ENABLED) {
       res.status(403).json({
-        error: "MiniPay auth is disabled on this backend.",
+        error: "Social auth is disabled on this backend.",
       });
       return;
     }
@@ -131,46 +117,48 @@ router.post("/minipay", async (req, res) => {
       walletProvider?: string;
     } = req.body ?? {};
 
-    if (!address || !isAddress(address)) {
+    if (!address || !isValidEvmAddress(address)) {
       res.status(400).json({ error: "Missing or invalid wallet address." });
       return;
     }
 
-    if (
-      chainId !== undefined &&
-      Number.isFinite(chainId) &&
-      Number(chainId) !== env.CELO_CHAIN_ID
-    ) {
-      res.status(400).json({
-        error: `MiniPay auth requires Celo chain ${env.CELO_CHAIN_ID}.`,
-      });
+    if (chainId && Number(chainId) !== env.CHAIN_ID) {
+      res.status(400).json({ error: `Unsupported chainId. Expected ${env.CHAIN_ID}.` });
       return;
     }
 
-    if (walletProvider && walletProvider.toLowerCase() !== "minipay") {
-      res.status(400).json({ error: "Unsupported MiniPay wallet provider." });
-      return;
+    
+    
+    const lowerProvider = (walletProvider || "").toLowerCase();
+    const isSocialOrEmbedded =
+      lowerProvider.includes("reown") ||
+      lowerProvider.includes("appkit") ||
+      lowerProvider === "google" ||
+      lowerProvider === "apple" ||
+      lowerProvider === "discord" ||
+      lowerProvider === "x";
+
+    if (!isSocialOrEmbedded) {
+      
+      
+      
     }
 
-    const walletAddress = address.toLowerCase();
+    const walletAddress = normalizeEvmAddress(address);
     await ensurePlayerRecord(walletAddress);
     createAuthenticatedSession(res, walletAddress);
 
     res.json({
       success: true,
       address: walletAddress,
-      authMethod: "minipay",
+      authMethod: "social",
     });
   } catch (err) {
-    console.error("❌ MiniPay auth error:", err);
-    res.status(500).json({ error: "MiniPay authentication failed." });
+    console.error("❌ Social auth error:", err);
+    res.status(500).json({ error: "Social authentication failed." });
   }
 });
 
-/**
- * POST /auth/logout
- * Clear the session cookie and delete server-side session.
- */
 router.post("/logout", (req, res) => {
   const token = req.cookies?.[SESSION_COOKIE];
   if (token) {
@@ -186,10 +174,6 @@ router.post("/logout", (req, res) => {
   res.json({ success: true });
 });
 
-/**
- * GET /auth/me
- * Check current session status.
- */
 router.get("/me", requireAuth, (req, res) => {
   res.json({
     authenticated: true,
