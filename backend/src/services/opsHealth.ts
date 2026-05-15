@@ -1,25 +1,18 @@
-import { createPublicClient, formatEther, http } from "viem";
+import { formatEther } from "viem";
 import { env } from "../config/env.js";
-import { getSettlementRelayerAddress } from "./settlementExecutor.js";
-
-const BACKEND_SIGNER_MIN_CELO_BALANCE = 0.05;
-
-const opsPublicClient = createPublicClient({
-  transport: http(env.CELO_RPC_URL),
-});
+import { backendAccount, publicClient } from "../lib/celo.js";
 
 export async function readBackendSignerHealth() {
-  const relayerAddress = getSettlementRelayerAddress();
-  const balanceWei = await opsPublicClient.getBalance({
-    address: relayerAddress,
-  });
-  const balanceCelo = Number(formatEther(balanceWei));
+  const relayerAddress = backendAccount.address;
+  const balanceWei = await publicClient.getBalance({ address: backendAccount.address });
+  const balanceNative = Number(formatEther(balanceWei));
 
   return {
     relayerAddress,
     balanceWei: balanceWei.toString(),
-    balanceCelo,
-    healthy: balanceCelo >= BACKEND_SIGNER_MIN_CELO_BALANCE,
-    minRecommendedCelo: BACKEND_SIGNER_MIN_CELO_BALANCE,
+    balanceNative,
+    nativeSymbol: env.NATIVE_TOKEN_SYMBOL,
+    healthy: balanceNative >= env.MIN_RECOMMENDED_NATIVE_BALANCE,
+    minRecommendedNative: env.MIN_RECOMMENDED_NATIVE_BALANCE,
   };
 }
