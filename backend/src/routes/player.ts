@@ -10,10 +10,6 @@ function parsePaginationParam(value: unknown, fallback: number, min: number, max
   return Math.min(Math.max(parsed, min), max);
 }
 
-/**
- * GET /api/player/stats
- * Get authenticated player's statistics.
- */
 router.get("/stats", requireAuth, async (req, res) => {
   const walletAddress = req.walletAddress!;
 
@@ -38,10 +34,6 @@ router.get("/stats", requireAuth, async (req, res) => {
   res.json(data);
 });
 
-/**
- * GET /api/player/transactions
- * Get authenticated player's blockchain transaction history.
- */
 router.get("/transactions", requireAuth, async (req, res) => {
   const walletAddress = req.walletAddress!;
   const limit = parsePaginationParam(req.query.limit, 20, 1, 100);
