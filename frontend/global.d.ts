@@ -50,6 +50,10 @@ type ChickenBridgeLeaderboardEntry = {
   max_row_reached?: number;
   games_played?: number;
   best_multiplier?: number;
+  passportTier?: number;
+  passportTierLabel?: string;
+  passportReward?: string;
+  passportAccessFlags?: ChickenBridgePassportAccessFlags;
 };
 
 type ChickenBridgeLeaderboardPayload = {
@@ -117,15 +121,25 @@ type ChickenBridgePlayBlocker =
       pendingCount?: number;
     };
 
+type ChickenBridgePassportStats = {
+  runsCompleted: number;
+  bestHops: number;
+  averageHops: number;
+  successfulCashouts: number;
+  consistencyScore: number;
+  highestCheckpointCashedOut: number;
+  checkpointCashouts: Record<string, number>;
+};
+
 type ChickenBridgePassportEligibility = {
   eligible: boolean;
   tier: number;
   reason: string;
-  stats: {
-    runsEvaluated: number;
-    bestHops: number;
-    averageHops: number;
-  };
+  tierLabel?: string;
+  benefits?: ChickenBridgePassportBenefit[];
+  accessFlags?: ChickenBridgePassportAccessFlags;
+  tierReward?: ChickenBridgePassportTierReward | null;
+  stats: ChickenBridgePassportStats;
 };
 
 type ChickenBridgePassportOnchainStatus = {
@@ -137,10 +151,80 @@ type ChickenBridgePassportOnchainStatus = {
   revoked: boolean;
 };
 
+type ChickenBridgePassportRequirement = {
+  key: string;
+  label: string;
+  current: number;
+  target: number;
+  met: boolean;
+};
+
+type ChickenBridgePassportAccessFlags = {
+  verifiedIdentity?: boolean;
+  allowlistEligible?: boolean;
+  tournamentAccess?: boolean;
+  partnerPerks?: boolean;
+  canAccessTier1?: boolean;
+  canAccessTier2?: boolean;
+  canAccessTier3?: boolean;
+  canAccessTier4?: boolean;
+  partnerRewardAccess?: boolean;
+  allowlistAccess?: boolean;
+  premiumRewardAccess?: boolean;
+  oracleAccess?: boolean;
+  eligibleToClaim?: boolean;
+  hasValidPassport?: boolean;
+};
+
+type ChickenBridgePassportBenefit = {
+  key: string;
+  label: string;
+  description: string;
+  category: "trust" | "access" | "reward";
+  tierRequired: number;
+  unlocked: boolean;
+};
+
+type ChickenBridgePassportTierReward = {
+  tier: number;
+  label: string;
+  checkpoint: number;
+  requiredCashouts: number;
+  unlocked: boolean;
+  benefits: ChickenBridgePassportBenefit[];
+  accessFlags: ChickenBridgePassportAccessFlags;
+};
+
+type ChickenBridgePassportBenefits = {
+  current: string[];
+  next: string[];
+  accessFlags: ChickenBridgePassportAccessFlags;
+};
+
+type ChickenBridgePassportProgression = {
+  currentTier: number;
+  currentTierLabel: string;
+  nextTier: number | null;
+  nextTierLabel: string | null;
+  progressLabel: string;
+  percentToNextTier: number;
+  requirements: ChickenBridgePassportRequirement[];
+  currentTierReward?: ChickenBridgePassportTierReward | null;
+  nextTierReward?: ChickenBridgePassportTierReward | null;
+  stats: ChickenBridgePassportStats;
+};
+
 type ChickenBridgePassportStatus = {
   walletAddress: string;
+  passportId?: string | null;
   eligibility: ChickenBridgePassportEligibility;
   passport: ChickenBridgePassportOnchainStatus;
+  progression: ChickenBridgePassportProgression;
+  benefits?: ChickenBridgePassportBenefits;
+  benefitDetails?: ChickenBridgePassportBenefit[];
+  accessFlags?: ChickenBridgePassportAccessFlags;
+  activeTierReward?: ChickenBridgePassportTierReward | null;
+  tierRewards?: ChickenBridgePassportTierReward[];
 };
 
 type ChickenBridgeApi = {
@@ -174,4 +258,16 @@ type ChickenBridgeApi = {
 
 interface Window {
   __CHICKEN_GAME_BRIDGE__?: ChickenBridgeApi;
+  ethereum?: {
+    request: <T = unknown>(args: {
+      method: string;
+      params?: unknown[] | Record<string, unknown>;
+    }) => Promise<T>;
+    on?: (event: string, listener: (...args: unknown[]) => void) => void;
+    removeListener?: (
+      event: string,
+      listener: (...args: unknown[]) => void,
+    ) => void;
+    isMiniPay?: boolean;
+  };
 }

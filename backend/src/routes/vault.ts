@@ -3,10 +3,13 @@ import { requireAuth } from "../middleware/auth.js";
 import {
   buildDepositTransaction,
   buildWithdrawTransaction,
+  buildApproveTransaction,
   readPlayerBalance,
   readVaultTokenBalance,
   readWalletTokenBalance,
+  readTokenAllowance,
   USDC_ADDRESS,
+  GAME_VAULT_ADDRESS,
 } from "../lib/celo.js";
 
 const router = Router();
@@ -39,10 +42,11 @@ function parseUsdcAmountUnits(amount: unknown) {
 router.get("/status", requireAuth, async (req, res) => {
   try {
     const walletAddress = req.walletAddress!;
-    const [playerBalance, walletBalanceUnits, vaultTokenUnits] = await Promise.all([
+    const [playerBalance, walletBalanceUnits, vaultTokenUnits, allowanceUnits] = await Promise.all([
       readPlayerBalance(walletAddress),
       readWalletTokenBalance(walletAddress).catch(() => 0n),
       readVaultTokenBalance().catch(() => 0n),
+      readTokenAllowance(walletAddress, GAME_VAULT_ADDRESS).catch(() => 0n),
     ]);
 
     const availableUnits = BigInt(playerBalance?.availableBalance ?? 0n);
@@ -56,17 +60,37 @@ router.get("/status", requireAuth, async (req, res) => {
       availableBalance: toUsdcAmountString(availableUnits),
       lockedBalance: toUsdcAmountString(lockedUnits),
       vaultTokenBalance: toUsdcAmountString(vaultTokenUnits),
+      allowanceUnits: allowanceUnits.toString(),
       raw: {
         walletBalanceUnits: walletBalanceUnits.toString(),
         availableBalanceUnits: availableUnits.toString(),
         lockedBalanceUnits: lockedUnits.toString(),
         vaultTokenBalanceUnits: vaultTokenUnits.toString(),
+        allowanceUnits: allowanceUnits.toString(),
       },
     });
   } catch (error) {
     console.error("❌ Vault status failed:", error);
     res.status(500).json({
       error: normalizeErrorMessage(error, "Failed to read vault status."),
+    });
+  }
+});
+
+router.post("/approve", requireAuth, async (req, res) => {
+  try {
+    const walletAddress = req.walletAddress!;
+
+    const unsignedTx = await buildApproveTransaction(walletAddress, GAME_VAULT_ADDRESS);
+    res.json({
+      success: true,
+      mode: "approve",
+      unsignedTx,
+    });
+  } catch (error) {
+    console.error("❌ Vault approve tx build failed:", error);
+    res.status(500).json({
+      error: normalizeErrorMessage(error, "Failed to build approve transaction."),
     });
   }
 });

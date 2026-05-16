@@ -1,6 +1,6 @@
-# Eggsistential Backend
+# PassChick Backend
 
-The Eggsistential backend powers the server-authoritative game flow and authentication.
+The PassChick backend powers the server-authoritative game flow and authentication.
 
 Main responsibilities:
 

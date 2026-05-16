@@ -5,6 +5,7 @@ import {
   getAddress,
   http,
   isAddress,
+  maxUint256,
   parseAbi,
   zeroHash,
   type Address,
@@ -328,6 +329,29 @@ export async function readWalletTokenBalance(player: string): Promise<bigint> {
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: [normalizePlayerAddress(player)],
+  });
+}
+
+export async function readTokenAllowance(player: string, spender: string): Promise<bigint> {
+  return publicClient.readContract({
+    address: USDC_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: [normalizePlayerAddress(player), normalizePlayerAddress(spender)],
+  });
+}
+
+export async function buildApproveTransaction(
+  player: string,
+  spender: string,
+  amount: bigint = maxUint256,
+): Promise<PreparedEvmTransaction> {
+  return prepareContractTransaction({
+    from: normalizePlayerAddress(player),
+    to: USDC_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "approve",
+    args: [normalizePlayerAddress(spender), amount],
   });
 }
 
