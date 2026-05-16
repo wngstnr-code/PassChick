@@ -275,10 +275,18 @@ async function handleGameStart(
     return;
   }
 
-  const activeOnchainSession = await readActiveOnchainSession(walletAddress).catch((error) => {
+  let activeOnchainSession = await readActiveOnchainSession(walletAddress).catch((error) => {
     console.error("❌ Failed to verify on-chain session state before starting a new run:", error);
     return null;
   });
+
+  if (!activeOnchainSession && expectedOnchainSessionId) {
+    for (let i = 0; i < 5; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      activeOnchainSession = await readActiveOnchainSession(walletAddress).catch(() => null);
+      if (activeOnchainSession) break;
+    }
+  }
 
   if (!activeOnchainSession) {
     socket.emit("game:error", {
