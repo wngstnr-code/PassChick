@@ -1,7 +1,7 @@
 "use client";
 
-import type { ChangeEvent } from "react";
-import { useEffect, useMemo } from "react";
+import type { ChangeEvent, KeyboardEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DepositFlowViewModel } from "./types";
 import { useDepositFlow } from "./useDepositFlow";
 
@@ -14,6 +14,13 @@ type ActivityItem = {
   label: string;
   hash: string;
   url: string;
+};
+
+type MoneyActionMode = "deposit" | "withdraw";
+
+type ManageMoneyVaultCardProps = {
+  className?: string;
+  onClose?: () => void;
 };
 
 function readQuickAmount(value: string) {
@@ -29,36 +36,28 @@ function shortHash(hash: string) {
 
 function readWalletStatus(flow: DepositFlowViewModel) {
   if (!flow.isConnected) return "Not Connected";
-  if (flow.isMiniPay) return "MiniPay (Celo Only)";
-  if (!flow.isCeloChain) return "Wrong Network";
-  return "Connected (Celo)";
+  if (!flow.isAppChain) return "RPC Missing";
+  return "Connected";
+}
+
+function readWalletStatusTone(flow: DepositFlowViewModel) {
+  if (!flow.isConnected) return "warning";
+  if (!flow.isAppChain) return "warning";
+  return "ready";
 }
 
 function readPrimaryLabel(flow: DepositFlowViewModel) {
   if (flow.isDepositBusy) return "PROCESSING...";
   if (flow.isApproveBusy) return "APPROVING...";
-  if (flow.needsApproval) return "APPROVE & DEPOSIT";
-  return "DEPOSIT TO VAULT";
+  return "DEPOSIT";
 }
 
-export function ManageMoneyPage() {
+export function ManageMoneyVaultCard({
+  className = "",
+  onClose,
+}: ManageMoneyVaultCardProps) {
   const flow = useDepositFlow();
-
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const previousHtmlTouchAction = html.style.touchAction;
-    const previousBodyTouchAction = body.style.touchAction;
-
-    // The game shell disables touch gestures globally, so re-enable vertical scrolling here.
-    html.style.touchAction = "pan-y";
-    body.style.touchAction = "pan-y";
-
-    return () => {
-      html.style.touchAction = previousHtmlTouchAction;
-      body.style.touchAction = previousBodyTouchAction;
-    };
-  }, []);
+  const [moneyAction, setMoneyAction] = useState<MoneyActionMode>("deposit");
 
   const returnHref = "/";
   const returnLabel = "HOME";
@@ -67,12 +66,12 @@ export function ManageMoneyPage() {
 
   const quickAmounts = useMemo<QuickAmountPreset[]>(() => {
     const presets: QuickAmountPreset[] = [
-      { label: "0.0001 USDC", value: "0.0001" },
-      { label: "0.0005 USDC", value: "0.0005" },
-      { label: "0.0010 USDC", value: "0.001" },
-      { label: "0.0025 USDC", value: "0.0025" },
-      { label: "0.0050 USDC", value: "0.005" },
-      { label: "0.0100 USDC", value: "0.01" },
+      { label: "0.0001", value: "0.0001" },
+      { label: "0.0005", value: "0.0005" },
+      { label: "0.0010", value: "0.0010" },
+      { label: "0.0025", value: "0.0025" },
+      { label: "0.0050", value: "0.0050" },
+      { label: "0.0100", value: "0.0100" },
     ];
 
     if (walletPreset) {
@@ -90,7 +89,7 @@ export function ManageMoneyPage() {
     () =>
       [
         {
-          label: "Latest Approve",
+          label: "Latest Token Approval",
           hash: flow.approveTxHash,
           url: flow.approveTxUrl,
         },
@@ -118,52 +117,101 @@ export function ManageMoneyPage() {
   async function handleDepositClick() {
     try {
       await flow.onDeposit();
-    } catch {
-      // Error sudah ditangani oleh flow.
+    } catch (error) {
+      console.warn("Caught error in ManageMoneyPage:", error);
     }
   }
 
   async function handleWithdrawClick() {
     try {
       await flow.onWithdraw();
-    } catch {
-      // Error sudah ditangani oleh flow.
+    } catch (error) {
+      console.warn("Caught error in ManageMoneyPage:", error);
     }
   }
 
-  return (
-    <main className="flow-page money-page">
-      <div className="money-bg" aria-hidden="true">
-        <iframe
-          className="money-bg-frame"
-          src="/play?bg=1"
-          title="In-game background"
-          tabIndex={-1}
-        />
-      </div>
-      <div className="money-overlay" aria-hidden="true" />
+  async function handlePrimaryActionClick() {
+    if (moneyAction === "withdraw") {
+      await handleWithdrawClick();
+      return;
+    }
 
-      <section className="flow-card money-card">
-        <header className="money-header">
-          <div className="money-head-top">
-            <p className="flow-eyebrow">CHICKEN VAULT</p>
-            <div className="money-head-badges">
-              <span
-                className={`money-head-badge ${
-                  flow.needsApproval
-                    ? "money-head-badge-warning"
-                    : "money-head-badge-ready"
-                }`}
-              >
-                {flow.needsApproval ? "APPROVAL NEEDED" : "VAULT READY"}
-              </span>
-            </div>
+    await handleDepositClick();
+  }
+
+  const moneyActionTabs: Array<{ mode: MoneyActionMode; label: string }> = [
+    { mode: "deposit", label: "DEPOSIT" },
+    { mode: "withdraw", label: "WITHDRAW" },
+  ];
+
+  const activeActionLabel =
+    moneyAction === "withdraw"
+      ? flow.isWithdrawBusy
+        ? "WITHDRAWING..."
+        : "WITHDRAW"
+      : readPrimaryLabel(flow);
+
+  const activeActionDisabled =
+    moneyAction === "withdraw"
+      ? flow.disableWithdrawButton
+      : flow.disableDepositButton;
+  const activeActionHint =
+    moneyAction === "withdraw"
+      ? "Move available vault balance back to your wallet."
+      : "Move wallet USDC into your playable vault balance.";
+  const walletStatus = readWalletStatus(flow);
+  const walletStatusTone = readWalletStatusTone(flow);
+
+  function onMoneyTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const currentIndex = moneyActionTabs.findIndex(
+      (tab) => tab.mode === moneyAction,
+    );
+    const lastIndex = moneyActionTabs.length - 1;
+    let nextIndex = currentIndex;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = currentIndex >= lastIndex ? 0 : currentIndex + 1;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = currentIndex <= 0 ? lastIndex : currentIndex - 1;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = lastIndex;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    setMoneyAction(moneyActionTabs[nextIndex].mode);
+  }
+
+  return (
+    <section className={["flow-card money-card", className].filter(Boolean).join(" ")}>
+      {onClose ? (
+        <button
+          className="close-btn money-card-close"
+          type="button"
+          aria-label="Close manage money"
+          onClick={onClose}
+        >
+          X
+        </button>
+      ) : null}
+      <header className="money-header">
+        <div className="money-head-top">
+          <p className="flow-eyebrow">PASSCHICK VAULT</p>
+          <div className="money-head-badges" aria-label="Vault status">
+            <span className={`money-head-badge money-head-badge-${walletStatusTone}`}>
+              {walletStatus}
+            </span>
+            <span className="money-head-badge">USDC</span>
           </div>
-          <h1 className="flow-title money-title">MANAGE MONEY</h1>
-          <p className="money-subtitle">
-            Deposit to vault, then withdraw only from your available balance.
-          </p>
-        </header>
+        </div>
+        <h1 className="flow-title money-title">MANAGE MONEY</h1>
+        <p className="money-subtitle">
+          Deposit to vault, then withdraw only from your available balance.
+        </p>
+      </header>
 
         <div className="money-grid">
           <section className="flow-status money-status-panel">
@@ -171,35 +219,44 @@ export function ManageMoneyPage() {
             <div className="money-status-grid">
               <div className="money-status-row">
                 <span>Wallet Status</span>
-                <strong>{readWalletStatus(flow)}</strong>
+                <strong>{walletStatus}</strong>
               </div>
               <div className="money-status-row">
                 <span>Wallet Balance</span>
-                <strong>{flow.walletBalanceDisplay} USDC</strong>
+                <strong>{flow.walletBalanceDisplay === "-" ? "-" : `$${flow.walletBalanceDisplay}`}</strong>
               </div>
               <div className="money-status-row">
                 <span>Vault Available</span>
-                <strong>{flow.availableBalanceDisplay} USDC</strong>
+                <strong>{flow.availableBalanceDisplay === "-" ? "-" : `$${flow.availableBalanceDisplay}`}</strong>
               </div>
               <div className="money-status-row">
                 <span>Vault Locked</span>
-                <strong>{flow.lockedBalanceDisplay} USDC</strong>
-              </div>
-              <div className="money-status-row">
-                <span>Approval State</span>
-                <strong>{flow.needsApproval ? "Approval Needed" : "Ready"}</strong>
+                <strong>{flow.lockedBalanceDisplay === "-" ? "-" : `$${flow.lockedBalanceDisplay}`}</strong>
               </div>
             </div>
           </section>
 
           <section className="money-action-panel">
-            <p className="money-section-label">ACTIONS</p>
-            <p className="money-helper">
-              Deposit adds to available vault balance. Withdraw only uses
-              available balance, not locked stake.
-            </p>
+            <div className="money-action-tabs" role="tablist" aria-label="Vault actions">
+              {moneyActionTabs.map((tab) => (
+                <button
+                  key={tab.mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={moneyAction === tab.mode}
+                  className={`money-action-tab${
+                    moneyAction === tab.mode ? " active" : ""
+                  }`}
+                  onClick={() => setMoneyAction(tab.mode)}
+                  onKeyDown={onMoneyTabKeyDown}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
             <div className="money-message-stack">
+              <p className="money-action-hint">{activeActionHint}</p>
               {flow.configMessage ? (
                 <p className="flow-alert">{flow.configMessage}</p>
               ) : null}
@@ -221,7 +278,7 @@ export function ManageMoneyPage() {
                 type="number"
                 min="0"
                 step="0.0001"
-                placeholder="0.0000"
+                placeholder="0.0001"
                 value={flow.amount}
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
                   flow.setAmount(event.target.value)
@@ -233,7 +290,9 @@ export function ManageMoneyPage() {
                   <button
                     key={`${preset.label}-${preset.value}`}
                     type="button"
-                    className="money-quick-pick"
+                    className={`money-quick-pick${
+                      preset.label.includes("MAX") ? " money-quick-pick-max" : ""
+                    }`}
                     onClick={() => flow.setAmount(preset.value)}
                   >
                     {preset.label}
@@ -245,45 +304,36 @@ export function ManageMoneyPage() {
             <button
               className="flow-btn money-primary-btn"
               type="button"
-              disabled={flow.disableDepositButton}
-              onClick={handleDepositClick}
+              disabled={activeActionDisabled}
+              onClick={handlePrimaryActionClick}
             >
-              {readPrimaryLabel(flow)}
+              {activeActionLabel}
             </button>
 
-            <div className="money-secondary-actions">
-              <button
-                className="flow-btn money-secondary-btn money-withdraw-btn"
-                type="button"
-                disabled={flow.disableWithdrawButton}
-                onClick={handleWithdrawClick}
-              >
-                {flow.isWithdrawBusy ? "WITHDRAWING..." : "WITHDRAW"}
-              </button>
-            </div>
-
-            <div className="money-panel-footer">
-              <div className="money-footer-actions">
-                <a
-                  href={returnHref}
-                  className="flow-btn money-nav-home-btn money-panel-nav-btn"
-                >
-                  {returnLabel}
-                </a>
-                <a
-                  href="/play"
-                  className="flow-btn money-nav-play-btn money-panel-nav-btn"
-                >
-                  PLAY GAME
-                </a>
+            {!onClose ? (
+              <div className="money-panel-footer">
+                <div className="money-footer-actions">
+                  <a
+                    href={returnHref}
+                    className="flow-btn money-nav-home-btn money-panel-nav-btn"
+                  >
+                    {returnLabel}
+                  </a>
+                  <a
+                    href="/play"
+                    className="flow-btn money-nav-play-btn money-panel-nav-btn"
+                  >
+                    PLAY GAME
+                  </a>
+                </div>
               </div>
-            </div>
+            ) : null}
           </section>
         </div>
 
-        {activityItems.length ? (
-          <section className="money-activity">
-            <p className="flow-eyebrow money-activity-eyebrow">RECENT ACTIVITY</p>
+        <section className="money-activity">
+          <p className="flow-eyebrow money-activity-eyebrow">RECENT ACTIVITY</p>
+          {activityItems.length ? (
             <div className="money-activity-list">
               {activityItems.map((item) => (
                 <div key={item.label} className="money-activity-item">
@@ -298,10 +348,57 @@ export function ManageMoneyPage() {
                 </div>
               ))}
             </div>
-          </section>
-        ) : null}
+          ) : (
+            <p className="money-activity-empty">No vault activity yet.</p>
+          )}
+        </section>
+    </section>
+  );
+}
 
-      </section>
+export function ManageMoneyPage() {
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlTouchAction = html.style.touchAction;
+    const previousBodyTouchAction = body.style.touchAction;
+    const previousHtmlOverflowX = html.style.overflowX;
+    const previousHtmlOverflowY = html.style.overflowY;
+    const previousBodyOverflowX = body.style.overflowX;
+    const previousBodyOverflowY = body.style.overflowY;
+    html.classList.add("page-scroll-unlock");
+    body.classList.add("page-scroll-unlock");
+    html.style.touchAction = "pan-y";
+    body.style.touchAction = "pan-y";
+    html.style.overflowX = "hidden";
+    html.style.overflowY = "hidden";
+    body.style.overflowX = "hidden";
+    body.style.overflowY = "hidden";
+
+    return () => {
+      html.style.touchAction = previousHtmlTouchAction;
+      body.style.touchAction = previousBodyTouchAction;
+      html.style.overflowX = previousHtmlOverflowX;
+      html.style.overflowY = previousHtmlOverflowY;
+      body.style.overflowX = previousBodyOverflowX;
+      body.style.overflowY = previousBodyOverflowY;
+      html.classList.remove("page-scroll-unlock");
+      body.classList.remove("page-scroll-unlock");
+    };
+  }, []);
+
+  return (
+    <main className="flow-page money-page">
+      <div className="money-bg" aria-hidden="true">
+        <iframe
+          className="money-bg-frame"
+          src="/play?bg=1"
+          title="In-game background"
+          tabIndex={-1}
+        />
+      </div>
+      <div className="money-overlay" aria-hidden="true" />
+      <ManageMoneyVaultCard className="money-card-page" />
     </main>
   );
 }
