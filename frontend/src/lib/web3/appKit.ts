@@ -1,43 +1,71 @@
 "use client";
 
 import { createAppKit } from "@reown/appkit/react";
+import { celo, celoSepolia } from "@reown/appkit/networks";
+import type { AppKitNetwork } from "@reown/appkit/networks";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
 import {
-  appKitMetadata,
-  appKitNetworks,
-  celoWagmiChain,
-  projectId,
-} from "./wagmiConfig";
+  CELO_CHAIN_ID,
+  CELO_CHAIN_MODE,
+  CELO_RPC_URL,
+} from "~/lib/web3/celo";
 
-export const wagmiAdapter = new WagmiAdapter({
-  networks: appKitNetworks,
-  projectId,
-  ssr: true,
-});
+export const CELO_NAMESPACE = "eip155" as const;
+export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "";
 
-type AppKitRuntimeWindow = typeof globalThis & {
-  __CHICKEN_CELO_APPKIT_INITIALIZED__?: boolean;
-};
+export function hasReownProjectId() {
+  return Boolean(REOWN_PROJECT_ID);
+}
 
-const appKitWindow = globalThis as AppKitRuntimeWindow;
-
-function initializeAppKit() {
-  if (appKitWindow.__CHICKEN_CELO_APPKIT_INITIALIZED__) {
-    return;
+function readAppUrl() {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
   }
 
-  createAppKit({
-    adapters: [wagmiAdapter],
-    networks: appKitNetworks,
-    defaultNetwork: celoWagmiChain,
-    projectId,
-    metadata: appKitMetadata,
-  });
-  appKitWindow.__CHICKEN_CELO_APPKIT_INITIALIZED__ = true;
+  return "https://passchick.vercel.app";
 }
 
-initializeAppKit();
-
-export async function ensureAppKitInitialized() {
-  initializeAppKit();
+function readAppKitNetwork(): AppKitNetwork {
+  if (CELO_CHAIN_ID === 42220 || CELO_CHAIN_MODE === "mainnet") return celo;
+  return celoSepolia;
 }
+
+export const CELO_APPKIT_NETWORK = readAppKitNetwork();
+export const CELO_APPKIT_NETWORKS: [AppKitNetwork, ...AppKitNetwork[]] = [
+  CELO_APPKIT_NETWORK,
+];
+
+export const wagmiAdapter = hasReownProjectId()
+  ? new WagmiAdapter({
+      projectId: REOWN_PROJECT_ID,
+      networks: CELO_APPKIT_NETWORKS,
+      customRpcUrls: {
+        [CELO_CHAIN_ID]: [{ url: CELO_RPC_URL }],
+      },
+    })
+  : null;
+
+export const appKit = hasReownProjectId()
+  ? createAppKit({
+      adapters: wagmiAdapter ? [wagmiAdapter] : [],
+      networks: CELO_APPKIT_NETWORKS,
+      defaultNetwork: CELO_APPKIT_NETWORK,
+      projectId: REOWN_PROJECT_ID,
+      metadata: {
+        name: "PASSCHICK",
+        description:
+          "A competitive onchain chicken-crossing game on Celo.",
+        url: readAppUrl(),
+        icons: [`${readAppUrl()}/favicon.png`],
+      },
+      themeMode: "dark",
+      features: {
+        analytics: false,
+        email: true,
+        socials: ["google", "apple", "x", "discord"],
+        swaps: false,
+        onramp: false,
+        history: false,
+      },
+    })
+  : null;
