@@ -73,7 +73,7 @@ const io = setupGameGateway(httpServer);
 httpServer.listen(env.PORT, "0.0.0.0", () => {
   console.log("");
   console.log("════════════════════════════════════════════════════");
-  console.log("  🐔 Eggsistential Backend");
+  console.log("  🐔 PassChick Backend");
   console.log("════════════════════════════════════════════════════");
   console.log(`  HTTP Server:    http://localhost:${env.PORT}`);
   console.log(`  WebSocket:      ws://localhost:${env.PORT}`);
