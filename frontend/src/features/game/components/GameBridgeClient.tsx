@@ -171,6 +171,8 @@ export function GameBridgeClient({
     hasBackendApiConfig,
     ensureBackendSession,
     refreshBackendSession,
+    isMiniPay,
+    walletProviderName,
   } = useWallet();
 
   const pendingUnsubscribersRef = useRef<Array<() => void>>([]);
@@ -467,7 +469,8 @@ export function GameBridgeClient({
         throw new Error("Connect Celo wallet first.");
       }
       if (isSocketConnected()) return;
-      await initializeSocket(account, walletProvider?.constructor?.name);
+      const providerLabel = isMiniPay ? "minipay" : walletProviderName || "reown";
+      await initializeSocket(account, providerLabel);
       if (!isSocketConnected()) {
         throw new Error("Socket connection is not ready.");
       }
@@ -846,8 +849,10 @@ export function GameBridgeClient({
     ensureBackendSession,
     hasBackendApiConfig,
     isAppChain,
+    isMiniPay,
     refreshBackendSession,
     walletProvider,
+    walletProviderName,
   ]);
 
   return null;
