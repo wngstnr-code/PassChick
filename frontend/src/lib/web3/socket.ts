@@ -1,5 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 import { BACKEND_API_URL } from "../backend/config";
+import { CELO_CHAIN_ID } from "./celo";
 
 let socket: Socket | null = null;
 
@@ -125,7 +126,7 @@ export function initializeSocket(
       ? {
           walletAddress,
           walletProvider: walletProvider || "default",
-          chainId: 101,
+          chainId: CELO_CHAIN_ID,
         }
       : undefined;
 
@@ -134,7 +135,8 @@ export function initializeSocket(
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 5,
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
+      withCredentials: true,
       ...(auth && { auth }),
     });
 
