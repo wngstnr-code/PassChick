@@ -37,6 +37,7 @@ import {
   readProviderChainId,
   requestProviderAccounts,
   switchProviderToCelo,
+  waitForInjectedProvider,
 } from "~/lib/web3/celo";
 import { readRawErrorMessage, toUserFacingWalletError } from "~/lib/errors";
 
@@ -47,6 +48,7 @@ type WalletContextValue = {
   canDisconnect: boolean;
   isAppChain: boolean;
   isConnecting: boolean;
+  isMiniPay: boolean;
   error: string;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
@@ -140,7 +142,11 @@ export function WalletProvider({ children }: WalletProviderProps) {
     if (injectedProvider?.isMiniPay) {
       setIsOpeningWalletModal(true);
       try {
-        const accounts = await requestProviderAccounts(injectedProvider);
+        // Try eth_accounts first; fall back to eth_requestAccounts if empty
+        let accounts = await readProviderAccounts(injectedProvider);
+        if (accounts.length === 0) {
+          accounts = await requestProviderAccounts(injectedProvider);
+        }
         setInjectedAccount(accounts[0] || "");
         setInjectedChainId(await readProviderChainId(injectedProvider));
         setMiniPayDetected(true);
@@ -322,10 +328,18 @@ export function WalletProvider({ children }: WalletProviderProps) {
     setBackendAuthError("");
 
     try {
-      await backendPost<{ success: boolean; address: string }>("/auth/social", {
-        address: account,
-        walletProvider: walletProviderName || "reown",
-      });
+      if (miniPayDetected) {
+        // MiniPay: use dedicated endpoint — no signature required, trustless by wallet context
+        await backendPost<{ success: boolean; address: string }>("/auth/minipay", {
+          address: account,
+          chainId: Number(CELO_CHAIN_ID_HEX),
+        });
+      } else {
+        await backendPost<{ success: boolean; address: string }>("/auth/social", {
+          address: account,
+          walletProvider: walletProviderName || "reown",
+        });
+      }
 
       setBackendAddress(account);
       backendSessionRef.current = {
@@ -434,51 +448,63 @@ export function WalletProvider({ children }: WalletProviderProps) {
     });
   }, [account, hasBackendConfig, isWalletConnected]);
 
+  // MiniPay detection: wait for async ethereum injection, then sync account
   useEffect(() => {
-    const provider = readInjectedEvmProvider();
-    if (!provider) return;
-
     let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setMiniPayDetected(Boolean(provider.isMiniPay));
-      }
-    });
 
-    const syncInjectedWallet = async () => {
+    const syncInjectedWallet = async (provider: Eip1193Provider) => {
       try {
-        const [accounts, chainId] = await Promise.all([
-          readProviderAccounts(provider),
-          readProviderChainId(provider),
-        ]);
+        // eth_accounts first (no permission prompt); fall back to eth_requestAccounts
+        let accounts = await readProviderAccounts(provider);
+        if (accounts.length === 0 && provider.isMiniPay) {
+          accounts = await requestProviderAccounts(provider);
+        }
         if (cancelled) return;
         setInjectedAccount(provider.isMiniPay ? accounts[0] || "" : "");
-        setInjectedChainId(chainId);
+        setInjectedChainId(await readProviderChainId(provider));
       } catch (error) {
         console.warn("syncInjectedWallet failed:", error);
       }
     };
 
-    const onAccountsChanged = (...args: unknown[]) => {
-      const accounts = Array.isArray(args[0]) ? args[0].map(String) : [];
-      if (provider.isMiniPay) {
-        setInjectedAccount(accounts[0] || "");
-      }
-    };
-    const onChainChanged = (...args: unknown[]) => {
-      setInjectedChainId(String(args[0] || "").toLowerCase());
-    };
+    // waitForInjectedProvider handles the race where MiniPay injects window.ethereum
+    // after React mounts by polling + listening to ethereum#initialized event
+    waitForInjectedProvider(3000).then((provider) => {
+      if (!provider || cancelled) return;
 
-    void syncInjectedWallet();
-    provider.on?.("accountsChanged", onAccountsChanged);
-    provider.on?.("chainChanged", onChainChanged);
+      setMiniPayDetected(Boolean(provider.isMiniPay));
+
+      void syncInjectedWallet(provider);
+
+      const onAccountsChanged = (...args: unknown[]) => {
+        const accounts = Array.isArray(args[0]) ? args[0].map(String) : [];
+        if (provider.isMiniPay) {
+          setInjectedAccount(accounts[0] || "");
+        }
+      };
+      const onChainChanged = (...args: unknown[]) => {
+        setInjectedChainId(String(args[0] || "").toLowerCase());
+      };
+
+      provider.on?.("accountsChanged", onAccountsChanged);
+      provider.on?.("chainChanged", onChainChanged);
+
+      // Store cleanup references so we can remove them on unmount
+      cleanupRef.current = () => {
+        provider.removeListener?.("accountsChanged", onAccountsChanged);
+        provider.removeListener?.("chainChanged", onChainChanged);
+      };
+    }).catch((error) => {
+      console.warn("waitForInjectedProvider failed:", error);
+    });
 
     return () => {
       cancelled = true;
-      provider.removeListener?.("accountsChanged", onAccountsChanged);
-      provider.removeListener?.("chainChanged", onChainChanged);
+      cleanupRef.current?.();
     };
   }, []);
+
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   const value: WalletContextValue = {
     account,
@@ -487,6 +513,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     canDisconnect: !miniPayDetected,
     isAppChain,
     isConnecting: isConnectingWallet,
+    isMiniPay: miniPayDetected,
     error,
     connectWallet,
     disconnectWallet,
