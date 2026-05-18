@@ -42,9 +42,9 @@ export type BackendEvmTxPayload = {
   amountUnits?: string;
 };
 
-const DEFAULT_CHAIN_ID = 11142220;
-const DEFAULT_RPC_URL = "https://forno.celo-sepolia.celo-testnet.org";
-const DEFAULT_EXPLORER_URL = "https://celo-sepolia.blockscout.com";
+const DEFAULT_CHAIN_ID = 42220;
+const DEFAULT_RPC_URL = "https://forno.celo.org";
+const DEFAULT_EXPLORER_URL = "https://celoscan.io";
 
 const MAINNET_RPC_URL = "https://forno.celo.org";
 const MAINNET_EXPLORER_URL = "https://celoscan.io";
@@ -71,7 +71,7 @@ function normalizeDecimal(value: number | string) {
 }
 
 export const CELO_CHAIN_MODE = (
-  process.env.NEXT_PUBLIC_CELO_CHAIN_MODE || "testnet"
+  process.env.NEXT_PUBLIC_CELO_CHAIN_MODE || "mainnet"
 ) as CeloChainMode;
 
 export const CELO_CHAIN_ID = normalizeDecimal(
@@ -100,6 +100,9 @@ export const CELO_NATIVE_CURRENCY = {
   decimals: 18,
 };
 
+export const CUSD_TOKEN_ADDRESS =
+  process.env.NEXT_PUBLIC_CUSD_TOKEN_ADDRESS || "";
+
 export function hasCeloConfig() {
   return Boolean(CELO_CHAIN_ID && CELO_RPC_URL && CELO_EXPLORER_URL);
 }
@@ -122,6 +125,44 @@ export function readMiniPayProvider() {
 
 export function isMiniPayRuntime() {
   return Boolean(readMiniPayProvider());
+}
+
+/**
+ * Waits for window.ethereum to be injected (MiniPay injects it async after pageload).
+ * Listens to ethereum#initialized event and polls as fallback.
+ */
+export function waitForInjectedProvider(timeoutMs = 3000): Promise<Eip1193Provider | null> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+
+  const existing = window.ethereum;
+  if (existing) return Promise.resolve(existing);
+
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const finish = (provider: Eip1193Provider | null) => {
+      if (resolved) return;
+      resolved = true;
+      clearInterval(pollId);
+      clearTimeout(timeoutId);
+      window.removeEventListener("ethereum#initialized", onInitialized);
+      resolve(provider);
+    };
+
+    const onInitialized = () => {
+      finish(window.ethereum || null);
+    };
+
+    window.addEventListener("ethereum#initialized", onInitialized, { once: true });
+
+    const pollId = setInterval(() => {
+      if (window.ethereum) finish(window.ethereum);
+    }, 100);
+
+    const timeoutId = setTimeout(() => {
+      finish(window.ethereum || null);
+    }, timeoutMs);
+  });
 }
 
 export async function readProviderAccounts(provider: Eip1193Provider) {
@@ -220,16 +261,29 @@ export async function sendEvmTransaction(
     throw new Error("Backend did not return an EVM transaction request.");
   }
 
-  await switchProviderToCelo(provider);
+  // MiniPay is locked to Celo mainnet — skip chain switch to avoid unnecessary RPC call
+  if (!provider.isMiniPay) {
+    await switchProviderToCelo(provider);
+  }
+
+  // Inject cUSD feeCurrency for MiniPay so user can pay gas without CELO balance
+  const feeCurrency =
+    provider.isMiniPay && !tx.feeCurrency && CUSD_TOKEN_ADDRESS
+      ? CUSD_TOKEN_ADDRESS
+      : tx.feeCurrency;
+
+  const txParams: Record<string, unknown> = {
+    ...tx,
+    from: tx.from || fallbackFrom,
+  };
+
+  if (feeCurrency) {
+    txParams.feeCurrency = feeCurrency;
+  }
 
   const txHash = await provider.request<string>({
     method: "eth_sendTransaction",
-    params: [
-      {
-        ...tx,
-        from: tx.from || fallbackFrom,
-      },
-    ],
+    params: [txParams],
   });
 
   return String(txHash || "");
