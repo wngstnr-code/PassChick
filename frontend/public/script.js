@@ -2021,15 +2021,13 @@ function createProofOfShipCheckpointGroundTexture() {
 
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.font = "900 39px Arial Black, Arial, sans-serif";
+  ctx.font = "900 42px Arial Black, Arial, sans-serif";
   ctx.lineJoin = "round";
   ctx.strokeStyle = "rgba(15, 0, 24, 0.95)";
   ctx.lineWidth = 7;
-  ctx.strokeText("PROOF", canvas.width / 2, 36);
-  ctx.strokeText("OF SHIP", canvas.width / 2, 68);
+  ctx.strokeText("PROOF OF SHIP", canvas.width / 2, canvas.height / 2 + 12);
   ctx.fillStyle = "#fff9ff";
-  ctx.fillText("PROOF", canvas.width / 2, 36);
-  ctx.fillText("OF SHIP", canvas.width / 2, 68);
+  ctx.fillText("PROOF OF SHIP", canvas.width / 2, canvas.height / 2 + 12);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
