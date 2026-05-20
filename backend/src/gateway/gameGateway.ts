@@ -183,6 +183,7 @@ function getWalletFromSocketHandshake(socket: Socket): string | null {
   const isSocialOrEmbedded =
     walletProvider.includes("reown") ||
     walletProvider.includes("appkit") ||
+    walletProvider.includes("minipay") ||
     walletProvider === "google" ||
     walletProvider === "apple" ||
     walletProvider === "discord" ||
@@ -197,7 +198,7 @@ function getWalletFromSocketHandshake(socket: Socket): string | null {
 
 export function setupGameGateway(httpServer: HttpServer): SocketServer {
   io = new SocketServer(httpServer, {
-    cors: { origin: env.FRONTEND_URL, credentials: true },
+    cors: { origin: env.ALLOWED_ORIGINS, credentials: true },
     allowRequest: (_req, callback) => {
       callback(null, true);
     },
