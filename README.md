@@ -12,13 +12,6 @@ This project is designed to deliver a gameplay experience that is:
 
 PassChick combines casual gameplay with a modern reward system, making it suitable for both everyday gamers and Web3 communities.
 
-## Why PassChick
-
-- Focuses on player skill, not just luck
-- Lightweight gameplay that is easy to understand
-- Trust Passport verification helps improve fair access and player trust
-- Built on a foundation that can grow into community and competitive features
-
 ## Demo Video
 
 Click the image below to watch the demo:
