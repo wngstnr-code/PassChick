@@ -31,9 +31,15 @@ const RPC_URL = optionalAlias(
   "RPC_URL",
 );
 
+const FRONTEND_URL = optionalEnv("FRONTEND_URL", "http://localhost:3000");
+const ALLOWED_ORIGINS = FRONTEND_URL.split(",")
+  .map((origin) => origin.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
 export const env = {
   PORT: parseInt(optionalEnv("PORT", "3001"), 10),
-  FRONTEND_URL: optionalEnv("FRONTEND_URL", "http://localhost:3000"),
+  FRONTEND_URL,
+  ALLOWED_ORIGINS,
   NODE_ENV: optionalEnv("NODE_ENV", "development"),
 
   SESSION_SECRET: requireEnv("SESSION_SECRET", "dev-secret-change-me-in-production-please-32chars"),
