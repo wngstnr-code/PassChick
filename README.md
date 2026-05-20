@@ -4,3 +4,5 @@ A Web3 project integrated with the Celo blockchain.
 - Fast and cheap transactions on Celo
 ## Setup
 1. Clone this repository for your Celo project.
+## Backend Configuration
+Run the Node.js backend to connect with Celo Minipay.
