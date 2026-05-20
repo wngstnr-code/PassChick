@@ -18,8 +18,10 @@ function persistSessionCookie(res: Response) {
   return (token: string) => {
     res.cookie(SESSION_COOKIE, token, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+      // MiniPay webview is always a cross-site HTTPS context: SameSite=None
+      // (which requires Secure) is mandatory for the session cookie to be sent back.
+      secure: true,
+      sameSite: "none",
       maxAge: 24 * 60 * 60 * 1000,
       path: "/",
     });
@@ -203,8 +205,8 @@ router.post("/logout", (req, res) => {
   res.clearCookie(SESSION_COOKIE, {
     path: "/",
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+    secure: true,
+    sameSite: "none",
   });
   res.json({ success: true });
 });
