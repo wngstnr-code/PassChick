@@ -10,3 +10,5 @@ Run the Node.js backend to connect with Celo Minipay.
 Next.js UI connecting to Celo wallets via AppKit.
 ## Smart Contracts
 Foundry-based solidity contracts designed for Celo.
+## Testing
+Use `forge test` to test your Celo smart contracts locally.
