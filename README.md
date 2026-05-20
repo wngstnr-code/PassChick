@@ -14,3 +14,5 @@ Foundry-based solidity contracts designed for Celo.
 Use `forge test` to test your Celo smart contracts locally.
 ## Deployment
 Scripts provided to deploy on Celo Alfajores and Mainnet.
+---
+*Built for the vibrant Celo ecosystem.*
