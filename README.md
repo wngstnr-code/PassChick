@@ -12,3 +12,5 @@ Next.js UI connecting to Celo wallets via AppKit.
 Foundry-based solidity contracts designed for Celo.
 ## Testing
 Use `forge test` to test your Celo smart contracts locally.
+## Deployment
+Scripts provided to deploy on Celo Alfajores and Mainnet.
