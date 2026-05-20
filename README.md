@@ -8,3 +8,5 @@ A Web3 project integrated with the Celo blockchain.
 Run the Node.js backend to connect with Celo Minipay.
 ## Frontend
 Next.js UI connecting to Celo wallets via AppKit.
+## Smart Contracts
+Foundry-based solidity contracts designed for Celo.
