@@ -1,4 +1,5 @@
 import { BACKEND_API_URL } from "./config";
+import { getSessionToken } from "./session";
 
 type JsonPrimitive = string | number | boolean | null;
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -32,6 +33,8 @@ export async function backendFetch<T>(
     controller.abort();
   }, BACKEND_FETCH_TIMEOUT_MS);
 
+  const sessionToken = getSessionToken();
+
   let response: Response;
   try {
     response = await fetch(buildUrl(path), {
@@ -39,6 +42,9 @@ export async function backendFetch<T>(
       credentials: "include",
       headers: {
         "content-type": "application/json",
+        ...(sessionToken
+          ? { authorization: `Bearer ${sessionToken}` }
+          : {}),
         ...(init?.headers || {}),
       },
       cache: "no-store",

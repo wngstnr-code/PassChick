@@ -1,5 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 import { BACKEND_API_URL } from "../backend/config";
+import { getSessionToken } from "../backend/session";
 import { CELO_CHAIN_ID } from "./celo";
 
 let socket: Socket | null = null;
@@ -127,6 +128,7 @@ export function initializeSocket(
           walletAddress,
           walletProvider: walletProvider || "default",
           chainId: CELO_CHAIN_ID,
+          token: getSessionToken(),
         }
       : undefined;
 

@@ -20,6 +20,7 @@ import {
 } from "@reown/appkit/react";
 import { backendFetch, backendPost } from "~/lib/backend/api";
 import { BACKEND_API_URL, hasBackendApiConfig } from "~/lib/backend/config";
+import { clearSessionToken, setSessionToken } from "~/lib/backend/session";
 import {
   appKit,
   hasReownProjectId,
@@ -197,6 +198,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
         toUserFacingWalletError(disconnectError, "Failed to disconnect wallet."),
       );
     } finally {
+      clearSessionToken();
       accountRef.current = "";
       setInjectedAccount("");
       setBackendAddress("");
@@ -269,6 +271,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
         const sessionAddress = response.address || "";
         if (!sessionAddress || (normalizedAccount && sessionAddress !== normalizedAccount)) {
           setBackendAddress("");
+          clearSessionToken();
           backendSessionRef.current = {
             inFlight: null,
             lastCheckedAt: Date.now(),
@@ -328,18 +331,31 @@ export function WalletProvider({ children }: WalletProviderProps) {
     setBackendAuthError("");
 
     try {
+      let authResult: { success: boolean; address: string; token?: string };
       if (miniPayDetected) {
         // MiniPay: use dedicated endpoint — no signature required, trustless by wallet context
-        await backendPost<{ success: boolean; address: string }>("/auth/minipay", {
+        authResult = await backendPost<{
+          success: boolean;
+          address: string;
+          token?: string;
+        }>("/auth/minipay", {
           address: account,
           chainId: Number(CELO_CHAIN_ID_HEX),
         });
       } else {
-        await backendPost<{ success: boolean; address: string }>("/auth/social", {
+        authResult = await backendPost<{
+          success: boolean;
+          address: string;
+          token?: string;
+        }>("/auth/social", {
           address: account,
           walletProvider: walletProviderName || "reown",
         });
       }
+
+      // MiniPay's WebView blocks the cross-site session cookie — persist the
+      // token so backendFetch and the socket can authenticate via Bearer header.
+      setSessionToken(authResult.token || "");
 
       setBackendAddress(account);
       backendSessionRef.current = {
@@ -351,6 +367,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       return true;
     } catch (authError) {
       setBackendAddress("");
+      clearSessionToken();
       backendSessionRef.current = {
         inFlight: null,
         lastCheckedAt: Date.now(),
@@ -396,6 +413,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     } catch (error) {
       console.warn("logoutBackend failed:", error);
     } finally {
+      clearSessionToken();
       setBackendAddress("");
       setBackendAuthError("");
       setBackendAuthLoading(false);

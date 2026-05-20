@@ -12,8 +12,18 @@ declare global {
 
 export const SESSION_COOKIE = "chicken_session";
 
+export function readSessionToken(req: Request): string | null {
+  const header = req.headers.authorization;
+  if (header && header.startsWith("Bearer ")) {
+    const bearer = header.slice("Bearer ".length).trim();
+    if (bearer) return bearer;
+  }
+
+  return req.cookies?.[SESSION_COOKIE] ?? null;
+}
+
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  const token = req.cookies?.[SESSION_COOKIE];
+  const token = readSessionToken(req);
 
   if (!token) {
     res.status(401).json({ error: "Not authenticated. Please connect your wallet." });
