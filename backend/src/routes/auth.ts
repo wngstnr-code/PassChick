@@ -46,10 +46,11 @@ async function ensurePlayerRecord(walletAddress: string) {
 function createAuthenticatedSession(
   res: Response,
   walletAddress: string,
-) {
+): string {
   const token = generateSessionToken();
   createSession(token, walletAddress);
   persistSessionCookie(res)(token);
+  return token;
 }
 
 router.get("/nonce", (_req, res) => {
@@ -87,12 +88,13 @@ router.post("/verify", async (req, res) => {
     const walletAddress = normalizeEvmAddress(result.data.address);
 
     await ensurePlayerRecord(walletAddress);
-    createAuthenticatedSession(res, walletAddress);
+    const token = createAuthenticatedSession(res, walletAddress);
 
     res.json({
       success: true,
       address: walletAddress,
       authMethod: "siwe",
+      token,
     });
   } catch (err) {
     console.error("❌ Auth verify error:", err);
@@ -148,12 +150,13 @@ router.post("/social", async (req, res) => {
 
     const walletAddress = normalizeEvmAddress(address);
     await ensurePlayerRecord(walletAddress);
-    createAuthenticatedSession(res, walletAddress);
+    const token = createAuthenticatedSession(res, walletAddress);
 
     res.json({
       success: true,
       address: walletAddress,
       authMethod: "social",
+      token,
     });
   } catch (err) {
     console.error("❌ Social auth error:", err);
@@ -183,12 +186,13 @@ router.post("/minipay", async (req, res) => {
 
     const walletAddress = normalizeEvmAddress(address);
     await ensurePlayerRecord(walletAddress);
-    createAuthenticatedSession(res, walletAddress);
+    const token = createAuthenticatedSession(res, walletAddress);
 
     res.json({
       success: true,
       address: walletAddress,
       authMethod: "minipay",
+      token,
     });
   } catch (err) {
     console.error("❌ MiniPay auth error:", err);
