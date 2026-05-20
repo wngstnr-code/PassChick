@@ -7,6 +7,7 @@ import {
   readTransactionStatus,
 } from "../lib/celo.js";
 import { getWalletFromSocketCookies } from "../middleware/auth.js";
+import { getSession } from "../services/sessionStore.js";
 import { env } from "../config/env.js";
 import { supabase } from "../config/supabase.js";
 import { isValidEvmAddress, normalizeEvmAddress } from "../utils/celo.js";
@@ -58,6 +59,7 @@ type SocialSocketAuthPayload = {
   walletAddress?: string;
   walletProvider?: string;
   chainId?: number | string;
+  token?: string;
 };
 
 function formatUsdcValue(value: number) {
@@ -171,11 +173,20 @@ function getWalletFromSocketHandshake(socket: Socket): string | null {
     return cookieWallet;
   }
 
+  const auth = (socket.handshake.auth ?? {}) as SocialSocketAuthPayload;
+
+  const handshakeToken = String(auth.token || "").trim();
+  if (handshakeToken) {
+    const tokenWallet = getSession(handshakeToken);
+    if (tokenWallet) {
+      return tokenWallet;
+    }
+  }
+
   if (!env.SOCIAL_AUTH_ENABLED) {
     return null;
   }
 
-  const auth = (socket.handshake.auth ?? {}) as SocialSocketAuthPayload;
   const walletProvider = String(auth.walletProvider || "").toLowerCase();
   const claimedAddress = String(auth.walletAddress || "");
   void auth.chainId;
