@@ -762,7 +762,7 @@ function formatBridgeError(error, fallback, userRejectedMessage) {
     lower.includes("intrinsic gas too low") ||
     lower.includes("exceeds allowance")
   ) {
-    return "Wallet needs SOL for network fees before starting a bet.";
+    return "Wallet needs CELO for network fees before starting a bet.";
   }
 
   if (
