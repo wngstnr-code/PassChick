@@ -96,3 +96,5 @@ export default function RootLayout({ children }: RootLayoutProps) {
 // celo: today safe dev index 2004
 
 // celo: today safe dev index 2006
+
+// celo: today safe dev index 2009
