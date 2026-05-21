@@ -13,7 +13,7 @@ The PASSCHICK frontend is a modern web application built with Next.js, serving a
 
 - **Next.js**: Framework for the web app.
 - **React**: Component library.
-- **Three.js**: 3D engine for high-performance gameplay.
+- **framer-motion**: Animation engine for canvas-based gameplay interactions.
 - **Reown AppKit**: Multi-wallet and social login solution.
 - **Socket.io Client**: Real-time bridge.
 - **Tailwind CSS**: Modern styling.
