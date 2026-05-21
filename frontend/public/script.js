@@ -6298,3 +6298,5 @@ setTimeout(() => {
 // celo: today safe dev index 2013
 
 // celo: today safe dev index 2015
+
+// celo: today safe dev index 2018
