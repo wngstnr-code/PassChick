@@ -22,3 +22,5 @@ Scripts provided to deploy on Celo Alfajores and Mainnet.
 <!-- celo: today docs index 2001 -->
 
 <!-- celo: today docs index 2016 -->
+
+<!-- celo: today docs index 2019 -->
