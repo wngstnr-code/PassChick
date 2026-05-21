@@ -151,7 +151,8 @@ function buildTierBenefits(tier: number, unlocked: boolean): PassportBenefit[] {
         {
           key: "verified_runner_badge",
           label: "Runner badge",
-          description: "Unlock the baseline on-chain trust badge for partner checks.",
+          description:
+            "Unlock the baseline on-chain trust badge for partner checks.",
           category: "trust",
           tierRequired: 1,
           unlocked,
@@ -159,7 +160,8 @@ function buildTierBenefits(tier: number, unlocked: boolean): PassportBenefit[] {
         {
           key: "partner_reward_entry",
           label: "Partner reward entry",
-          description: "Eligible for base partner reward campaigns gated by EggPass.",
+          description:
+            "Eligible for base partner reward campaigns gated by EggPass.",
           category: "reward",
           tierRequired: 1,
           unlocked,
@@ -170,7 +172,8 @@ function buildTierBenefits(tier: number, unlocked: boolean): PassportBenefit[] {
         {
           key: "allowlist_gate",
           label: "Allowlist gate access",
-          description: "Qualify for allowlist flows that require a stronger checkpoint history.",
+          description:
+            "Qualify for allowlist flows that require a stronger checkpoint history.",
           category: "access",
           tierRequired: 2,
           unlocked,
@@ -189,7 +192,8 @@ function buildTierBenefits(tier: number, unlocked: boolean): PassportBenefit[] {
         {
           key: "premium_campaign_access",
           label: "Premium campaign access",
-          description: "Unlock premium partner campaign filters that need deeper trust proof.",
+          description:
+            "Unlock premium partner campaign filters that need deeper trust proof.",
           category: "access",
           tierRequired: 3,
           unlocked,
@@ -197,7 +201,8 @@ function buildTierBenefits(tier: number, unlocked: boolean): PassportBenefit[] {
         {
           key: "high_trust_signal",
           label: "High-trust signal",
-          description: "Surface a stronger trust score for reward and access integrations.",
+          description:
+            "Surface a stronger trust score for reward and access integrations.",
           category: "trust",
           tierRequired: 3,
           unlocked,
@@ -208,7 +213,8 @@ function buildTierBenefits(tier: number, unlocked: boolean): PassportBenefit[] {
         {
           key: "oracle_lane",
           label: "Oracle lane access",
-          description: "Unlock the highest trust lane for curated partner access decisions.",
+          description:
+            "Unlock the highest trust lane for curated partner access decisions.",
           category: "access",
           tierRequired: 4,
           unlocked,
@@ -216,7 +222,8 @@ function buildTierBenefits(tier: number, unlocked: boolean): PassportBenefit[] {
         {
           key: "top_tier_reward_pool",
           label: "Top-tier reward pool",
-          description: "Qualify for the most selective EggPass reward pool integrations.",
+          description:
+            "Qualify for the most selective EggPass reward pool integrations.",
           category: "reward",
           tierRequired: 4,
           unlocked,
@@ -231,7 +238,7 @@ function buildBenefits(tier: number): PassportBenefit[] {
   if (tier <= 0) return [];
 
   return TIER_RULES.filter((rule) => rule.tier <= tier).flatMap((rule) =>
-    buildTierBenefits(rule.tier, true)
+    buildTierBenefits(rule.tier, true),
   );
 }
 
@@ -271,7 +278,10 @@ function buildAccessFlags(
   };
 }
 
-function buildTierReward(rule: TierRule, unlockedTier: number): PassportTierReward {
+function buildTierReward(
+  rule: TierRule,
+  unlockedTier: number,
+): PassportTierReward {
   return {
     tier: rule.tier,
     label: rule.label,
@@ -292,7 +302,10 @@ function findTierRule(tier: number) {
 }
 
 function enrichEligibility(
-  eligibility: Omit<PassportEligibility, "tierLabel" | "benefits" | "accessFlags" | "tierReward">,
+  eligibility: Omit<
+    PassportEligibility,
+    "tierLabel" | "benefits" | "accessFlags" | "tierReward"
+  >,
   options?: {
     hasValidPassport?: boolean;
   },
@@ -417,7 +430,9 @@ function buildProgression(
   };
 }
 
-async function evaluateEligibility(walletAddress: string): Promise<PassportEligibility> {
+async function evaluateEligibility(
+  walletAddress: string,
+): Promise<PassportEligibility> {
   const { data, error } = await supabase
     .from("game_sessions")
     .select("max_row_reached, status")
@@ -441,8 +456,9 @@ async function evaluateEligibility(walletAddress: string): Promise<PassportEligi
   const successfulCashouts = rows.filter(
     (row) => String(row.status ?? "") === "CASHED_OUT",
   ).length;
-  const qualifiedRuns = hops.filter((hop) => hop >= CHECKPOINT_ROW_INTERVAL)
-    .length;
+  const qualifiedRuns = hops.filter(
+    (hop) => hop >= CHECKPOINT_ROW_INTERVAL,
+  ).length;
   const consistencyScore =
     runsCompleted > 0 ? Math.round((qualifiedRuns / runsCompleted) * 100) : 0;
   const checkpointCashouts = countCheckpointCashouts(rows);
@@ -586,85 +602,98 @@ router.get("/status", requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+router.post(
+  "/issue-signature",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    try {
+      const walletAddress = req.walletAddress!;
 
-router.post("/issue-signature", requireAuth, async (req: Request, res: Response) => {
-  try {
-    const walletAddress = req.walletAddress!;
+      if (!env.TRUST_PASSPORT_ADDRESS) {
+        res.status(400).json({
+          error: "TRUST_PASSPORT_ADDRESS belum dikonfigurasi di backend env.",
+        });
+        return;
+      }
+      if (!isValidEvmWallet(walletAddress)) {
+        res.status(400).json({ error: "Invalid EVM wallet address." });
+        return;
+      }
 
-    if (!env.TRUST_PASSPORT_ADDRESS) {
-      res.status(400).json({
-        error: "TRUST_PASSPORT_ADDRESS belum dikonfigurasi di backend env.",
-      });
-      return;
-    }
-    if (!isValidEvmWallet(walletAddress)) {
-      res.status(400).json({ error: "Invalid EVM wallet address." });
-      return;
-    }
+      const eligibility = await evaluateEligibility(walletAddress);
+      if (!eligibility.eligible || eligibility.tier <= 0) {
+        res.status(400).json({
+          error: eligibility.reason,
+          eligibility,
+        });
+        return;
+      }
 
-    const eligibility = await evaluateEligibility(walletAddress);
-    if (!eligibility.eligible || eligibility.tier <= 0) {
-      res.status(400).json({
-        error: eligibility.reason,
+      const now = Math.floor(Date.now() / 1000);
+      const passportExpiry = now + env.PASSPORT_VALIDITY_SECONDS;
+      const signatureExpiry = now + env.PASSPORT_SIGNATURE_TTL_SECONDS;
+
+      const stats = eligibility.stats.checkpointCashouts;
+      const cp2 = countCashoutsAtOrAbove(stats, 2);
+      const cp4 = countCashoutsAtOrAbove(stats, 4);
+      const cp6 = countCashoutsAtOrAbove(stats, 6);
+      const cp8 = countCashoutsAtOrAbove(stats, 8);
+
+      const claim: EggPassClaim = {
+        tier: eligibility.tier,
+        highestCheckpoint: eligibility.stats.highestCheckpointCashedOut,
+        cp2Cashouts: Math.min(65535, cp2),
+        cp4Cashouts: Math.min(65535, cp4),
+        cp6Cashouts: Math.min(65535, cp6),
+        cp8Cashouts: Math.min(65535, cp8),
+        reputationScore: Math.max(
+          1,
+          Math.min(
+            65535,
+            eligibility.stats.successfulCashouts * 100 +
+              eligibility.stats.consistencyScore,
+          ),
+        ),
+        issuedAt: BigInt(now),
+        expiry: BigInt(passportExpiry),
+        nonce: randomBytes(32),
+      };
+
+      const signature = await signPassportClaim(walletAddress, claim);
+      const unsignedTx = await buildClaimEggPassTransaction(
+        walletAddress,
+        claim,
+      );
+
+      res.json({
+        success: true,
+        unsignedTx,
+        claim: {
+          player: walletAddress,
+          tier: claim.tier,
+          highestCheckpoint: claim.highestCheckpoint,
+          cp2Cashouts: claim.cp2Cashouts,
+          cp4Cashouts: claim.cp4Cashouts,
+          cp6Cashouts: claim.cp6Cashouts,
+          cp8Cashouts: claim.cp8Cashouts,
+          reputationScore: claim.reputationScore,
+          issuedAt: claim.issuedAt.toString(),
+          expiry: claim.expiry.toString(),
+          nonce: claim.nonce.toString("hex"),
+        },
+        signature,
+        signingDomain: {
+          chainId: env.CHAIN_ID,
+          contract: TRUST_PASSPORT_ADDRESS,
+        },
+        signatureExpiry,
         eligibility,
       });
-      return;
+    } catch (error) {
+      console.error("❌ Passport claim issue error:", error);
+      res.status(500).json({ error: "Failed to issue passport claim." });
     }
-
-    const now = Math.floor(Date.now() / 1000);
-    const passportExpiry = now + env.PASSPORT_VALIDITY_SECONDS;
-    const signatureExpiry = now + env.PASSPORT_SIGNATURE_TTL_SECONDS;
-
-    const stats = eligibility.stats.checkpointCashouts;
-    const cp2 = countCashoutsAtOrAbove(stats, 2);
-    const cp4 = countCashoutsAtOrAbove(stats, 4);
-    const cp6 = countCashoutsAtOrAbove(stats, 6);
-    const cp8 = countCashoutsAtOrAbove(stats, 8);
-
-    const claim: EggPassClaim = {
-      tier: eligibility.tier,
-      highestCheckpoint: eligibility.stats.highestCheckpointCashedOut,
-      cp2Cashouts: Math.min(65535, cp2),
-      cp4Cashouts: Math.min(65535, cp4),
-      cp6Cashouts: Math.min(65535, cp6),
-      cp8Cashouts: Math.min(65535, cp8),
-      reputationScore: Math.max(1, Math.min(65535, eligibility.stats.successfulCashouts * 100 + eligibility.stats.consistencyScore)),
-      issuedAt: BigInt(now),
-      expiry: BigInt(passportExpiry),
-      nonce: randomBytes(32),
-    };
-
-    const signature = await signPassportClaim(walletAddress, claim);
-    const unsignedTx = await buildClaimEggPassTransaction(walletAddress, claim);
-
-    res.json({
-      success: true,
-      unsignedTx,
-      claim: {
-        player: walletAddress,
-        tier: claim.tier,
-        highestCheckpoint: claim.highestCheckpoint,
-        cp2Cashouts: claim.cp2Cashouts,
-        cp4Cashouts: claim.cp4Cashouts,
-        cp6Cashouts: claim.cp6Cashouts,
-        cp8Cashouts: claim.cp8Cashouts,
-        reputationScore: claim.reputationScore,
-        issuedAt: claim.issuedAt.toString(),
-        expiry: claim.expiry.toString(),
-        nonce: claim.nonce.toString("hex"),
-      },
-      signature,
-      signingDomain: {
-        chainId: env.CHAIN_ID,
-        contract: TRUST_PASSPORT_ADDRESS,
-      },
-      signatureExpiry,
-      eligibility,
-    });
-  } catch (error) {
-    console.error("❌ Passport claim issue error:", error);
-    res.status(500).json({ error: "Failed to issue passport claim." });
-  }
-});
+  },
+);
 
 export default router;
