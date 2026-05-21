@@ -16,3 +16,5 @@ Use `forge test` to test your Celo smart contracts locally.
 Scripts provided to deploy on Celo Alfajores and Mainnet.
 ---
 *Built for the vibrant Celo ecosystem.*
+
+<!-- celo: today docs index 2000 -->
