@@ -92,3 +92,5 @@ export default function RootLayout({ children }: RootLayoutProps) {
     </html>
   );
 }
+
+// celo: today safe dev index 2004
