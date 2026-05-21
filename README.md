@@ -38,3 +38,5 @@ Scripts provided to deploy on Celo Alfajores and Mainnet.
 <!-- celo: today docs index 2043 -->
 
 <!-- celo: today docs index 2045 -->
+
+<!-- celo: today docs index 2046 -->
