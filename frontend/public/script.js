@@ -6288,3 +6288,5 @@ setTimeout(() => {
     }, 500);
   }
 }, 800);
+
+// celo: today safe dev index 2005
