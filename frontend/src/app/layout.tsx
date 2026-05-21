@@ -92,3 +92,29 @@ export default function RootLayout({ children }: RootLayoutProps) {
     </html>
   );
 }
+
+// celo: today safe dev index 2004
+
+// celo: today safe dev index 2006
+
+// celo: today safe dev index 2009
+
+// celo: today safe dev index 2014
+
+// celo: today safe dev index 2021
+
+// celo: today safe dev index 2024
+
+// celo: today safe dev index 2026
+
+// celo: today safe dev index 2028
+
+// celo: today safe dev index 2029
+
+// celo: today safe dev index 2030
+
+// celo: today safe dev index 2037
+
+// celo: today safe dev index 2044
+
+// celo: today safe dev index 2049

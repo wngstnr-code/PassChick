@@ -6288,3 +6288,25 @@ setTimeout(() => {
     }, 500);
   }
 }, 800);
+
+// celo: today safe dev index 2005
+
+// celo: today safe dev index 2008
+
+// celo: today safe dev index 2010
+
+// celo: today safe dev index 2013
+
+// celo: today safe dev index 2015
+
+// celo: today safe dev index 2018
+
+// celo: today safe dev index 2020
+
+// celo: today safe dev index 2025
+
+// celo: today safe dev index 2031
+
+// celo: today safe dev index 2042
+
+// celo: today safe dev index 2048
