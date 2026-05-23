@@ -125,8 +125,11 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
         <div id="loading-screen">
           <div className="loading-content">
             <div className="loading-spinner" aria-hidden="true" />
-            <h2>LOADING GAME...</h2>
-            <p>Preparing the road ahead</p>
+            <h2><span>PASS</span>CHICK</h2>
+            <p>LOADING GAME...</p>
+          </div>
+          <div className="loading-bar-track">
+            <div className="loading-bar-fill" />
           </div>
         </div>
       ) : null}
