@@ -9564,7 +9564,6 @@ body.checkpoint-arrival #hud-scrim::after {
   width: 72px;
   height: 72px;
   object-fit: contain;
-  filter: drop-shadow(0 0 24px rgba(142, 238, 223, 0.5));
 }
 
 .loading-wordmark {
@@ -9574,11 +9573,14 @@ body.checkpoint-arrival #hud-scrim::after {
 }
 
 .loading-egg {
-  color: #8eeedf;
+  color: #ffffff;
 }
 
 .loading-rest {
-  color: #ffffff;
+  background: linear-gradient(180deg, #fff1b3 0%, #f6c24a 45%, #c48a1f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .loading-bar-track {
@@ -10803,12 +10805,13 @@ body.checkpoint-arrival #hud-scrim::after {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #121c34;
+  background-color: #070f22;
   z-index: 99999;
   display: flex;
   justify-content: center;
   align-items: center;
   flex-direction: column;
+  gap: 32px;
   transition: opacity 0.5s ease;
 }
 
@@ -10818,32 +10821,54 @@ body.checkpoint-arrival #hud-scrim::after {
 }
 
 .loading-content {
-  text-align: center;
-  color: #fff;
-  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: loading-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 .loading-spinner {
-  width: 60px;
-  height: 60px;
-  border: 5px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #f7d046;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 20px;
+  width: 72px;
+  height: 72px;
+  background: url('/favicon.png') center / contain no-repeat;
+  margin: 0 auto;
+  animation: none;
+  border: none;
+  border-radius: 0;
 }
 
 .loading-content h2 {
-  font-size: 24px;
-  margin: 0 0 8px 0;
-  letter-spacing: 2px;
-  color: #f7d046;
+  font-size: 22px;
+  margin: 0;
+  letter-spacing: 3px;
+  color: #ffffff;
+}
+
+.loading-content h2 span {
+  color: #8eeedf;
 }
 
 .loading-content p {
-  color: #a3b8cc;
-  font-size: 14px;
+  color: rgba(210, 228, 255, 0.55);
+  font-size: 9px;
+  letter-spacing: 1.5px;
   margin: 0;
+}
+
+.loading-bar-track {
+  width: 160px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.loading-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #8eeedf, #ffd778);
+  animation: loading-bar 1.6s ease-out forwards;
 }
 
 @keyframes spin {
