@@ -6311,4 +6311,7 @@ setTimeout(() => {
 
 // celo: today safe dev index 2048
 
+// celo: dynamic check index 3006
+
+// celo: dynamic check index 3009
 // celo: dynamic check index 3001

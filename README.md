@@ -115,6 +115,11 @@ MIT — see [LICENSE](LICENSE)
 
 <!-- celo: today docs index 2046 -->
 
+<!-- celo: dynamic docs check index 3005 -->
+
+<!-- celo: dynamic docs check index 3007 -->
+
+<!-- celo: dynamic docs check index 3008 -->
 <!-- celo: dynamic docs check index 3003 -->
 
 <!-- celo: dynamic docs check index 3004 -->
