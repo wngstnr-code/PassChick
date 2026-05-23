@@ -952,7 +952,14 @@ export function HomePage() {
         className="home-section home-section-about"
       >
         <div className="home-shell home-shell-section">
-          <div className="home-about-head">
+          <motion.div
+            className="home-about-head"
+            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <p className="home-section-kicker">HOW IT WORKS</p>
             <h2 className="home-section-title home-about-title">
               WHAT IS{" "}
               <span className="home-wordmark">
@@ -962,22 +969,24 @@ export function HomePage() {
               ?
             </h2>
             <p className="home-about-copy">
-              PASSCHICK is a fast reflex game where players read lane
-              patterns, survive longer runs, and build on-chain progression
-              through smart checkpoint decisions.
+              A fast reflex game where players read lane patterns, survive
+              longer runs, and build on-chain progression through smart
+              checkpoint decisions.
             </p>
-          </div>
+          </motion.div>
 
           <div className="home-about-grid">
-            {ABOUT_FEATURES.map((item) => (
+            {ABOUT_FEATURES.map((item, index) => (
               <motion.article
                 key={item.title}
-                className="home-about-feature"
-                whileHover={reduceMotion ? undefined : { y: -6, scale: 1.015 }}
+                className={`home-about-feature home-about-feature-${item.tone}`}
+                initial={reduceMotion ? false : { opacity: 0, y: 36, scale: 0.96 }}
+                whileInView={reduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.5, delay: index * 0.14, ease: "easeOut" }}
+                whileHover={reduceMotion ? undefined : { y: -8, scale: 1.02, transition: { duration: 0.22 } }}
               >
-                <div
-                  className={`home-about-media home-about-media-${item.tone}`}
-                >
+                <div className={`home-about-media home-about-media-${item.tone}`}>
                   {item.imageSrc ? (
                     <img
                       className="home-about-image"
@@ -991,8 +1000,10 @@ export function HomePage() {
                     />
                   )}
                 </div>
-                <h3 className="home-about-feature-title">{item.title}</h3>
-                <p className="home-about-feature-copy">{item.copy}</p>
+                <div className="home-about-feature-body">
+                  <h3 className="home-about-feature-title">{item.title}</h3>
+                  <p className="home-about-feature-copy">{item.copy}</p>
+                </div>
               </motion.article>
             ))}
           </div>
@@ -1001,40 +1012,69 @@ export function HomePage() {
 
       <section className="home-section home-section-social">
         <div className="home-shell home-shell-section">
-          <div className="home-section-head home-section-head-center">
-            <h2 className="home-section-title home-section-title-social">
-              LIVE{" "}
-              <span className="home-section-title-accent">ARCADE PULSE</span>
-            </h2>
-          </div>
+          <motion.div
+            className="home-section-head home-section-head-center"
+            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.45, ease: "easeOut" }}
+          >
+            <div>
+              <p className="home-section-kicker">REAL-TIME DATA</p>
+              <h2 className="home-section-title home-section-title-social">
+                LIVE{" "}
+                <span className="home-section-title-accent">ARCADE PULSE</span>
+              </h2>
+            </div>
+          </motion.div>
 
           <div className="home-social-stats">
-            {socialStats.map((stat) => (
-              <article key={stat.label} className="home-social-stat">
+            {socialStats.map((stat, index) => (
+              <motion.article
+                key={stat.label}
+                className="home-social-stat"
+                initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.4, delay: index * 0.1, ease: "easeOut" }}
+              >
                 <div className="home-social-icon">{stat.icon}</div>
                 <p>{stat.label}</p>
-                <strong>{isSocialLoading ? "..." : stat.value}</strong>
+                <strong>{isSocialLoading ? "—" : stat.value}</strong>
                 <span>{stat.note}</span>
-              </article>
+              </motion.article>
             ))}
           </div>
 
           {featuredVerifiedPlayer ? (
-            <article className="home-verified-featured">
+            <motion.article
+              className="home-verified-featured"
+              initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
               <div>
                 <p>TOP VERIFIED PLAYER</p>
                 <h3>{shortAddress(featuredVerifiedPlayer.wallet_address)}</h3>
                 <span>
-                  TIER {readPassportTier(featuredVerifiedPlayer)} -{" "}
+                  TIER {readPassportTier(featuredVerifiedPlayer)} —{" "}
                   {featuredVerifiedPlayer.passportTierLabel || "Verified"}
                 </span>
               </div>
               <strong>{readPassportReward(featuredVerifiedPlayer)}</strong>
-            </article>
+            </motion.article>
           ) : null}
 
           <div className="home-social-grid">
-            <article className="home-social-card">
+            {/* Best Distance card */}
+            <motion.article
+              className="home-social-card"
+              initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+            >
               <div className="home-social-card-head">
                 <h3>BEST DISTANCE</h3>
                 <div className="home-social-tabs" aria-label="Leaderboard filter">
@@ -1057,9 +1097,13 @@ export function HomePage() {
               </div>
               <ul className="home-social-list">
                 {visibleDistanceBoard.slice(0, 3).map((entry, index) => (
-                  <li
+                  <motion.li
                     key={`${entry.wallet_address}-${index}`}
                     className="home-social-item"
+                    initial={reduceMotion ? false : { opacity: 0, x: -12 }}
+                    whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.3, delay: index * 0.08 }}
                   >
                     <div>
                       <p>RANK #{index + 1}</p>
@@ -1085,7 +1129,7 @@ export function HomePage() {
                       </span>
                       {readPassportTier(entry) >= 3 ? (
                         <span className="home-access-note">
-                          Cup Eligible - {readPassportReward(entry)}
+                          Cup Eligible — {readPassportReward(entry)}
                         </span>
                       ) : readPassportTier(entry) >= 1 ? (
                         <span className="home-access-note">
@@ -1094,20 +1138,31 @@ export function HomePage() {
                       ) : null}
                     </div>
                     <strong>{readBestScore(entry)} hops</strong>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
-            </article>
+            </motion.article>
 
-            <article className="home-social-card">
+            {/* Top Profit card */}
+            <motion.article
+              className="home-social-card"
+              initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+              whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.45, delay: 0.12, ease: "easeOut" }}
+            >
               <div className="home-social-card-head">
                 <h3>TOP PROFIT</h3>
               </div>
               <ul className="home-social-list">
                 {profitBoard.slice(0, 3).map((entry, index) => (
-                  <li
+                  <motion.li
                     key={`${entry.wallet_address}-${index}`}
                     className="home-social-item"
+                    initial={reduceMotion ? false : { opacity: 0, x: -12 }}
+                    whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.3, delay: index * 0.08 }}
                   >
                     <div>
                       <p>RANK #{index + 1}</p>
@@ -1138,64 +1193,73 @@ export function HomePage() {
                       ) : null}
                     </div>
                     <strong>{formatMoney(entry.total_profit)}</strong>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
-            </article>
+            </motion.article>
           </div>
         </div>
       </section>
 
-      <section
-        className="home-section home-section-system"
-      >
+      {/* ── VAULT TO PASSPORT: horizontal numbered timeline ── */}
+      <section className="home-section home-section-system">
         <div className="home-shell home-shell-section">
           <motion.div
-            className="home-section-head home-system-head"
-            initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+            className="home-system-head-row"
+            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
             whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <div>
-              <p className="home-section-kicker">LIVE RUN LOOP</p>
-              <h2 className="home-section-title">VAULT TO PASSPORT</h2>
-            </div>
+            <p className="home-section-kicker">LIVE RUN LOOP</p>
+            <h2 className="home-section-title">VAULT TO PASSPORT</h2>
             <p className="home-system-subcopy">
-              Every funded run becomes a readable reputation signal: bankroll,
+              Every funded run becomes a readable reputation signal — bankroll,
               checkpoint discipline, settlement, then trust status.
             </p>
           </motion.div>
-          <ol
-            className="home-flow-track"
-            aria-label="Vault to Passport flow"
-          >
-            {FLOW_STEPS.map((step, index) => (
-              <motion.li
-                key={step.title}
-                className="home-flow-card"
-                initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-                whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.35, delay: index * 0.06, ease: "easeOut" }}
-                whileHover={reduceMotion ? undefined : { y: -4 }}
-              >
-                <div className="home-flow-card-top">
-                  <p>{step.label}</p>
-                  <span>{step.action}</span>
-                </div>
-                <h3>{step.title}</h3>
-                <span>{step.copy}</span>
-              </motion.li>
-            ))}
-          </ol>
 
+          {/* Timeline stepper */}
+          <div className="home-timeline" aria-label="Vault to Passport flow">
+            {FLOW_STEPS.map((step, index) => (
+              <motion.div
+                key={step.title}
+                className="home-timeline-step"
+                initial={reduceMotion ? false : { opacity: 0, y: 32 }}
+                whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.5, delay: index * 0.16, ease: "easeOut" }}
+              >
+                <div className="home-timeline-node">
+                  <motion.div
+                    className="home-timeline-number"
+                    initial={reduceMotion ? false : { scale: 0.5, opacity: 0 }}
+                    whileInView={reduceMotion ? undefined : { scale: 1, opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: index * 0.16 + 0.2, type: "spring", stiffness: 220 }}
+                  >
+                    {step.label}
+                  </motion.div>
+                  {index < FLOW_STEPS.length - 1 && (
+                    <div className="home-timeline-connector" aria-hidden="true" />
+                  )}
+                </div>
+                <div className="home-timeline-content">
+                  <span className="home-timeline-action">{step.action}</span>
+                  <h3 className="home-timeline-title">{step.title}</h3>
+                  <p className="home-timeline-copy">{step.copy}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* EggPass band */}
           <motion.div
             className="home-money-band"
-            initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
             whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.45, delay: 0.1, ease: "easeOut" }}
             whileHover={reduceMotion ? undefined : { y: -3 }}
           >
             <div className="home-money-band-copy">
@@ -1212,50 +1276,95 @@ export function HomePage() {
         </div>
       </section>
 
+      {/* ── PASSPORT FOR PARTNER APPS ── */}
       <section className="home-section home-section-passport">
         <div className="home-shell home-shell-section">
-          <div className="home-section-head home-passport-head">
-            <div>
-              <p className="home-section-kicker">TRUST INFRASTRUCTURE</p>
-              <h2 className="home-section-title">PASSPORT FOR PARTNER APPS</h2>
-              <p className="home-passport-subcopy">
-                A compact verification layer for apps that need wallet reputation,
-                eligibility, and sybil-resistant access without adding signup friction.
-              </p>
+
+          <motion.div
+            className="home-passport-header"
+            initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            <p className="home-section-kicker">TRUST INFRASTRUCTURE</p>
+            <h2 className="home-section-title">PASSPORT FOR PARTNER APPS</h2>
+            <p className="home-passport-header-sub">
+              A compact verification layer for apps that need wallet reputation,
+              eligibility, and sybil-resistant access.
+            </p>
+          </motion.div>
+
+          {/* Auto-rotating tier card carousel */}
+          <div className="home-passport-carousel-wrap">
+            <div className="home-passport-carousel-track">
+              {/* Duplicate for seamless loop: t0→t4 twice */}
+              {[
+                { src: "/images/t0.webp", tier: "TIER 0", label: "ROOKIE", reward: "Basic Profile" },
+                { src: "/images/t1.webp", tier: "TIER 1", label: "RUNNER", reward: "Verified Identity" },
+                { src: "/images/t2.webp", tier: "TIER 2", label: "STEADY", reward: "Allowlist Eligible" },
+                { src: "/images/t3.webp", tier: "TIER 3", label: "ELITE", reward: "Tournament Access" },
+                { src: "/images/t4.webp", tier: "TIER 4", label: "ORACLE", reward: "Partner Perks" },
+                { src: "/images/t0.webp", tier: "TIER 0", label: "ROOKIE", reward: "Basic Profile" },
+                { src: "/images/t1.webp", tier: "TIER 1", label: "RUNNER", reward: "Verified Identity" },
+                { src: "/images/t2.webp", tier: "TIER 2", label: "STEADY", reward: "Allowlist Eligible" },
+                { src: "/images/t3.webp", tier: "TIER 3", label: "ELITE", reward: "Tournament Access" },
+                { src: "/images/t4.webp", tier: "TIER 4", label: "ORACLE", reward: "Partner Perks" },
+              ].map((card, i) => (
+                <div key={i} className="home-passport-carousel-item">
+                  <img src={card.src} alt={`EggPass ${card.tier}`} className="home-passport-tier-img" />
+                  <div className="home-passport-tier-footer">
+                    <span className="home-passport-tier-name">{card.tier} — {card.label}</span>
+                    <span className="home-passport-tier-reward">{card.reward}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="home-feature-grid home-passport-feature-grid">
+
+          {/* 3 feature columns — symmetric with cards above */}
+          <div className="home-passport-features-row">
             {PASSPORT_FEATURES.map((item, index) => (
               <motion.article
                 key={item.title}
-                className="home-feature-card home-passport-feature-card"
-                initial={reduceMotion ? false : { opacity: 0, y: 18 }}
+                className="home-passport-feat-col"
+                initial={reduceMotion ? false : { opacity: 0, y: 28 }}
                 whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.35, delay: index * 0.06, ease: "easeOut" }}
-                whileHover={reduceMotion ? undefined : { y: -4 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.45, delay: index * 0.12, ease: "easeOut" }}
+                whileHover={reduceMotion ? undefined : { y: -4, transition: { duration: 0.2 } }}
               >
-                <p>{item.label}</p>
-                <h3>{item.title}</h3>
-                <span>{item.copy}</span>
+                <p className="home-passport-feat-label">{item.label}</p>
+                <h3 className="home-passport-feat-title">{item.title}</h3>
+                <span className="home-passport-feat-copy">{item.copy}</span>
               </motion.article>
             ))}
           </div>
 
+          {/* Integration strip */}
           <motion.div
-            className="home-integration-note home-passport-integration"
-            initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+            className="home-passport-integration-strip"
+            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
             whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.45, delay: 0.2, ease: "easeOut" }}
           >
-            <h3>HOW OTHER WEBSITES INTEGRATE</h3>
-            <ol>
-              {INTEGRATION_STEPS.map((step) => (
-                <li key={step}>{step}</li>
+            <p className="home-passport-integration-label">HOW APPS INTEGRATE</p>
+            <ol className="home-passport-integration-list">
+              {INTEGRATION_STEPS.map((step, i) => (
+                <motion.li
+                  key={step}
+                  initial={reduceMotion ? false : { opacity: 0, x: -10 }}
+                  whileInView={reduceMotion ? undefined : { opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: 0.3 + i * 0.1 }}
+                >
+                  {step}
+                </motion.li>
               ))}
             </ol>
           </motion.div>
+
         </div>
       </section>
 
