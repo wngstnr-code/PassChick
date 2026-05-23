@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { AppProviders } from "~/providers/AppProviders";
+import { LoadingScreen } from "~/components/LoadingScreen";
 
 const APP_URL = "https://passchick.vercel.app";
 const APP_NAME = "PASSCHICK";
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
+        <LoadingScreen />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>
