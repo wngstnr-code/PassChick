@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 
 export function LoadingScreen() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
+    if (sessionStorage.getItem("passchick-loaded")) return;
+    sessionStorage.setItem("passchick-loaded", "1");
+    setVisible(true);
+
     const fadeTimer = setTimeout(() => setFadeOut(true), 1800);
     const hideTimer = setTimeout(() => setVisible(false), 2400);
     return () => {
