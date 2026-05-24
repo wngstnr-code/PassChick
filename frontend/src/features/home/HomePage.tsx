@@ -1228,9 +1228,9 @@ export function HomePage() {
           </motion.div>
 
           {/* Timeline stepper */}
-          <div className="home-timeline" aria-label="Vault to Passport flow">
+          <ol className="home-timeline" aria-label="Vault to Passport flow">
             {FLOW_STEPS.map((step, index) => (
-              <motion.div
+              <motion.li
                 key={step.title}
                 className="home-timeline-step"
                 initial={reduceMotion ? false : { opacity: 0, y: 32 }}
@@ -1257,9 +1257,9 @@ export function HomePage() {
                   <h3 className="home-timeline-title">{step.title}</h3>
                   <p className="home-timeline-copy">{step.copy}</p>
                 </div>
-              </motion.div>
+              </motion.li>
             ))}
-          </div>
+          </ol>
 
           {/* EggPass band */}
           <motion.div

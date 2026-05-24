@@ -9240,6 +9240,9 @@ body.checkpoint-arrival #hud-scrim::after {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   margin-bottom: 36px;
+  margin-top: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* The connecting line spans the full width behind the nodes */
