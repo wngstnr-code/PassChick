@@ -4315,8 +4315,10 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .play-passport-summary {
   display: grid;
-  gap: 8px;
-  align-content: center;
+  grid-template-columns: 1fr;
+  grid-template-rows: repeat(3, 1fr);
+  gap: 10px;
+  align-content: stretch;
 }
 
 .play-passport-summary-row {
@@ -4395,7 +4397,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .play-passport-benefits {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -5675,11 +5677,14 @@ body.checkpoint-arrival #hud-scrim::after {
       justify-items: center;
       gap: 16px;
     }
+    .play-passport-benefits {
+      grid-template-columns: 1fr !important;
+    }
   }
 
   .play-passport-benefits {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .play-passport-benefits > div {

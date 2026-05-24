@@ -9,11 +9,12 @@ export function LoadingScreen() {
   useEffect(() => {
     if (sessionStorage.getItem("passchick-loaded")) return;
     sessionStorage.setItem("passchick-loaded", "1");
-    setVisible(true);
+    const showTimer = setTimeout(() => setVisible(true), 0);
 
     const fadeTimer = setTimeout(() => setFadeOut(true), 1800);
     const hideTimer = setTimeout(() => setVisible(false), 2400);
     return () => {
+      clearTimeout(showTimer);
       clearTimeout(fadeTimer);
       clearTimeout(hideTimer);
     };
