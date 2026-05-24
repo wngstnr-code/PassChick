@@ -2,3 +2,4 @@
 This file tracks frontend progress updates for Celo blockchain integration.
 
 - **Update 8000**: Safely logged celo wallet integration progress step at index 8000.
+- **Update 8001**: Safely logged celo wallet integration progress step at index 8001.
