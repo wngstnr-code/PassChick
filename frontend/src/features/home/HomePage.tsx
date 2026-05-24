@@ -1778,6 +1778,7 @@ export function HomePage() {
                 <img
                   src={activeGuide.imageSrc}
                   alt={activeGuide.imageAlt}
+                  decoding="async"
                   onLoad={() => markGuideImageLoaded(activeGuide.imageSrc)}
                   onError={() => markGuideImageFailed(activeGuide.imageSrc)}
                   style={{
