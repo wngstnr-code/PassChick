@@ -9205,12 +9205,21 @@ body.checkpoint-arrival #hud-scrim::after {
   letter-spacing: 1px;
   text-decoration: none;
   cursor: pointer;
-  padding: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
 }
 
 .home-footer-links a:hover,
 .home-footer-links button:hover {
   color: #ffffff;
+}
+
+.home-footer-links a:focus-visible,
+.home-footer-links button:focus-visible {
+  outline: 2px solid rgba(142, 238, 223, 0.82);
+  outline-offset: 4px;
 }
 
 /* ===== VAULT TO PASSPORT — TIMELINE ===== */
