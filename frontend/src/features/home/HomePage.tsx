@@ -1044,7 +1044,9 @@ export function HomePage() {
               >
                 <div className="home-social-icon">{stat.icon}</div>
                 <p>{stat.label}</p>
-                <strong>{isSocialLoading ? "—" : stat.value}</strong>
+                <strong aria-live="polite">
+                  {isSocialLoading ? "—" : stat.value}
+                </strong>
                 <span>{stat.note}</span>
               </motion.article>
             ))}
