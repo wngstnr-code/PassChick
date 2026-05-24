@@ -5,3 +5,4 @@ This file tracks frontend progress updates for Celo blockchain integration.
 - **Update 8021**: Safely logged celo wallet integration progress step at index 8021.
 - **Update 8022**: Safely logged celo wallet integration progress step at index 8022.
 - **Update 8023**: Safely logged celo wallet integration progress step at index 8023.
+- **Update 8024**: Safely logged celo wallet integration progress step at index 8024.
