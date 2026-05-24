@@ -163,6 +163,7 @@ export function PlayTopNav() {
   } = useWallet();
   const [isWalletMenuOpen, setIsWalletMenuOpen] = useState(false);
   const [walletCopyLabel, setWalletCopyLabel] = useState("COPY");
+  const [passportCopyLabel, setPassportCopyLabel] = useState("COPY");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
   const [sfxVolumePercent, setSfxVolumePercent] = useState(90);
@@ -280,6 +281,21 @@ export function PlayTopNav() {
       console.warn("Caught error in PlayTopNav:", error);
       setWalletCopyLabel("FAILED");
       window.setTimeout(() => setWalletCopyLabel("COPY"), 1400);
+    }
+  }
+
+  async function onCopyPassportId() {
+    const passportId = passportStatus?.passportId;
+    if (!passportId || typeof navigator === "undefined") return;
+
+    try {
+      await navigator.clipboard.writeText(passportId);
+      setPassportCopyLabel("COPIED");
+      window.setTimeout(() => setPassportCopyLabel("COPY"), 1400);
+    } catch (error) {
+      console.warn("Caught error in PlayTopNav:", error);
+      setPassportCopyLabel("FAILED");
+      window.setTimeout(() => setPassportCopyLabel("COPY"), 1400);
     }
   }
 
@@ -1554,9 +1570,19 @@ export function PlayTopNav() {
                 </div>
                 <div className="play-passport-summary-row">
                   <span>PASS ID</span>
-                  <strong>
-                    {shortPassportCardAddress(passportStatus?.passportId || "")}
-                  </strong>
+                  <div className="play-passport-pass-id-line">
+                    <strong>
+                      {shortPassportCardAddress(passportStatus?.passportId || "")}
+                    </strong>
+                    <button
+                      type="button"
+                      className="play-passport-copy-id"
+                      onClick={onCopyPassportId}
+                      disabled={!passportStatus?.passportId}
+                    >
+                      {passportCopyLabel}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

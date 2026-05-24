@@ -4011,7 +4011,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .play-passport-status-layout {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.8fr);
   gap: 16px;
   align-items: stretch;
 }
@@ -4320,17 +4320,30 @@ body.checkpoint-arrival #hud-scrim::after {
 }
 
 .play-passport-summary-row {
-  min-height: 48px;
-  border: 2px solid rgba(112, 232, 181, 0.32);
-  border-radius: 12px;
+  min-height: 54px;
+  border: 1px solid rgba(112, 232, 181, 0.24);
+  border-radius: 14px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03)),
-    rgba(11, 21, 36, 0.52);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    rgba(7, 14, 28, 0.72);
   color: #ddf7ed;
-  padding: 8px 10px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease;
+}
+
+.play-passport-summary-row:hover {
+  border-color: rgba(112, 232, 181, 0.45);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 20px rgba(112, 232, 181, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
 }
 
 .play-passport-summary-row span,
@@ -5594,8 +5607,10 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .play-passport-status-layout {
-    grid-template-columns: 1fr;
-    gap: 6px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.8fr);
+    gap: 20px;
+    align-items: stretch;
   }
 
   .play-passport-live-card {
@@ -5613,26 +5628,35 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .play-passport-summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 5px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    align-content: stretch;
   }
 
   .play-passport-summary-row {
-    min-height: 36px;
-    border-radius: 8px;
-    padding: 6px;
+    min-height: 48px;
+    border-radius: 10px;
+    padding: 8px 12px;
     gap: 4px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border: 1px solid rgba(112, 232, 181, 0.2);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+      rgba(7, 14, 28, 0.72);
   }
 
   .play-passport-summary-row span,
   .play-passport-progress-head span,
   .play-passport-stats-grid span {
-    font-size: 6px;
+    font-size: 7px;
   }
 
   .play-passport-summary-row strong,
   .play-passport-progress-head strong {
-    font-size: 7px;
+    font-size: 9px;
   }
 
   .play-passport-pass-id-line {
@@ -5641,8 +5665,16 @@ body.checkpoint-arrival #hud-scrim::after {
 
   .play-passport-copy-id {
     border-radius: 5px;
-    font-size: 5.5px;
-    padding: 4px 5px;
+    font-size: 7px;
+    padding: 4px 6px;
+  }
+
+  @media (max-width: 580px) {
+    .play-passport-status-layout {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      gap: 16px;
+    }
   }
 
   .play-passport-benefits {
@@ -7588,6 +7620,10 @@ body.checkpoint-arrival #hud-scrim::after {
   .home-game-bg-frame {
     display: none;
   }
+
+  .home-passport-carousel-track {
+    animation: none;
+  }
 }
 
 .home-page {
@@ -9006,12 +9042,12 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .home-social-tabs {
   display: inline-grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
 }
 
 .home-social-tabs button {
-  min-height: 30px;
+  min-height: 36px;
   min-width: 78px;
   border-radius: 8px;
   border: 2px solid rgba(137, 202, 255, 0.42);
@@ -9061,7 +9097,7 @@ body.checkpoint-arrival #hud-scrim::after {
   justify-content: space-between;
   gap: 16px;
   padding: 13px 14px;
-  height: 110px;
+  min-height: 110px;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -9201,12 +9237,21 @@ body.checkpoint-arrival #hud-scrim::after {
   letter-spacing: 1px;
   text-decoration: none;
   cursor: pointer;
-  padding: 0;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
 }
 
 .home-footer-links a:hover,
 .home-footer-links button:hover {
   color: #ffffff;
+}
+
+.home-footer-links a:focus-visible,
+.home-footer-links button:focus-visible {
+  outline: 2px solid rgba(142, 238, 223, 0.82);
+  outline-offset: 4px;
 }
 
 /* ===== VAULT TO PASSPORT — TIMELINE ===== */
@@ -9240,6 +9285,9 @@ body.checkpoint-arrival #hud-scrim::after {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   margin-bottom: 36px;
+  margin-top: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* The connecting line spans the full width behind the nodes */
@@ -9367,6 +9415,11 @@ body.checkpoint-arrival #hud-scrim::after {
   width: max-content;
   animation: passport-scroll 32s linear infinite;
   padding: 4px 0;
+}
+
+.home-passport-carousel-wrap:hover .home-passport-carousel-track,
+.home-passport-carousel-wrap:focus-within .home-passport-carousel-track {
+  animation-play-state: paused;
 }
 
 .home-passport-carousel-item {

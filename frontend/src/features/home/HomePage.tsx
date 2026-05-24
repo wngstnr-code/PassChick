@@ -751,6 +751,8 @@ export function HomePage() {
                 <button
                   className="flow-btn secondary home-nav-login"
                   type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={showProfilePopover}
                   onClick={() => setShowProfilePopover((current) => !current)}
                 >
                   {shortAddress(account)}
@@ -992,6 +994,8 @@ export function HomePage() {
                       className="home-about-image"
                       src={item.imageSrc}
                       alt={item.imageAlt || item.title}
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div
@@ -1040,7 +1044,9 @@ export function HomePage() {
               >
                 <div className="home-social-icon">{stat.icon}</div>
                 <p>{stat.label}</p>
-                <strong>{isSocialLoading ? "—" : stat.value}</strong>
+                <strong aria-live="polite">
+                  {isSocialLoading ? "—" : stat.value}
+                </strong>
                 <span>{stat.note}</span>
               </motion.article>
             ))}
@@ -1081,6 +1087,7 @@ export function HomePage() {
                   <button
                     type="button"
                     className={!showVerifiedBoard ? "active" : ""}
+                    aria-pressed={!showVerifiedBoard}
                     onClick={() => setShowVerifiedBoard(false)}
                   >
                     ALL
@@ -1088,6 +1095,7 @@ export function HomePage() {
                   <button
                     type="button"
                     className={showVerifiedBoard ? "active" : ""}
+                    aria-pressed={showVerifiedBoard}
                     onClick={() => setShowVerifiedBoard(true)}
                     disabled={verifiedDistanceBoard.length === 0}
                   >
@@ -1220,9 +1228,9 @@ export function HomePage() {
           </motion.div>
 
           {/* Timeline stepper */}
-          <div className="home-timeline" aria-label="Vault to Passport flow">
+          <ol className="home-timeline" aria-label="Vault to Passport flow">
             {FLOW_STEPS.map((step, index) => (
-              <motion.div
+              <motion.li
                 key={step.title}
                 className="home-timeline-step"
                 initial={reduceMotion ? false : { opacity: 0, y: 32 }}
@@ -1249,9 +1257,9 @@ export function HomePage() {
                   <h3 className="home-timeline-title">{step.title}</h3>
                   <p className="home-timeline-copy">{step.copy}</p>
                 </div>
-              </motion.div>
+              </motion.li>
             ))}
-          </div>
+          </ol>
 
           {/* EggPass band */}
           <motion.div
@@ -1312,7 +1320,13 @@ export function HomePage() {
                 { src: "/images/t4.webp", tier: "TIER 4", label: "ORACLE", reward: "Partner Perks" },
               ].map((card, i) => (
                 <div key={i} className="home-passport-carousel-item">
-                  <img src={card.src} alt={`EggPass ${card.tier}`} className="home-passport-tier-img" />
+                  <img
+                    src={card.src}
+                    alt={`EggPass ${card.tier}`}
+                    className="home-passport-tier-img"
+                    loading="lazy"
+                    decoding="async"
+                  />
                   <div className="home-passport-tier-footer">
                     <span className="home-passport-tier-name">{card.tier} — {card.label}</span>
                     <span className="home-passport-tier-reward">{card.reward}</span>
@@ -1596,6 +1610,7 @@ export function HomePage() {
             <button
               className="home-modal-close"
               type="button"
+              aria-label="Close how to play"
               onClick={() => setShowHelp(false)}
             >
               X
@@ -1667,6 +1682,7 @@ export function HomePage() {
             <button
               className="home-modal-close"
               type="button"
+              aria-label="Close passport info"
               onClick={() => setShowPassportInfo(false)}
             >
               X
@@ -1768,6 +1784,7 @@ export function HomePage() {
                 <img
                   src={activeGuide.imageSrc}
                   alt={activeGuide.imageAlt}
+                  decoding="async"
                   onLoad={() => markGuideImageLoaded(activeGuide.imageSrc)}
                   onError={() => markGuideImageFailed(activeGuide.imageSrc)}
                   style={{

@@ -47,3 +47,12 @@ NEXT_PUBLIC_BACKEND_API_URL=http://localhost:8000
 ```bash
 npm run build
 ```
+
+## Frontend UI Notes
+
+- Keep page routes thin. Put real screen logic under `src/features/*` and let `src/app/*/page.tsx` act as route shells.
+- Keep the Celo wallet path visible and simple: connect wallet, manage vault, play, then review Trust Passport state.
+- Prioritize mobile readability for play, wallet, and vault screens. Important buttons should stay compact but easy to tap.
+- Home page polish should preserve the arcade feel while keeping text legible, especially in leaderboard and Trust Passport sections.
+- For UI commit slicing, prefer one focused change per commit: home, wallet, manage money, play HUD, responsive CSS, or docs.
+- Validate meaningful frontend changes with `npm run build` before opening a PR.
