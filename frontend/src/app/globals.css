@@ -7588,6 +7588,10 @@ body.checkpoint-arrival #hud-scrim::after {
   .home-game-bg-frame {
     display: none;
   }
+
+  .home-passport-carousel-track {
+    animation: none;
+  }
 }
 
 .home-page {
