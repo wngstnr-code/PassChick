@@ -9372,6 +9372,11 @@ body.checkpoint-arrival #hud-scrim::after {
   padding: 4px 0;
 }
 
+.home-passport-carousel-wrap:hover .home-passport-carousel-track,
+.home-passport-carousel-wrap:focus-within .home-passport-carousel-track {
+  animation-play-state: paused;
+}
+
 .home-passport-carousel-item {
   flex-shrink: 0;
   width: 340px;
