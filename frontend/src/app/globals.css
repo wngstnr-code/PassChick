@@ -9015,7 +9015,7 @@ body.checkpoint-arrival #hud-scrim::after {
 }
 
 .home-social-tabs button {
-  min-height: 30px;
+  min-height: 36px;
   min-width: 78px;
   border-radius: 8px;
   border: 2px solid rgba(137, 202, 255, 0.42);
