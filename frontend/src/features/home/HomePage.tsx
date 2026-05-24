@@ -992,6 +992,8 @@ export function HomePage() {
                       className="home-about-image"
                       src={item.imageSrc}
                       alt={item.imageAlt || item.title}
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div
