@@ -1081,6 +1081,7 @@ export function HomePage() {
                   <button
                     type="button"
                     className={!showVerifiedBoard ? "active" : ""}
+                    aria-pressed={!showVerifiedBoard}
                     onClick={() => setShowVerifiedBoard(false)}
                   >
                     ALL
@@ -1088,6 +1089,7 @@ export function HomePage() {
                   <button
                     type="button"
                     className={showVerifiedBoard ? "active" : ""}
+                    aria-pressed={showVerifiedBoard}
                     onClick={() => setShowVerifiedBoard(true)}
                     disabled={verifiedDistanceBoard.length === 0}
                   >
