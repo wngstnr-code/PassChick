@@ -1316,7 +1316,13 @@ export function HomePage() {
                 { src: "/images/t4.webp", tier: "TIER 4", label: "ORACLE", reward: "Partner Perks" },
               ].map((card, i) => (
                 <div key={i} className="home-passport-carousel-item">
-                  <img src={card.src} alt={`EggPass ${card.tier}`} className="home-passport-tier-img" />
+                  <img
+                    src={card.src}
+                    alt={`EggPass ${card.tier}`}
+                    className="home-passport-tier-img"
+                    loading="lazy"
+                    decoding="async"
+                  />
                   <div className="home-passport-tier-footer">
                     <span className="home-passport-tier-name">{card.tier} — {card.label}</span>
                     <span className="home-passport-tier-reward">{card.reward}</span>
