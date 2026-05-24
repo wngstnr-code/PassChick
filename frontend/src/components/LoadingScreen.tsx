@@ -7,6 +7,9 @@ export function LoadingScreen() {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("bg") === "1") return;
+
     if (sessionStorage.getItem("passchick-loaded")) return;
     sessionStorage.setItem("passchick-loaded", "1");
     const showTimer = setTimeout(() => setVisible(true), 0);
