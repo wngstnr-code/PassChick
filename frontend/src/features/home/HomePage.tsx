@@ -751,6 +751,8 @@ export function HomePage() {
                 <button
                   className="flow-btn secondary home-nav-login"
                   type="button"
+                  aria-haspopup="dialog"
+                  aria-expanded={showProfilePopover}
                   onClick={() => setShowProfilePopover((current) => !current)}
                 >
                   {shortAddress(account)}
