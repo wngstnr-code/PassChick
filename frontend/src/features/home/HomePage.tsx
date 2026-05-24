@@ -1608,6 +1608,7 @@ export function HomePage() {
             <button
               className="home-modal-close"
               type="button"
+              aria-label="Close how to play"
               onClick={() => setShowHelp(false)}
             >
               X
@@ -1679,6 +1680,7 @@ export function HomePage() {
             <button
               className="home-modal-close"
               type="button"
+              aria-label="Close passport info"
               onClick={() => setShowPassportInfo(false)}
             >
               X
