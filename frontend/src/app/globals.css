@@ -10022,6 +10022,11 @@ body.checkpoint-arrival #hud-scrim::after {
     padding-bottom: 36px;
   }
 
+  .home-section-passport {
+    scroll-margin-top: 72px;
+    padding-top: 44px;
+  }
+
   .home-about-copy {
     font-size: 9px;
   }
@@ -10043,6 +10048,128 @@ body.checkpoint-arrival #hud-scrim::after {
 
   .home-passport-subcopy {
     font-size: 9px;
+  }
+
+  .home-passport-header {
+    margin-bottom: 24px;
+    text-align: left;
+  }
+
+  .home-passport-header .home-section-kicker {
+    margin-bottom: 8px;
+  }
+
+  .home-passport-header .home-section-title {
+    font-size: clamp(16px, 5.4vw, 21px);
+    line-height: 1.55;
+  }
+
+  .home-passport-header-sub {
+    max-width: none;
+    margin-top: 10px;
+    font-size: 8.5px;
+    line-height: 1.75;
+  }
+
+  .home-passport-carousel-wrap {
+    width: calc(100vw - 32px);
+    margin-inline: calc(50% - 50vw + 16px);
+    margin-bottom: 18px;
+    padding: 8px 0;
+    mask-image: linear-gradient(90deg, transparent 0%, black 4%, black 96%, transparent 100%);
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 4%, black 96%, transparent 100%);
+  }
+
+  .home-passport-carousel-track {
+    gap: 12px;
+    animation-duration: 26s;
+  }
+
+  .home-passport-carousel-item {
+    width: min(252px, 72vw);
+    border-radius: 12px;
+  }
+
+  .home-passport-tier-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    min-height: 0;
+    gap: 6px;
+    padding: 9px 10px 11px;
+  }
+
+  .home-passport-tier-name,
+  .home-passport-tier-reward {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .home-passport-tier-name {
+    font-size: 7.5px;
+    line-height: 1.35;
+  }
+
+  .home-passport-tier-reward {
+    font-size: 7px;
+    line-height: 1.35;
+    padding: 4px 7px;
+  }
+
+  .home-passport-features-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .home-passport-feat-col {
+    gap: 7px;
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .home-passport-feat-label {
+    font-size: 7px;
+    line-height: 1.2;
+  }
+
+  .home-passport-feat-title {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .home-passport-feat-copy {
+    font-size: 8px;
+    line-height: 1.75;
+  }
+
+  .home-passport-integration-strip {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .home-passport-integration-label {
+    white-space: normal;
+    line-height: 1.45;
+    padding-top: 0;
+  }
+
+  .home-passport-integration-list {
+    gap: 10px;
+  }
+
+  .home-passport-integration-list li {
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 9px;
+    font-size: 8px;
+    line-height: 1.65;
+  }
+
+  .home-passport-integration-list li::before {
+    width: 20px;
+    height: 20px;
+    font-size: 7px;
   }
 
   .home-passport-feature-grid {
