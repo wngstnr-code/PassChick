@@ -39,7 +39,7 @@ NEXT_PUBLIC_CELO_EXPLORER_URL=https://celo-sepolia.blockscout.com
 
 NEXT_PUBLIC_USDC_TOKEN_ADDRESS=
 NEXT_PUBLIC_VAULT_ADDRESS=
-NEXT_PUBLIC_BACKEND_API_URL=http://localhost:8000
+NEXT_PUBLIC_BACKEND_API_URL=https://passchick-production-6251.up.railway.app
 ```
 
 ## Build
