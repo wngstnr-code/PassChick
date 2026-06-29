@@ -2,7 +2,7 @@
 
 **On-chain chicken-crash game on Celo — where surviving the crash earns you proof of humanity.**
 
-> Live Demo: `<LIVE_DEMO_URL>` *(replace after deploy)*
+> Live Demo: `https://passchick.xyz`
 
 ---
 
