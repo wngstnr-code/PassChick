@@ -1401,6 +1401,14 @@ export function HomePage() {
               GAME GUIDE
             </button>
           </div>
+
+          <div className="home-footer-links">
+            <Link href="/terms">TERMS</Link>
+            <Link href="/privacy">PRIVACY</Link>
+            <a href="https://t.me/passchick_support" target="_blank" rel="noreferrer">
+              SUPPORT
+            </a>
+          </div>
         </div>
       </footer>
 

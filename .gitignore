@@ -23,6 +23,7 @@ frontend/tsconfig.tsbuildinfo
 
 # Local Codex/agent workspace files
 .agents/
+.claude/
 frontend/AGENTS.md
 
 update_v2.md

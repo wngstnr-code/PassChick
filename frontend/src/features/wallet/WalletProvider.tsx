@@ -50,6 +50,7 @@ type WalletContextValue = {
   isAppChain: boolean;
   isConnecting: boolean;
   isMiniPay: boolean;
+  isWalletDetecting: boolean;
   error: string;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
@@ -91,6 +92,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [injectedAccount, setInjectedAccount] = useState("");
   const [injectedChainId, setInjectedChainId] = useState("");
   const [miniPayDetected, setMiniPayDetected] = useState(false);
+  const [isWalletDetecting, setIsWalletDetecting] = useState(true);
   const [backendAddress, setBackendAddress] = useState("");
   const [backendAuthLoading, setBackendAuthLoading] = useState(false);
   const [backendAuthError, setBackendAuthError] = useState("");
@@ -488,7 +490,9 @@ export function WalletProvider({ children }: WalletProviderProps) {
     // waitForInjectedProvider handles the race where MiniPay injects window.ethereum
     // after React mounts by polling + listening to ethereum#initialized event
     waitForInjectedProvider(3000).then((provider) => {
-      if (!provider || cancelled) return;
+      if (cancelled) return;
+      setIsWalletDetecting(false);
+      if (!provider) return;
 
       setMiniPayDetected(Boolean(provider.isMiniPay));
 
@@ -513,6 +517,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
         provider.removeListener?.("chainChanged", onChainChanged);
       };
     }).catch((error) => {
+      if (!cancelled) setIsWalletDetecting(false);
       console.warn("waitForInjectedProvider failed:", error);
     });
 
@@ -532,6 +537,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     isAppChain,
     isConnecting: isConnectingWallet,
     isMiniPay: miniPayDetected,
+    isWalletDetecting,
     error,
     connectWallet,
     disconnectWallet,

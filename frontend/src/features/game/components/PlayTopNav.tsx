@@ -149,6 +149,7 @@ export function PlayTopNav() {
     account,
     canDisconnect,
     isConnecting,
+    isWalletDetecting,
     isAppChain,
     walletProviderName,
     connectWallet,
@@ -208,7 +209,7 @@ export function PlayTopNav() {
   const passportAutoLoadedWalletRef = useRef("");
 
   const isConnected = Boolean(account);
-  const isConnectingUi = isHydrated ? isConnecting : false;
+  const isConnectingUi = isHydrated ? isConnecting || isWalletDetecting : false;
 
   useEffect(() => {
     let cancelled = false;
