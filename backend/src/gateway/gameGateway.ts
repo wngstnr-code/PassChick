@@ -187,6 +187,8 @@ function getWalletFromSocketHandshake(socket: Socket): string | null {
     return null;
   }
 
+  // FOLLOW-UP(v2 auth §13.1-A): fallback ini trust-on-claim; hapus setelah frontend selalu mengirim session token di socket.handshake.auth.token
+
   const walletProvider = String(auth.walletProvider || "").toLowerCase();
   const claimedAddress = String(auth.walletAddress || "");
   void auth.chainId;

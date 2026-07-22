@@ -8,11 +8,23 @@ import {
   deleteSession,
 } from "../services/sessionStore.js";
 import { SESSION_COOKIE, requireAuth } from "../middleware/auth.js";
+import { authAddressLimiter, authIpLimiter } from "../middleware/rateLimit.js";
 import { env } from "../config/env.js";
 import { supabase } from "../config/supabase.js";
 import { isValidEvmAddress, normalizeEvmAddress } from "../utils/celo.js";
 
+// V2 invariant: sessions created by /social and /minipay do NOT prove
+// ownership of a private key (MiniPay forbids sign-message login flows).
+// Because of this, a session token from these endpoints MUST NOT be
+// sufficient authorization for value-bearing mutations (ticket debits,
+// reward claims, etc). Value-bearing mutations must be authorized via
+// EIP-712 signatures + an on-chain tx originated from the user's wallet.
+// These endpoints are rate-limited below purely as abuse mitigation, not
+// as a substitute for that authorization model.
+
 const router = Router();
+
+router.use(authIpLimiter);
 
 function persistSessionCookie(res: Response) {
   return (token: string) => {
@@ -102,7 +114,7 @@ router.post("/verify", async (req, res) => {
   }
 });
 
-router.post("/social", async (req, res) => {
+router.post("/social", authAddressLimiter, async (req, res) => {
   try {
     if (!env.SOCIAL_AUTH_ENABLED) {
       res.status(403).json({
@@ -131,8 +143,11 @@ router.post("/social", async (req, res) => {
       return;
     }
 
-    
-    
+    if (!walletProvider) {
+      res.status(401).json({ error: "Missing wallet provider." });
+      return;
+    }
+
     const lowerProvider = (walletProvider || "").toLowerCase();
     const isSocialOrEmbedded =
       lowerProvider.includes("reown") ||
@@ -142,10 +157,13 @@ router.post("/social", async (req, res) => {
       lowerProvider === "discord" ||
       lowerProvider === "x";
 
-    if (!isSocialOrEmbedded) {
-      
-      
-      
+    // NOTE: do not whitelist strictly by default — the frontend sends
+    // arbitrary AppKit wallet names ("MetaMask", "EVM Wallet", etc) and
+    // those are legitimate logins. Only enforce the whitelist when
+    // AUTH_STRICT_PROVIDERS is explicitly enabled.
+    if (!isSocialOrEmbedded && env.AUTH_STRICT_PROVIDERS) {
+      res.status(401).json({ error: "Unknown or unsupported wallet provider." });
+      return;
     }
 
     const walletAddress = normalizeEvmAddress(address);
@@ -164,7 +182,7 @@ router.post("/social", async (req, res) => {
   }
 });
 
-router.post("/minipay", async (req, res) => {
+router.post("/minipay", authAddressLimiter, async (req, res) => {
   try {
     const {
       address,
@@ -181,6 +199,12 @@ router.post("/minipay", async (req, res) => {
 
     if (chainId && Number(chainId) !== env.CHAIN_ID) {
       res.status(400).json({ error: `Unsupported chainId. Expected ${env.CHAIN_ID}.` });
+      return;
+    }
+
+    const userAgent = String(req.headers["user-agent"] ?? "");
+    if (env.MINIPAY_UA_CHECK_ENABLED && !userAgent.includes("MiniPay")) {
+      res.status(401).json({ error: "MiniPay auth requires the MiniPay client." });
       return;
     }
 

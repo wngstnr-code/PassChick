@@ -28,6 +28,9 @@ function formatTokenAmount(unitsValue: string) {
 }
 
 export function isFaucetConfigured() {
+  if (env.CHAIN_ID === 42220) {
+    return false;
+  }
   return FAUCET_CONTRACT_ADDRESS !== "0x0000000000000000000000000000000000000000";
 }
 
@@ -57,6 +60,9 @@ export function readFaucetStatus(walletAddress?: string) {
 }
 
 function ensureFaucetReady() {
+  if (env.CHAIN_ID === 42220) {
+    throw new Error("Faucet is disabled on mainnet.");
+  }
   if (!isFaucetConfigured()) {
     throw new Error(
       "Faucet belum dikonfigurasi di backend. Set FAUCET_CONTRACT_ADDRESS atau GAME_FAUCET_ADDRESS terlebih dahulu.",
