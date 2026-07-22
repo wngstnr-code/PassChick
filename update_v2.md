@@ -11,7 +11,7 @@
 PassChick v2 mengganti model *stake USDC per match* menjadi model **Tiket + Leaderboard musiman**. Alasan utama:
 
 1. **Kelayakan listing MiniPay.** Model "taruh USDC, kalah = hangus" terbaca sebagai real-money gambling oleh reviewer (MiniPay didistribusikan via Google Play/Opera Mini yang ketat soal ini). Model tiket + kompetisi skill musiman masuk kategori "games" yang didukung.
-2. **Retensi.** Daily login, season 2-mingguan, dan sistem divisi memberi alasan user kembali setiap hari.
+2. **Retensi.** Daily login, season bulanan, dan sistem divisi memberi alasan user kembali setiap hari.
 3. **Metrik on-chain.** Program insentif builder MiniPay (hingga $1 juta CELO) dinilai dari aktivitas transaksi nyata. Desain v2 menghasilkan minimal 1 tx on-chain per user aktif per hari.
 
 **Semua pemain (lama & baru) mulai dari Divisi Rookie saat v2 rilis.**
@@ -191,8 +191,8 @@ Tier passport naik dari **akumulasi pencapaian lintas season** (tidak bisa dibel
 
 ## 8. Sistem Season
 
-- Durasi: **2 minggu**.
-- Reset otomatis setiap **Senin 07:00 WIB (Minggu 24:00 UTC)** — timezone dikunci WIB, ditampilkan di UI sebagai countdown (bukan jam absolut) agar tidak ambigu bagi user global.
+- Durasi: **1 bulan (kalender)**. *(Direvisi 2026-07-22 — semula 2 minggu; keputusan produk, sudah terimplementasi di backend.)*
+- Reset otomatis setiap **tanggal 1 pukul 07:00 WIB (00:00 UTC)** — timezone dikunci WIB, ditampilkan di UI sebagai countdown (bukan jam absolut) agar tidak ambigu bagi user global. Season pertama: jika bootstrap terjadi < 7 hari sebelum tanggal 1, reset digeser ke tanggal 1 bulan berikutnya lagi (mencegah season perdana yang cuma beberapa hari).
 - Urutan proses reset (job backend):
   1. Freeze leaderboard (snapshot poin + timestamp tie-break).
   2. Hitung promosi/degradasi per aturan §5.2.
@@ -554,7 +554,7 @@ cast call $V "paused()(bool)"                   --rpc-url $R
 >
 > - 🎟️ **Main pakai Tiket** — bye-bye taruhan USDC! 1 match = 1 tiket. Main lebih fun, aman, dan fokus ke skill.
 > - 🎁 **Tiket gratis tiap hari** — daily login reward dengan Mystery Box, plus top-up cepat pakai USDT/USDC/cUSD ($1 = 20 tiket).
-> - 🏆 **5 Divisi: Rookie → Runner → Steady → Elite → Oracle** — semua mulai dari Rookie. Push rank tiap season (2 minggu) untuk promosi, hadiah, dan skin eksklusif!
+> - 🏆 **5 Divisi: Rookie → Runner → Steady → Elite → Oracle** — semua mulai dari Rookie. Push rank tiap season (1 bulan) untuk promosi, hadiah, dan skin eksklusif!
 > - 👑 **Oracle Top 5** memperebutkan Grand Prize CELO + royalty dari revenue season!
 > - 🛂 **Passport-mu = kartu karirmu** — skin, badge, dan gelar season menempel permanen. Pamerkan tier-mu!
 > - 💰 **Saldo lama?** Withdraw kapan saja, tanpa batas waktu. Dana kamu tetap milik kamu.
