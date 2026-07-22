@@ -1,7 +1,7 @@
 # PassChick V2 — Frontend Roadmap
 
 **Status:** Working plan
-**Updated:** 2026-07-22
+**Updated:** 2026-07-23
 **Source of truth:** `update_v2.md`
 
 ## Objective
@@ -141,16 +141,26 @@ Start only after the backend and smart-contract interface checklist below is sig
 
 ### FE-06 Ticket top-up and legacy withdraw
 
+**Status:** Frontend complete; Mainnet shop remains fail-closed pending onchain enablement
+
 **Size:** L
 
 - Rename the primary money mode from DEPOSIT to TOP UP.
-- Add USDC, USDT, and cUSD selection with balance display and ticket quote.
+- Add USDC, USDT, and USDm selection with balance display and ticket quote.
 - Default to the supported token with the largest usable balance.
 - Implement approval/purchase flow and Add Cash for insufficient balance.
 - Render WITHDRAW only when `availableBalanceOf(user) > 0`.
 - Keep the existing legacy withdraw transaction path unchanged behind the conditional UI.
 
 **Acceptance:** new users never see GameVault concepts; legacy users can always withdraw; withdrawing the final balance removes the tab after refetch; purchase math is correct for 6- and 18-decimal tokens.
+
+**Implementation note:** Manage Money now defaults to TOP UP and reads payment
+tokens, balances, allowances, ticket balance, and legacy vault balance from Celo.
+Approval and `buyTickets` use attributed legacy Celo transactions with stablecoin
+fee abstraction. Mainnet remains closed because every payment token is disabled
+onchain; Sepolia enables only the PassChick mock USDC. The preserved backend
+withdraw flow is mounted only for a positive authoritative legacy balance and is
+removed after the final-balance refetch. See `docs/fe06-ticket-top-up.md`.
 
 ## Phase 4 — Gameplay cutover
 
@@ -248,4 +258,7 @@ Use a feature flag until backend, contract, and frontend are deployable together
 
 ## Immediate next action
 
-FE-05 frontend work is complete and fail-closed while its backend endpoints are unavailable. Next, either deploy and smoke-test the documented FE-05 status/claim contract or begin FE-06 ticket top-up and conditional legacy withdraw without altering the preserved withdrawal path.
+FE-06 frontend work is complete and fail-closed on Mainnet while TicketVault's
+shop remains disabled. Next, enable and verify the intended Mainnet payment
+tokens onchain, capture real MiniPay transaction evidence, then begin FE-07's
+coordinated one-ticket gameplay cutover behind a feature flag.

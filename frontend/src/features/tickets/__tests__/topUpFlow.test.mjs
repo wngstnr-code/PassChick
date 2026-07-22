@@ -125,7 +125,7 @@ describe("FE-06 ticket top-up", () => {
     });
 
     assert.equal(plan.purchase.feeCurrency, "0xef4d55d6de8e8d73232827cd1e9b2f2dbb45bc80");
-    assert.equal(plan.purchase.chainId, "0xaa37dc");
+    assert.equal(plan.purchase.chainId, "0xaa044c");
   });
 
   it("maps wallet, balance, and disabled-shop errors to recovery actions", async () => {
