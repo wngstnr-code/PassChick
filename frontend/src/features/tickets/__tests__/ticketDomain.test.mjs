@@ -39,10 +39,10 @@ describe("ticket domain", () => {
     assert.equal(createTicketQueryScope(ACCOUNT_A, "0x1"), null);
   });
 
-  it("quotes ticket purchases exactly with bigint for 6 and 18 decimals", () => {
-    assert.deepEqual(quoteTicketPurchase({ symbol: "USDC", decimals: 6, ticketAmount: 1n }), {
-      paymentAmount: { symbol: "USDC", decimals: 6, units: 50_000n },
-      ticketAmount: 1n,
+  it("quotes whole-dollar ticket purchases exactly with bigint", () => {
+    assert.deepEqual(quoteTicketPurchase({ symbol: "USDC", decimals: 6, ticketAmount: 20n }), {
+      paymentAmount: { symbol: "USDC", decimals: 6, units: 1_000_000n },
+      ticketAmount: 20n,
       ticketsPerDollar: 20n,
     });
     assert.equal(
@@ -55,7 +55,7 @@ describe("ticket domain", () => {
     );
   });
 
-  it("ships verified stablecoin metadata while leaving PassChick contracts fail-closed", () => {
+  it("ships verified stablecoin and signed-off PassChick contract metadata", () => {
     const mainnet = readTicketChainConfig(CELO_MAINNET_CHAIN_ID, {});
     const sepolia = readTicketChainConfig(CELO_SEPOLIA_CHAIN_ID, {});
 
@@ -65,13 +65,13 @@ describe("ticket domain", () => {
     );
     assert.equal(mainnet.paymentTokens[0].address, "0xcebA9300f2b948710d2653dD7B07f33A8B32118C");
     assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDT").address, "0xd077A400968890Eacc75cdc901F0356c943e4fDb");
-    assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDC").address, null);
-    assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDC").enabled, false);
-    assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDm").address, null);
-    assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDm").configurationStatus, "needs-review");
-    assert.equal(mainnet.ticketVault.status, "awaiting-signoff");
-    assert.equal(mainnet.ticketVault.address, null);
-    assert.equal(mainnet.ticketVault.abi, null);
+    assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDC").address, "0x8fb74c2a678811aecc6ed98bd5bc70e1119b7b61");
+    assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDC").enabled, true);
+    assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDm").address, "0xEF4d55D6dE8e8d73232827Cd1e9b2F2dBb45bC80");
+    assert.equal(sepolia.paymentTokens.find((token) => token.symbol === "USDm").configurationStatus, "verified");
+    assert.equal(mainnet.ticketVault.status, "ready");
+    assert.ok(mainnet.ticketVault.address);
+    assert.ok(mainnet.ticketVault.abi);
   });
 
   it("accepts a configured TicketVault only when address, ABI, and version are all signed off", () => {
@@ -93,12 +93,14 @@ describe("ticket domain", () => {
     });
     const scopeA = createTicketQueryScope(ACCOUNT_A, CELO_MAINNET_CHAIN_ID);
     const scopeB = createTicketQueryScope(ACCOUNT_B, CELO_MAINNET_CHAIN_ID);
+    const scopeSepolia = createTicketQueryScope(ACCOUNT_A, CELO_SEPOLIA_CHAIN_ID);
 
     assert.ok(scopeA);
     assert.ok(scopeB);
+    assert.ok(scopeSepolia);
     assert.equal((await adapter.getTicketBalance(scopeA)).available, 7n);
     assert.equal((await adapter.getTicketBalance(scopeB)).available, 0n);
-    assert.equal((await adapter.quotePurchase(scopeA, { symbol: "USDC", ticketAmount: 20n })).paymentAmount.units, 1_000_000n);
+    assert.equal((await adapter.quotePurchase(scopeSepolia, { symbol: "USDC", ticketAmount: 20n })).paymentAmount.units, 1_000_000n);
   });
 
   it("provides safe mock defaults for every read model", async () => {
@@ -147,7 +149,7 @@ describe("ticket domain", () => {
     assert.equal((await adapter.getDailyClaimStatus(scope)).streakDay, 2);
     assert.equal((await adapter.getSupportedPaymentTokens(scope)).length, 3);
     assert.equal((await adapter.getLegacyGameVaultBalance(scope)).units, 0n);
-    assert.equal((await adapter.quotePurchase(scope, { symbol: "USDC", ticketAmount: 1n })).ticketAmount, 1n);
+    assert.equal((await adapter.quotePurchase(scope, { symbol: "USDC", ticketAmount: 20n })).ticketAmount, 20n);
     assert.equal(calls.length, 5);
   });
 

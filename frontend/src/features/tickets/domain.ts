@@ -106,6 +106,9 @@ export function quoteTicketPurchase(input: {
   if (input.ticketAmount <= 0n) {
     throw new RangeError("Ticket amount must be positive.");
   }
+  if (input.ticketAmount % TICKETS_PER_DOLLAR !== 0n) {
+    throw new RangeError("Ticket amount must be a multiple of 20.");
+  }
   if (!Number.isInteger(input.decimals) || input.decimals < 0 || input.decimals > 255) {
     throw new RangeError("Token decimals must be an integer between 0 and 255.");
   }
@@ -119,7 +122,7 @@ export function quoteTicketPurchase(input: {
     paymentAmount: {
       symbol: input.symbol,
       decimals: input.decimals,
-      units: input.ticketAmount * (tokenUnit / TICKETS_PER_DOLLAR),
+      units: (input.ticketAmount / TICKETS_PER_DOLLAR) * tokenUnit,
     },
     ticketAmount: input.ticketAmount,
     ticketsPerDollar: TICKETS_PER_DOLLAR,

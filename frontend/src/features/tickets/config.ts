@@ -1,11 +1,17 @@
 import type { Abi } from "viem";
 import {
   CELO_MAINNET_CHAIN_ID,
+  CELO_SEPOLIA_CHAIN_ID,
   normalizeEvmAddress,
   type EvmAddress,
   type SupportedCeloChainId,
   type SupportedPaymentToken,
 } from "./domain.ts";
+import {
+  LEGACY_GAME_VAULT_ADDRESSES,
+  TICKET_VAULT_ABI,
+  TICKET_VAULT_DEPLOYMENTS,
+} from "./contracts.ts";
 
 export { CELO_MAINNET_CHAIN_ID, CELO_SEPOLIA_CHAIN_ID } from "./domain.ts";
 
@@ -40,7 +46,7 @@ const MAINNET_PAYMENT_TOKENS = [
     name: "USD Coin",
     address: "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
     decimals: 6,
-    enabled: true,
+    enabled: false,
     configurationStatus: "verified",
     feeCurrencyAddress: "0x2F25deB3848C207fc8E0c34035B3Ba7fC157602B",
   },
@@ -49,7 +55,7 @@ const MAINNET_PAYMENT_TOKENS = [
     name: "Tether USD",
     address: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e",
     decimals: 6,
-    enabled: true,
+    enabled: false,
     configurationStatus: "verified",
     feeCurrencyAddress: "0x0e2a3e05bc9a16f5292a6170456a710cb89c6f72",
   },
@@ -58,7 +64,7 @@ const MAINNET_PAYMENT_TOKENS = [
     name: "Mento Dollar",
     address: "0x765DE816845861e75A25fCA122bb6898B8B1282a",
     decimals: 18,
-    enabled: true,
+    enabled: false,
     configurationStatus: "verified",
     feeCurrencyAddress: "0x765DE816845861e75A25fCA122bb6898B8B1282a",
   },
@@ -67,11 +73,11 @@ const MAINNET_PAYMENT_TOKENS = [
 const SEPOLIA_PAYMENT_TOKENS = [
   {
     symbol: "USDC",
-    name: "USD Coin",
-    address: null,
+    name: "PassChick Test USDC",
+    address: "0x8fb74c2a678811aecc6ed98bd5bc70e1119b7b61",
     decimals: 6,
-    enabled: false,
-    configurationStatus: "needs-review",
+    enabled: true,
+    configurationStatus: "verified",
     feeCurrencyAddress: null,
   },
   {
@@ -79,17 +85,17 @@ const SEPOLIA_PAYMENT_TOKENS = [
     name: "Tether USD",
     address: "0xd077A400968890Eacc75cdc901F0356c943e4fDb",
     decimals: 6,
-    enabled: true,
+    enabled: false,
     configurationStatus: "verified",
     feeCurrencyAddress: null,
   },
   {
     symbol: "USDm",
     name: "Mento Dollar",
-    address: null,
+    address: "0xEF4d55D6dE8e8d73232827Cd1e9b2F2dBb45bC80",
     decimals: 18,
     enabled: false,
-    configurationStatus: "needs-review",
+    configurationStatus: "verified",
     feeCurrencyAddress: null,
   },
 ] as const satisfies readonly SupportedPaymentToken[];
@@ -127,34 +133,60 @@ function readTicketVaultArtifact(
   };
 }
 
+function configuredValue(value: string | undefined, fallback: string) {
+  return value === undefined || value.trim() === "" ? fallback : value;
+}
+
 export function readTicketChainConfig(
   chainId: SupportedCeloChainId,
   env: TicketPublicEnv = readRuntimeEnv(),
-  signedOffTicketVaultAbi: Abi | null = null,
+  signedOffTicketVaultAbi: Abi | null = TICKET_VAULT_ABI,
 ): TicketChainConfig {
   if (chainId === CELO_MAINNET_CHAIN_ID) {
+    const deployment = TICKET_VAULT_DEPLOYMENTS[CELO_MAINNET_CHAIN_ID];
     return {
       chainId,
       paymentTokens: MAINNET_PAYMENT_TOKENS,
       ticketVault: readTicketVaultArtifact(
-        env.NEXT_PUBLIC_TICKET_VAULT_ADDRESS_CELO,
-        env.NEXT_PUBLIC_TICKET_VAULT_DEPLOYMENT_VERSION_CELO,
+        configuredValue(
+          env.NEXT_PUBLIC_TICKET_VAULT_ADDRESS_CELO,
+          deployment.proxyAddress,
+        ),
+        configuredValue(
+          env.NEXT_PUBLIC_TICKET_VAULT_DEPLOYMENT_VERSION_CELO,
+          deployment.deploymentVersion,
+        ),
         signedOffTicketVaultAbi,
       ),
-      legacyGameVaultAddress: normalizeEvmAddress(env.NEXT_PUBLIC_VAULT_ADDRESS || ""),
+      legacyGameVaultAddress: normalizeEvmAddress(
+        configuredValue(
+          env.NEXT_PUBLIC_VAULT_ADDRESS,
+          LEGACY_GAME_VAULT_ADDRESSES[CELO_MAINNET_CHAIN_ID],
+        ),
+      ),
     };
   }
 
+  const deployment = TICKET_VAULT_DEPLOYMENTS[CELO_SEPOLIA_CHAIN_ID];
   return {
     chainId,
     paymentTokens: SEPOLIA_PAYMENT_TOKENS,
     ticketVault: readTicketVaultArtifact(
-      env.NEXT_PUBLIC_TICKET_VAULT_ADDRESS_CELO_SEPOLIA,
-      env.NEXT_PUBLIC_TICKET_VAULT_DEPLOYMENT_VERSION_CELO_SEPOLIA,
+      configuredValue(
+        env.NEXT_PUBLIC_TICKET_VAULT_ADDRESS_CELO_SEPOLIA,
+        deployment.proxyAddress,
+      ),
+      configuredValue(
+        env.NEXT_PUBLIC_TICKET_VAULT_DEPLOYMENT_VERSION_CELO_SEPOLIA,
+        deployment.deploymentVersion,
+      ),
       signedOffTicketVaultAbi,
     ),
     legacyGameVaultAddress: normalizeEvmAddress(
-      env.NEXT_PUBLIC_LEGACY_GAME_VAULT_ADDRESS_CELO_SEPOLIA || "",
+      configuredValue(
+        env.NEXT_PUBLIC_LEGACY_GAME_VAULT_ADDRESS_CELO_SEPOLIA,
+        LEGACY_GAME_VAULT_ADDRESSES[CELO_SEPOLIA_CHAIN_ID],
+      ),
     ),
   };
 }
