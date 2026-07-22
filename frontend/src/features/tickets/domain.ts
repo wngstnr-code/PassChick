@@ -25,6 +25,8 @@ export type DailyClaimStatus = {
   streakDay: number;
   nextClaimAtMs: number | null;
   expectedTickets: bigint;
+  passportPerkApplied?: boolean;
+  passportBonusTickets?: bigint;
 };
 
 export type StablecoinAmount = {

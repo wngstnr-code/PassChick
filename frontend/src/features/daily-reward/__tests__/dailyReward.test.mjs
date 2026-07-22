@@ -128,4 +128,151 @@ describe("daily reward domain", () => {
       refreshRequired: false,
     });
   });
+
+  it("rejects malformed signatures, future timestamps, and invalid nonces", async () => {
+    const { parseSignedDailyClaim } = await import("../domain.ts");
+
+    assert.throws(
+      () => parseSignedDailyClaim({ ...validPayload(), signature: "0x11" }, { account: ACCOUNT, nowMs: NOW_MS }),
+      /signature is invalid/i,
+    );
+    assert.throws(
+      () => parseSignedDailyClaim(validPayload({ issuedAt: Math.floor(NOW_MS / 1000) + 1 }), { account: ACCOUNT, nowMs: NOW_MS }),
+      /future/i,
+    );
+    assert.throws(
+      () => parseSignedDailyClaim(validPayload({ nonce: "not-a-number" }), { account: ACCOUNT, nowMs: NOW_MS }),
+      /nonce is invalid/i,
+    );
+  });
+
+  it("sends a claim and waits for a successful receipt", async () => {
+    const { parseSignedDailyClaim } = await import("../domain.ts");
+    const {
+      buildDailyClaimTransaction,
+      sendDailyClaimTransaction,
+      waitForDailyClaimReceipt,
+    } = await import("../transaction.ts");
+    const signedClaim = parseSignedDailyClaim(validPayload(), { account: ACCOUNT, nowMs: NOW_MS });
+    const transaction = buildDailyClaimTransaction({
+      chainId: 42_220,
+      account: ACCOUNT,
+      signedClaim,
+    });
+    const hash = `0x${"ab".repeat(32)}`;
+    const methods = [];
+    const provider = {
+      async request({ method }) {
+        methods.push(method);
+        if (method === "eth_sendTransaction") return hash;
+        return { blockNumber: "0x10", status: "0x1" };
+      },
+    };
+
+    assert.equal(await sendDailyClaimTransaction(provider, transaction), hash);
+    assert.deepEqual(await waitForDailyClaimReceipt(provider, hash, { timeoutMs: 50, pollMs: 1 }), {
+      blockNumber: "0x10",
+      status: "0x1",
+    });
+    assert.deepEqual(methods, ["eth_sendTransaction", "eth_getTransactionReceipt"]);
+  });
+
+  it("rejects invalid wallet hashes, reverted receipts, and mismatched senders", async () => {
+    const { parseSignedDailyClaim } = await import("../domain.ts");
+    const {
+      buildDailyClaimTransaction,
+      sendDailyClaimTransaction,
+      waitForDailyClaimReceipt,
+    } = await import("../transaction.ts");
+    const signedClaim = parseSignedDailyClaim(validPayload(), { account: ACCOUNT, nowMs: NOW_MS });
+
+    assert.throws(
+      () => buildDailyClaimTransaction({
+        chainId: 42_220,
+        account: "0x2222222222222222222222222222222222222222",
+        signedClaim,
+      }),
+      /connected wallet/i,
+    );
+    await assert.rejects(
+      sendDailyClaimTransaction({ request: async () => "bad-hash" }, buildDailyClaimTransaction({
+        chainId: 42_220,
+        account: ACCOUNT,
+        signedClaim,
+      })),
+      /valid transaction hash/i,
+    );
+    await assert.rejects(
+      waitForDailyClaimReceipt(
+        { request: async () => ({ blockNumber: "0x10", status: "0x0" }) },
+        `0x${"cd".repeat(32)}`,
+        { timeoutMs: 50, pollMs: 1 },
+      ),
+      /failed onchain/i,
+    );
+  });
+
+  it("classifies stale nonce, backend, and unknown failures", async () => {
+    const { classifyDailyClaimError } = await import("../domain.ts");
+
+    assert.equal(classifyDailyClaimError(new Error("NonceAlreadyUsed(42)")).refreshRequired, true);
+    assert.equal(classifyDailyClaimError(new Error("Daily reward confirmation timed out.")).refreshRequired, true);
+    assert.match(classifyDailyClaimError(new Error("Backend request timeout")).message, /timeout/i);
+    assert.equal(classifyDailyClaimError(null).message, "Reward claim failed. Please try again.");
+  });
+
+  it("parses authoritative daily status and optional passport bonus", async () => {
+    const { parseDailyClaimStatus } = await import("../status.ts");
+
+    assert.deepEqual(parseDailyClaimStatus({
+      success: true,
+      status: {
+        claimable: true,
+        streakDay: 4,
+        nextClaimAtMs: null,
+        expectedTickets: "8",
+        passportPerkApplied: true,
+        passportBonusTickets: "2",
+      },
+    }), {
+      claimable: true,
+      streakDay: 4,
+      nextClaimAtMs: null,
+      expectedTickets: 8n,
+      passportPerkApplied: true,
+      passportBonusTickets: 2n,
+    });
+  });
+
+  it("fails closed on malformed daily status", async () => {
+    const { parseDailyClaimStatus } = await import("../status.ts");
+
+    assert.throws(() => parseDailyClaimStatus(null), /response is missing/i);
+    assert.throws(() => parseDailyClaimStatus({ success: false }), /refused/i);
+    assert.throws(() => parseDailyClaimStatus({
+      claimable: "yes",
+      streakDay: 1,
+      nextClaimAtMs: null,
+      expectedTickets: 5,
+    }), /claimable state/i);
+    assert.throws(() => parseDailyClaimStatus({
+      claimable: true,
+      streakDay: 8,
+      nextClaimAtMs: null,
+      expectedTickets: 5,
+    }), /streak/i);
+    assert.throws(() => parseDailyClaimStatus({
+      claimable: true,
+      streakDay: 1,
+      nextClaimAtMs: null,
+      expectedTickets: 101,
+    }), /ticket amount/i);
+    assert.throws(() => parseDailyClaimStatus({
+      claimable: true,
+      streakDay: 1,
+      nextClaimAtMs: null,
+      expectedTickets: 5,
+      passportPerkApplied: "false",
+    }), /passport perk state/i);
+  });
 });

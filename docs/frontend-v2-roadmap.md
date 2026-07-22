@@ -127,6 +127,8 @@ Start only after the backend and smart-contract interface checklist below is sig
 
 ### FE-05 Daily reward
 
+**Status:** Frontend complete behind fail-closed backend boundary; awaiting live endpoint and device evidence
+
 **Size:** M
 
 - Build the seven-day reward strip, mystery-box states, streak reset copy, next-claim countdown, and passport perk indicator.
@@ -134,6 +136,8 @@ Start only after the backend and smart-contract interface checklist below is sig
 - Prevent repeat clicks locally while relying on the contract for actual replay protection.
 
 **Acceptance:** confirmed claims update the displayed balance; rejected, expired, already-claimed, and failed transactions recover without a page reload.
+
+**Implementation note:** `/rewards` now provides the seven-day punch card, mystery states, reset guidance, countdown, ticket balance, and backend-authoritative passport perk indicator. Signed payloads are wallet-bound and validated against the TicketVault limits and 600-second TTL before wallet submission. The write uses a legacy Celo transaction, USDm fee abstraction, and a browser-only hostname-derived ERC-8021 suffix; successful receipts invalidate all ticket queries. The flow intentionally remains unavailable until the documented daily status and signed-claim endpoints are deployed. See `docs/fe05-daily-reward.md`.
 
 ### FE-06 Ticket top-up and legacy withdraw
 
@@ -244,4 +248,4 @@ Use a feature flag until backend, contract, and frontend are deployable together
 
 ## Immediate next action
 
-FE-04 contract sign-off and production reads are complete. Next, begin FE-05 against the typed adapter, while keeping claim submission behind the feature boundary until the backend daily-claim endpoint, wallet-bound authorization, error schema, and receipt-confirmation policy are finalized. Add and verify the hostname-derived ERC-8021 suffix when the first FE-05 write transaction is wired.
+FE-05 frontend work is complete and fail-closed while its backend endpoints are unavailable. Next, either deploy and smoke-test the documented FE-05 status/claim contract or begin FE-06 ticket top-up and conditional legacy withdraw without altering the preserved withdrawal path.

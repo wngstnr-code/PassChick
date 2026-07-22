@@ -239,6 +239,12 @@ export function DashboardPage() {
                 >
                   HOW TO PLAY
                 </button>
+                <Link
+                  href="/rewards"
+                  className="flow-btn home-btn-main dashboard-btn dashboard-btn-how"
+                >
+                  DAILY REWARD
+                </Link>
                 <a
                   href="/managemoney"
                   className="flow-btn home-btn-main dashboard-btn dashboard-btn-deposit"
