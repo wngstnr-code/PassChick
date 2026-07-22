@@ -5,8 +5,19 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {TicketVault} from "../src/TicketVault.sol";
 import {GameUSDC} from "../src/GameUSDC.sol";
+import {TicketVaultV2} from "./mocks/UUPSMocks.sol";
+
+/// @notice Stands in for cUSD, which unlike USDC carries 18 decimals.
+contract MockCUSD is ERC20 {
+    constructor() ERC20("Mock Celo Dollar", "cUSD") {}
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
 
 contract TicketVaultTest is Test {
     bytes32 internal constant EIP712_DOMAIN_TYPEHASH =
@@ -168,12 +179,7 @@ contract TicketVaultTest is Test {
 
     function test_BuyTicketsHonoursTokenDecimals() public {
         // An 18-decimal stablecoin such as cUSD must cost 1e18 per dollar, not 1e6.
-        GameUSDC cusdImplementation = new GameUSDC();
-        ERC1967Proxy cusdProxy = new ERC1967Proxy(
-            address(cusdImplementation), abi.encodeCall(GameUSDC.initialize, (address(this)))
-        );
-        GameUSDC cusd = GameUSDC(address(cusdProxy));
-        cusd.setMinter(address(this), true);
+        MockCUSD cusd = new MockCUSD();
         vault.setToken(address(cusd), 18, true);
 
         cusd.mint(player, 10e18);
@@ -298,6 +304,103 @@ contract TicketVaultTest is Test {
             (bool ok,) = address(vault).staticcall(abi.encodeWithSelector(forbidden[i], player, uint256(1)));
             assertFalse(ok, "ticket transfer surface must not exist");
         }
+    }
+
+    // ------------------------------------------------------------ claim cap
+
+    function test_ClaimDailyAboveCapReverts() public {
+        TicketVault.DailyClaim memory claim = _claim(player, 1, 101, 1);
+
+        vm.prank(player);
+        vm.expectRevert(abi.encodeWithSelector(TicketVault.TicketAmountTooLarge.selector, uint16(101), uint16(100)));
+        vault.claimDaily(claim, _signClaim(claim, backendSignerPk));
+    }
+
+    function test_ClaimDailyAtCapSucceeds() public {
+        TicketVault.DailyClaim memory claim = _claim(player, 1, 100, 1);
+
+        vm.prank(player);
+        vault.claimDaily(claim, _signClaim(claim, backendSignerPk));
+
+        assertEq(vault.ticketBalance(player), 100);
+    }
+
+    // ------------------------------------------------------- token config
+
+    function test_SetTokenRejectsWrongDecimals() public {
+        // GameUSDC reports 6; declaring 18 would overcharge buyers a trillionfold.
+        vm.expectRevert(abi.encodeWithSelector(TicketVault.DecimalsMismatch.selector, uint8(18), uint8(6)));
+        vault.setToken(address(usdc), 18, true);
+    }
+
+    function test_SetTokenRejectsTokenWithoutDecimals() public {
+        // A plain EOA-like address exposes no decimals(); it must not enter the shop.
+        vm.expectRevert();
+        vault.setToken(address(0xDEAD), 6, true);
+    }
+
+    function test_SetTokenOnlyOwner() public {
+        vm.prank(player);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, player));
+        vault.setToken(address(usdc), 6, true);
+    }
+
+    // ----------------------------------------------------------- rescue
+
+    function test_RescueTokenRecoversMisdirectedFunds() public {
+        usdc.mint(address(vault), 25e6);
+
+        vault.rescueToken(address(usdc), treasury, 25e6);
+
+        assertEq(usdc.balanceOf(treasury), 25e6);
+        assertEq(usdc.balanceOf(address(vault)), 0);
+    }
+
+    function test_RescueTokenOnlyOwner() public {
+        usdc.mint(address(vault), 1e6);
+
+        vm.prank(player);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, player));
+        vault.rescueToken(address(usdc), player, 1e6);
+    }
+
+    /// @dev Ticket balances are internal accounting, not tokens, so a rescue can never
+    ///      touch what a player owns.
+    function test_RescueCannotTouchTicketBalances() public {
+        _creditOne(player, 500);
+        usdc.mint(address(vault), 10e6);
+
+        vault.rescueToken(address(usdc), treasury, 10e6);
+
+        assertEq(vault.ticketBalance(player), 500);
+    }
+
+    // ---------------------------------------------------------- upgrade
+
+    function test_OwnerCanUpgradeProxy() public {
+        TicketVaultV2 nextImplementation = new TicketVaultV2();
+        vault.upgradeToAndCall(address(nextImplementation), "");
+
+        assertEq(TicketVaultV2(address(vault)).version(), 2);
+        assertEq(vault.owner(), address(this));
+    }
+
+    function test_NonOwnerCannotUpgradeProxy() public {
+        TicketVaultV2 nextImplementation = new TicketVaultV2();
+
+        vm.prank(player);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, player));
+        vault.upgradeToAndCall(address(nextImplementation), "");
+    }
+
+    function test_UpgradePreservesTicketBalances() public {
+        _creditOne(player, 77);
+
+        TicketVaultV2 nextImplementation = new TicketVaultV2();
+        vault.upgradeToAndCall(address(nextImplementation), "");
+
+        assertEq(vault.ticketBalance(player), 77, "balances survive the upgrade");
+        assertEq(vault.totalTicketsIssued(), 77);
     }
 
     // --------------------------------------------------------------- helpers

@@ -9,6 +9,7 @@ import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/crypt
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title TicketVault
@@ -39,15 +40,24 @@ contract TicketVault is
     /// @notice $1 buys 20 tickets ($0.05 per ticket), identical across every accepted stablecoin.
     uint256 public constant TICKETS_PER_USD = 20;
 
+    /// @notice Hard ceiling on a single signed daily claim.
+    /// @dev The richest legitimate day is 10 tickets plus a 1-ticket passport perk, so
+    ///      100 leaves generous headroom. Its real job is bounding the damage if the
+    ///      backend signing key leaks: without it a single signature could mint 65,535
+    ///      tickets (~$3,276 at the shop price).
+    uint16 public constant MAX_TICKETS_PER_CLAIM = 100;
+
     error InvalidSigner(address signer);
     error InvalidTreasury(address treasury);
     error InvalidUser(address user);
     error InvalidToken(address token);
-    error InvalidDecimals(uint8 decimals);
+    error InvalidRecipient(address recipient);
+    error DecimalsMismatch(uint8 declared, uint8 actual);
     error InvalidSignatureTtl(uint64 ttl);
     error TokenNotEnabled(address token);
     error ZeroAmount();
     error ZeroTicketAmount();
+    error TicketAmountTooLarge(uint16 amount, uint16 maxAmount);
     error DailyClaimExpired(uint64 issuedAt, uint64 ttl);
     error DailyClaimInFuture(uint64 issuedAt);
     error DayAlreadyClaimed(uint32 lastClaimDay, uint32 dayIndex);
@@ -60,6 +70,7 @@ contract TicketVault is
     event TreasuryUpdated(address indexed treasury);
     event ClaimSignatureTtlUpdated(uint64 ttl);
     event TokenConfigured(address indexed token, uint8 decimals, bool enabled);
+    event TokenRescued(address indexed token, address indexed recipient, uint256 amount);
     event TicketClaimed(address indexed user, uint32 indexed dayIndex, uint16 amount, uint256 nonce);
     event TicketPurchased(address indexed user, address indexed token, uint256 usdAmount, uint256 cost, uint256 tickets);
     event TicketCredited(address indexed user, uint256 amount);
@@ -126,16 +137,42 @@ contract TicketVault is
 
     /// @notice Whitelist (or disable) a stablecoin for ticket purchases.
     /// @dev Owner can add tokens such as USDm later without an upgrade (spec 4.2).
+    ///      `decimals` is checked against the token's own `decimals()` rather than
+    ///      trusted: a typo here (18 instead of 6) would silently overcharge buyers by
+    ///      a factor of a trillion. A token that does not expose `decimals()` is
+    ///      rejected outright - it has no business in the shop.
     function setToken(address token, uint8 decimals, bool enabled) external onlyOwner {
         if (token == address(0)) {
             revert InvalidToken(token);
         }
-        if (decimals > 18) {
-            revert InvalidDecimals(decimals);
+
+        uint8 actualDecimals = IERC20Metadata(token).decimals();
+        if (actualDecimals != decimals) {
+            revert DecimalsMismatch(decimals, actualDecimals);
         }
 
         tokens[token] = TokenConfig({enabled: enabled, decimals: decimals});
         emit TokenConfigured(token, decimals, enabled);
+    }
+
+    /// @notice Recover tokens sent here by mistake.
+    /// @dev Purchases forward straight to the treasury, so this contract holds no
+    ///      stablecoins as part of normal operation and every balance here is an
+    ///      accident. Ticket balances are internal accounting, not tokens, so nothing
+    ///      a player owns can be swept by this.
+    function rescueToken(address token, address recipient, uint256 amount) external onlyOwner {
+        if (token == address(0)) {
+            revert InvalidToken(token);
+        }
+        if (recipient == address(0)) {
+            revert InvalidRecipient(recipient);
+        }
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+
+        IERC20(token).safeTransfer(recipient, amount);
+        emit TokenRescued(token, recipient, amount);
     }
 
     function pause() external onlyOwner {
@@ -157,6 +194,9 @@ contract TicketVault is
         }
         if (claim.amount == 0) {
             revert ZeroTicketAmount();
+        }
+        if (claim.amount > MAX_TICKETS_PER_CLAIM) {
+            revert TicketAmountTooLarge(claim.amount, MAX_TICKETS_PER_CLAIM);
         }
         if (claim.issuedAt > block.timestamp) {
             revert DailyClaimInFuture(claim.issuedAt);

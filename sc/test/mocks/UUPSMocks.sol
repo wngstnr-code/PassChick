@@ -6,6 +6,7 @@ import {USDCFaucet} from "../../src/USDCFaucet.sol";
 import {GameVault} from "../../src/GameVault.sol";
 import {GameSettlement} from "../../src/GameSettlement.sol";
 import {TrustPassport} from "../../src/TrustPassport.sol";
+import {TicketVault} from "../../src/TicketVault.sol";
 
 contract GameUSDCV2 is GameUSDC {
     function version() external pure returns (uint256) {
@@ -32,6 +33,12 @@ contract GameSettlementV2 is GameSettlement {
 }
 
 contract TrustPassportV2 is TrustPassport {
+    function version() external pure returns (uint256) {
+        return 2;
+    }
+}
+
+contract TicketVaultV2 is TicketVault {
     function version() external pure returns (uint256) {
         return 2;
     }
