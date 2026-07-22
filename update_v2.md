@@ -2,7 +2,7 @@
 
 **Status:** Draft final untuk implementasi
 **Target:** Submit listing Mini App di MiniPay
-**Terakhir diupdate:** 2026-07-17
+**Terakhir diupdate:** 2026-07-22 (revisi setelah verifikasi state on-chain — lihat §15)
 
 ---
 
@@ -33,8 +33,9 @@ PassChick v2 mengganti model *stake USDC per match* menjadi model **Tiket + Lead
 | Daily login | Klaim harian dengan streak 7 hari (lihat §3) | ✅ 1 tx/hari |
 | Top-up | Beli pakai stablecoin via `TicketShop` (lihat §4) | ✅ |
 | Reward season | Bonus tiket untuk peringkat atas divisi (lihat §6) | ✅ (batch kredit) |
-| Konversi saldo lama | Migrasi saldo GameVault dengan bonus 10% (lihat §10) | ✅ |
 | Perk passport | +1 tiket daily untuk tier tertentu (lihat §7) | ✅ (menempel di daily claim) |
+
+> Konversi saldo GameVault lama **dihapus** dari desain — total saldo user di mainnet cuma $0.0187, tidak sepadan dibangun. Lihat §10.
 
 ---
 
@@ -152,6 +153,7 @@ Catatan:
 - **Skin bersifat seasonal-exclusive**: tidak bisa didapat lagi setelah season berakhir. Ini retention hook termurah yang kita punya.
 - Nominal pasti stablecoin/CELO di-finalkan per season berdasarkan revenue; angka di tabel adalah rentang target awal.
 - **Syarat pencairan reward moneter: passport verified** (lihat §7.1).
+- ⚠️ **Reward moneter Season 1 butuh funding eksternal.** `treasuryBalance` on-chain saat ini **$0.1133** (§15) — tidak menutupi satu pun pemenang Elite ($3–5), apalagi grand prize Oracle. Dua opsi: (a) top-up treasury dari kantong sendiri sebelum S1, atau (b) Season 1 jalan **reward non-moneter saja** (tiket + skin + badge) dan reward uang baru aktif di S2 setelah revenue top-up masuk. Rekomendasi: **(b)** — nol modal, dan royalty Oracle memang self-funding dari revenue season berjalan sehingga otomatis bekerja begitu ada pembeli tiket.
 
 ---
 
@@ -210,9 +212,11 @@ Tier passport naik dari **akumulasi pencapaian lintas season** (tidak bisa dibel
 
 Kontrak lama:
 
-- **TrustPassport** — diperluas (tier lintas season, status verified Self.xyz, badge/gelar). Sudah UUPS, bisa di-upgrade.
-- **GameSettlement** — tetap dipakai untuk settlement hasil match (EIP-712 signer sudah ada).
-- **GameVault** — masuk mode withdraw-only (lihat §10).
+- **TrustPassport** — **di-upgrade** (tier lintas season, status verified Self.xyz, badge/gelar). Sudah UUPS.
+- **GameSettlement** — **dormant.** Di V2 satu match = satu tiket yang didebit off-chain, jadi tidak ada lagi yang perlu di-settle on-chain. Kontraknya tetap live (proxy tidak bisa dihapus) tapi tidak dipanggil lagi setelah cutover. Pola EIP-712-nya tidak dipakai ulang — `claimDaily` mencontek TrustPassport, bukan ini (lihat S3).
+- **GameVault** — **dormant**, withdraw-only (lihat §10). Kode tidak diubah: `withdraw()` sudah tanpa `whenNotPaused`, jadi `pause()` otomatis menghasilkan withdraw-only.
+
+> Total kontrak mainnet: **3 → 4**. Tidak ada yang dihapus (proxy yang pegang dana user harus tetap hidup selamanya agar withdraw jalan). `GameUSDC` + `USDCFaucet` tetap testnet-only.
 
 ### 9.2 Pembagian on-chain vs off-chain
 
@@ -232,10 +236,44 @@ Semua event `TicketClaimed` / `TicketPurchased` langsung terbaca dashboard Dune 
 
 ## 10. Migrasi Saldo GameVault (User Lama)
 
-1. **Saat v2 rilis:** GameVault masuk **withdraw-only** — deposit dimatikan di UI dan (jika kontrak mendukung pause per fungsi) di kontrak. Tombol withdraw ditempatkan mencolok.
-2. **Konversi berinsentif:** satu klik "Convert ke tiket" dengan **bonus 10%** ($1 saldo = 22 tiket). Bonus berlaku **30 hari pertama** setelah rilis v2.
-3. **Withdraw tersedia selamanya.** Tidak ada force-convert, tidak ada deadline withdraw — itu dana user.
-4. Komunikasi: banner in-app + section migrasi di pengumuman update 2.0.
+**Direvisi 2026-07-22.** Rencana awal (fitur convert-ke-tiket + bonus 10% + banner + deadline 30 hari) **dibatalkan**. Alasannya angka on-chain: total `availableBalances` seluruh pemain = **$0.0187** (§15). Bonus 10% dari itu bernilai $0.0019. Membangun flow konversi on-chain untuk melindungi dua sen adalah scope yang tidak akan pernah balik modal — dan setiap fitur ekstra menambah permukaan yang harus dijelaskan ke reviewer MiniPay.
+
+### 10.1 Kendala keras: refund manual TIDAK MUNGKIN
+
+Rencana pengganti berupa "kirim balik dana user secara manual" juga **tidak bisa dieksekusi** — kontraknya tidak menyediakan jalurnya, dan itu memang desain yang benar:
+
+- Tidak ada fungsi owner yang memindahkan `availableBalances`. Satu-satunya jalan keluar adalah `withdraw()`, yang mensyaratkan `msg.sender` = pemilik saldo (`GameVault.sol:94-109`).
+- `rescueToken` sengaja mengecualikan dana user (`GameVault.sol:152`):
+  ```
+  rescuable = actualBalance − (totalAvailable + totalLocked + treasury)
+            = 133,300 − 133,300 = 0
+  ```
+  Owner bisa menyelamatkan **persis nol**.
+
+**Konsekuensi:** menghapus tombol withdraw = penyitaan de facto. Dana user terkunci permanen karena tidak ada satu pun pihak yang bisa mengeluarkannya. Tombol withdraw **wajib tetap ada di V2**, tanpa kecuali.
+
+### 10.2 Rencana final
+
+1. **Deposit dimatikan di UI** saat v2 rilis; mode `deposit` di `ManageMoneyPage.tsx` dialihfungsikan jadi top-up tiket (§13.4-F8).
+2. **Withdraw tetap ada, tapi turun pangkat — bukan dihapus.** Render tab withdraw secara kondisional, hanya kalau `availableBalanceOf(user) > 0`:
+   ```tsx
+   const moneyModes = [
+     { mode: "deposit", label: "TOP UP" },
+     ...(legacyBalance > 0n ? [{ mode: "withdraw", label: "WITHDRAW" }] : []),
+   ];
+   ```
+   User V2 baru saldonya nol → tidak pernah melihat tab ini sama sekali, UI bersih dan konsep "vault USDC" hilang dari pandangan reviewer MiniPay. User lama tetap punya pintu keluar otomatis tanpa perlu dilacak satu per satu. Begitu mereka tarik, tabnya hilang sendiri selamanya.
+3. **Tidak ada deadline, tidak ada force-convert.** `withdraw()` jalan terus bahkan setelah kontrak di-`pause()` (fungsinya tanpa `whenNotPaused`).
+
+⚠️ **Jangan** hapus withdraw path di `useBackendDepositFlow`, dan jangan pensiunkan alamat `GameVault` dari config frontend. Kontraknya harus tetap terhubung meski tabnya tersembunyi.
+
+### 10.3 Sesi V1 yang menggantung
+
+`totalLockedBalance = 1300` = 13 sesi × `FIXED_STAKE_AMOUNT` (100), total **$0.0013**. Perlu didrain sebelum `pause()` (§14 Fase 3), tapi perhatikan: **`expireSession` bukan refund.** Baris `GameSettlement.sol:236` memanggil `vault.settleCrash(...)` — stake masuk **treasury**, pemain dianggap kalah. Refund sungguhan butuh `settleWithSignature` dengan `payout = stake` bertanda tangan backend signer.
+
+Keputusan: **pakai `expireSession`** (sita ke treasury). Membangun flow refund bertanda tangan untuk $0.0013 tidak sepadan. `sessionExpiryDelay = 86400` dan sesi-sesi ini sudah jauh lewat, jadi langsung eligible.
+
+`sessionId`-nya ada di Supabase `game_sessions.onchain_session_id` — `recoveryWorker.ts` hanya menangani status `CRASHED`/`CASHED_OUT`, bukan yang menggantung, jadi perlu query manual + cocokkan dengan `getSession()` on-chain.
 
 ---
 
@@ -311,14 +349,14 @@ Kondisi umum: paling siap di antara tiga modul. Lima kontrak UUPS dengan pola ko
 
 | # | Temuan | Solusi |
 |---|---|---|
-| S1 | **Jebakan cutover:** `pause()` GameVault memblokir deposit SEKALIGUS `lockStake`/`settleCashout`/`settleCrash` (`GameVault.sol:82,166,187,213`) — pause saat masih ada sesi V1 aktif = dana pemain macet di `lockedBalances` | Urutan cutover §10 direvisi: matikan deposit **di UI dulu** → tunggu semua sesi V1 settle → baru `pause()`. Alternatif enforce on-chain: upgrade UUPS tambah flag `depositsPaused` terpisah (append storage slot, aman) |
+| S1 | 🔴 **Jebakan cutover — SUDAH TERJADI, bukan hipotetis.** `pause()` GameVault memblokir deposit SEKALIGUS `lockStake`/`settleCashout`/`settleCrash` (`GameVault.sol:82,166,187,213`). Verifikasi on-chain 2026-07-22: **`totalLockedBalance = 1300`** (= 13 sesi × `FIXED_STAKE_AMOUNT` 100) masih nyangkut sekarang juga. Pause hari ini = dana itu terkunci permanen — `rescueToken` pun mengecualikan `totalLockedBalance` (`GameVault.sol:152`), jadi owner tidak bisa menyelamatkan | `expireSession()` (`GameSettlement.sol:218`) **permissionless** — siapa pun bisa panggil, tidak perlu owner. Tapi dia `whenNotPaused`, jadi harus dieksekusi SEBELUM pause. Urutan wajib: matikan deposit di UI → drain 13 sesi via `expireSession` → **verifikasi `totalLockedBalance == 0` on-chain** → baru `pause()`. Jadikan pengecekan nol ini gate eksplisit di runbook, bukan asumsi |
 | S2 | TrustPassport belum punya field untuk verified/badge/riwayat season, dan **tidak ada storage gap** | Upgrade dengan **mapping baru terpisah append-only** (`verifiedHuman`, `seasonHistory`, `badges`) — JANGAN mengubah struct `Passport` lama (menggeser layout). Tambahkan `uint256[50] __gap` sekarang sebagai jaring pengaman |
 | S3 | Pola EIP-712 untuk `claimDaily` | Pakai cetakan **TrustPassport** (nonce mapping + deadline + `issuedAt` guard, `TrustPassport.sol:47,92-107`) — lebih cocok daripada pola sessionId GameSettlement. Tambah `mapping(address => uint32) lastClaimDay` sesuai §3.1 |
 | S4 | Tidak ada `nonReentrant` di kontrak manapun; TicketShop akan pegang 3 stablecoin (USDT non-standar) | Bangun TicketVault/TicketShop dengan `ReentrancyGuardUpgradeable` + `SafeERC20` sejak awal |
 | S5 | `revokePassport` permanen tanpa jalur pemulihan (`TrustPassport.sol:114-122`) | Tambah `unrevokePassport` di upgrade V2 (kesalahan revoke = user hilang permanen) |
-| S6 | `FIXED_STAKE_AMOUNT = 100` hardcoded (`GameSettlement.sol:21`) terlihat seperti placeholder | Verifikasi bukan debug leftover; pastikan tidak ada sesi baru start dengan asumsi lama setelah cutover |
-| S7 | Owner semua kontrak = single `OwnableUpgradeable`; `_authorizeUpgrade` bisa ganti seluruh logic sepihak | Pindahkan ownership produksi ke multisig sebelum V2 pegang dana tiket |
-| S8 | Tidak ada test invariant untuk drift counter GameVault (`totalAvailable/Locked/treasury`) | Tambah fuzz/invariant test sebelum mereplikasi pola akunting yang sama di TicketVault |
+| S6 | ✅ **Terjawab.** `FIXED_STAKE_AMOUNT = 100` (`GameSettlement.sol:21`) bukan debug leftover — itu memang nilai produksi, dan dengan USDC 6 desimal artinya stake riil **$0.0001 per match** (seperseratus sen) | Tidak ada aksi kode. Tapi catat implikasinya: V1 secara ekonomi adalah **demo**, bukan game uang sungguhan. Menguntungkan saat framing ke reviewer MiniPay ("belum pernah ada taruhan bernilai"), tapi **jangan** dipakai sebagai klaim traksi real-money di aplikasi grant |
+| S7 | 🔴 **Naik prioritas ke Fase 1.** Terverifikasi on-chain: owner ketiga kontrak = EOA tunggal `0x5739…3cFB9`. Satu private key bisa `upgradeToAndCall` ketiganya + `treasuryWithdraw` seluruh treasury | Hari ini taruhannya cuma $0.13 jadi tidak mendesak — **tapi TicketShop akan menerima revenue top-up asli.** Multisig wajib terpasang **sebelum `buyTickets` menerima pembayaran pertama**, bukan di Fase 4 seperti draft sebelumnya |
+| S8 | ⬇️ **Turun prioritas.** Verifikasi on-chain: `18740 + 1300 + 113260 = 133300` = saldo USDC riil kontrak, **drift nol**. Pola akuntingnya terbukti benar di produksi | Fuzz/invariant test tetap layak ditulis untuk TicketVault, tapi **bukan blocker** — polanya sudah tervalidasi oleh data, aman direplikasi |
 
 ### 13.3 🟠 Backend (`backend/`)
 
@@ -350,7 +388,7 @@ Kondisi umum: **dua syarat MiniPay terberat sudah lolos** (auto-connect benar; l
 | F5 | Metadata/OG/miniAppEmbed masih hardcode `passchick.vercel.app` (`layout.tsx:7`, `appKit.ts:25`) padahal domain produksi `passchick.xyz` | Sinkronkan APP_URL ke `passchick.xyz` |
 | F6 | Dependency `^` range + tidak ada `.npmrc` (lockfile sudah ter-commit — bagus) | Pin exact + `ignore-scripts=true` (syarat §11) |
 | F7 | **Utang teknis terbesar:** game engine = vanilla JS 6.317 baris (`public/script.js`) berkomunikasi via `window.__CHICKEN_GAME_BRIDGE__`; logic stake menempel di 3 lapis (`script.js` DEFAULT_STAKE dkk baris 34-36, `GameBridgeClient.tsx:668-706`, `ManageMoneyPage`) | Migrasi stake→tiket dikerjakan sebagai epic terpisah, sentuh ketiga lapis sekaligus dalam satu PR besar dengan test manual penuh — jangan dicicil parsial (bridge contract-nya rapuh) |
-| F8 | Layar V2 yang benar-benar baru: daily claim 7 hari, token-selector top-up, countdown season | Reuse pola signed-tx dari `claimPassport` (`GameBridgeClient.tsx:811-833`) untuk daily claim; adaptasi `ManageMoneyPage` untuk top-up; modal Trust Passport existing (`HomePage.tsx:1415-1613`) sudah pas untuk diperluas jadi kanvas karir §7 |
+| F8 | Layar V2 yang benar-benar baru: daily claim 7 hari, token-selector top-up, countdown season | Reuse pola signed-tx dari `claimPassport` (`GameBridgeClient.tsx:811-833`) untuk daily claim; adaptasi `ManageMoneyPage` untuk top-up — mode `deposit` jadi TOP UP, mode `withdraw` **dipertahankan** tapi conditional-render (§10.2, jangan dihapus); modal Trust Passport existing (`HomePage.tsx:1415-1613`) sudah pas untuk diperluas jadi kanvas karir §7 |
 | F9 | Network manifest §11 harus disusun manual | Daftar teridentifikasi: `esm.sh` (hapus via F2), `fonts.googleapis.com` (hapus via F3), backend API + Socket.IO domain, `passchick.gitbook.io`, `t.me/passchick_support` |
 | F10 | Minor: `userScalable: false` (potensi flag aksesibilitas), polling vault 1,5 detik terlalu agresif untuk mobile, komentar sampah "celo: dev index" di `layout.tsx:98-124`, Remotion membebani dependency produksi | Evaluasi/dokumentasikan lock-zoom; longgarkan polling; bersihkan komentar; pindahkan Remotion keluar dependency graph produksi |
 
@@ -364,7 +402,7 @@ Kondisi umum: **dua syarat MiniPay terberat sudah lolos** (auto-connect benar; l
 3. B/C §13.1: `requireEnv` private key, guard faucet mainnet
 
 **Fase 1 — Fondasi V2:**
-4. Kontrak `TicketVault`/`TicketShop` (S3, S4) + upgrade TrustPassport (S2, S5) + test invariant (S8)
+4. Kontrak `TicketVault` (S3, S4 — TicketShop digabung di dalamnya) + upgrade TrustPassport (S2, S5) + **pindah ownership ke multisig (S7) sebelum `buyTickets` live**
 5. Skema DB (B3) + `signDailyClaim` (B5) + listener event tiket (B6) + `seasonScheduler` (B2) + ekstrak tier logic (B7)
 
 **Fase 2 — Migrasi gameplay:**
@@ -372,11 +410,54 @@ Kondisi umum: **dua syarat MiniPay terberat sudah lolos** (auto-connect benar; l
 7. Epic frontend 3-lapis (F7) + layar baru (F8) + leaderboard divisi (B8)
 
 **Fase 3 — Cutover produksi & submit (§10 + S1 + §11.1):**
-8. Matikan deposit di UI → tunggu sesi V1 habis → pause GameVault → aktifkan convert-bonus 10%
+8. Runbook cutover, urutannya mengikat:
+   a. Matikan deposit di UI
+   b. Drain sesi nyangkut: panggil `expireSession()` untuk 13 sesi terbuka (permissionless, tapi harus sebelum pause)
+   c. **Gate: verifikasi `cast call $VAULT "totalLockedBalance()(uint256)"` mengembalikan `0`** — jangan lanjut kalau bukan nol
+   d. `pause()` GameVault → withdraw-only otomatis aktif
+   e. **Jangan** sentuh saldo user tersisa — tidak ada jalur owner untuk itu (§10.1). Cukup pastikan tab withdraw conditional-render sudah live (§10.2) agar user bisa tarik sendiri kapan pun
 9. Jalankan checklist hari-H §11.1 (revisi ToS/Privacy, test di container MiniPay, ukur PageSpeed, sample tx kontrak V2, aset form, SLA) → **submit listing**
 
 **Fase 4 — Hardening pasca-launch:**
-10. Session store ke Redis/Supabase (B1), multisig owner kontrak (S7), sisanya §13 prioritas rendah (B9, F10)
+10. Session store ke Redis/Supabase (B1), invariant test TicketVault (S8), sisanya §13 prioritas rendah (B9, F10)
+
+---
+
+## 15. Verifikasi State On-Chain (2026-07-22)
+
+Semua revisi di dokumen ini berdasar data berikut, dibaca langsung dari Celo Mainnet (chain 42220) via forno.
+
+```
+GameVault      0x8FB74c2a678811aECC6Ed98Bd5Bc70E1119b7B61
+GameSettlement 0x29b5333E2fbd4de48BD5fe14b3972d6Af24aa01E
+TrustPassport  0x4Bf6D3C0dBbC14eF0C7f2a4daeD7D97418Fc5aDf
+USDC           0xcebA9300f2b948710d2653dD7B07f33A8B32118C  (6 desimal)
+
+totalAvailableBalance     18,740  = $0.018740   ← saldo SEMUA user digabung
+totalLockedBalance         1,300  = $0.001300   ← 13 sesi nyangkut (S1)
+treasuryBalance          113,260  = $0.113260
+                         -------
+                         133,300
+USDC riil dipegang vault  133,300               ✅ invariant utuh, drift nol
+
+paused: vault=false, settlement=false, passport=false
+owner (ketiganya): 0x57394581E832cD31EE0233618c58035033D3cFB9 → EOA, saldo 0.249 CELO
+backendSigner:     0xCa9298971140d120F010D5901DeC4f297C72c7Da → beda dari owner ✅
+vault.settlement ↔ settlement.vault: saling terpasang benar ✅
+```
+
+Cara reproduksi:
+
+```bash
+R=https://forno.celo.org
+V=0x8FB74c2a678811aECC6Ed98Bd5Bc70E1119b7B61
+cast call $V "totalAvailableBalance()(uint256)" --rpc-url $R
+cast call $V "totalLockedBalance()(uint256)"    --rpc-url $R
+cast call $V "treasuryBalance()(uint256)"       --rpc-url $R
+cast call $V "paused()(bool)"                   --rpc-url $R
+```
+
+**Batasan pengukuran — jangan diperlakukan sebagai data lengkap:** volume historis **belum terukur**. Forno membatasi `eth_getLogs` di 5.000 blok per query, dan sampling yang dilakukan hanya 3 jendela selebar ~83 menit (semuanya nol event) — terlalu sempit untuk menyimpulkan apa pun soal tingkat aktivitas. Angka lifetime (jumlah deposit, match, user unik) **masih perlu diambil** lewat RPC archive atau Celoscan API sebelum dipakai di aplikasi grant atau form listing.
 
 ---
 
@@ -389,5 +470,5 @@ Kondisi umum: **dua syarat MiniPay terberat sudah lolos** (auto-connect benar; l
 > - 🏆 **5 Divisi: Rookie → Runner → Steady → Elite → Oracle** — semua mulai dari Rookie. Push rank tiap season (2 minggu) untuk promosi, hadiah, dan skin eksklusif!
 > - 👑 **Oracle Top 5** memperebutkan Grand Prize CELO + royalty dari revenue season!
 > - 🛂 **Passport-mu = kartu karirmu** — skin, badge, dan gelar season menempel permanen. Pamerkan tier-mu!
-> - 💰 **Saldo lama?** Withdraw kapan saja, atau convert ke tiket dengan bonus 10% (30 hari pertama).
+> - 💰 **Saldo lama?** Withdraw kapan saja, tanpa batas waktu. Dana kamu tetap milik kamu.
 > - 🎫 Tiket **tidak hangus** saat season reset — tabung untuk push rank season depan!
