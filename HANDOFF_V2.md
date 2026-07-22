@@ -13,7 +13,7 @@ Kontrak V2 **sudah live dan terverifikasi di Celo Mainnet**. Kalian tidak perlu 
 
 Satu hal yang wajib dipahami sebelum menyentuh apa pun:
 
-> ⚠️ **Toko tiket di mainnet sengaja TERTUTUP.** `setToken` belum pernah dipanggil, jadi `buyTickets` selalu revert `TokenNotEnabled` untuk semua stablecoin. Ini disengaja — kunci owner masih EOA plaintext, jadi jalur uang ditutup sampai itu diamankan. **Kembangkan & tes fitur top-up di Sepolia**, di mana tokonya terbuka penuh. Jangan minta siapa pun memanggil `setToken` di mainnet sebelum S7 selesai.
+> ⚠️ **Toko tiket di mainnet sengaja TERTUTUP.** `setToken` belum pernah dipanggil, jadi `buyTickets` selalu revert `TokenNotEnabled` untuk semua stablecoin. Ini disengaja: jalur uang baru dibuka tepat sebelum fitur top-up dirilis, bukan sebelumnya. **Kembangkan & tes fitur top-up di Sepolia**, di mana tokonya terbuka penuh dan mock USDC bisa di-mint bebas.
 
 ---
 
@@ -42,6 +42,8 @@ Treasury sengaja **beda alamat dari owner**. `TicketVault` meneruskan dana pembe
 Backend signer (kedua jaringan): `0xCa9298971140d120F010D5901DeC4f297C72c7Da` — sama dengan yang sudah dipakai GameSettlement & TrustPassport, jadi tidak ada kunci baru untuk diurus.
 
 ABI ada di `sc/out/TicketVault.sol/TicketVault.json` setelah `forge build`, atau ambil dari Celoscan (kontraknya verified).
+
+> **Selalu pakai alamat proxy di atas, jangan alamat implementasi.** Kontraknya UUPS, jadi implementasi bisa berganti tanpa alamat proxy berubah — dan memang sudah berganti sekali pada 2026-07-22 untuk menambah role `operator`. Kalau kalian hardcode alamat implementasi, integrasi akan diam-diam membaca kontrak lama yang tidak punya state apa pun.
 
 ---
 
@@ -158,15 +160,38 @@ Alur match sekarang terikat stake USDC on-chain (`routes/game.ts:807-845`, `game
 - `/start-session` → cek & debit 1 tiket dari `ticket_balances` (off-chain, harus instan)
 - Hasil match → poin sesuai rumus CP di `update_v2.md` §5.1 (pola hitung checkpoint sudah ada di `routes/passport.ts:327-343`)
 - Settlement USDC per match **dihapus**
-- Pemakaian tiket disettle berkala ke chain lewat `spendBatch(address[], uint256[])` — **`onlyOwner`**, jadi butuh kunci owner. Batch berkala, bukan per match.
+- Pemakaian tiket disettle berkala ke chain lewat `spendBatch(address[], uint256[])` — dipanggil pakai **kunci operator** (lihat §2.7). Batch berkala, bukan per match.
 
 ### 2.6 Season scheduler
 
 Belum ada infrastruktur cron sama sekali (hanya 2 `setInterval`). Bangun `services/seasonScheduler.ts` dengan pola start seperti `startRecoveryWorker()` di `index.ts:96` — polling per menit terhadap `seasons.next_reset_at`, idempotent terhadap restart. Urutan proses reset ada di `update_v2.md` §8.
 
-Reward tiket season dikredit lewat `creditBatch(address[], uint256[])` — juga `onlyOwner`.
+Reward tiket season dikredit lewat `creditBatch(address[], uint256[])` — juga pakai kunci operator (§2.7).
 
-### 2.7 Lain-lain
+### 2.7 Kunci operator — yang kalian pakai untuk `creditBatch` / `spendBatch`
+
+Kedua fungsi batch itu menciptakan dan menghapus tiket, jadi tidak bisa dibuka untuk umum. Tapi backend perlu memanggilnya otomatis dan berkala, sementara kunci owner tersimpan di keystore terenkripsi yang butuh password diketik manusia — mustahil di server.
+
+Karena itu kontrak punya **role `operator`** terpisah:
+
+```solidity
+setOperator(address account, bool allowed)   // onlyOwner
+operators(address) returns (bool)            // cek status
+```
+
+Kunci operator **hanya** boleh memanggil `creditBatch` dan `spendBatch`. Dia ditolak untuk `setTreasury`, `setToken`, `pause`, `setOperator`, `rescueToken`, dan `upgradeToAndCall` — ada test yang membuktikan keenam-enamnya. Artinya kalau kunci di server produksi bocor, penyerang bisa mengacaukan saldo tiket, tapi **tidak** bisa mengambil alih kontrak, mengalihkan treasury, atau membuka toko.
+
+Yang perlu kalian lakukan:
+
+1. **Generate keypair baru khusus untuk ini.** Jangan pakai `BACKEND_PRIVATE_KEY` yang sudah ada — biarkan peran "menandatangani klaim EIP-712" dan peran "menulis batch akunting" terpisah, supaya satu kunci bocor tidak langsung memberi keduanya.
+2. Kirim **alamatnya** (bukan private key-nya) ke sisi kontrak untuk didaftarkan lewat `setOperator`.
+3. Kunci operator butuh **saldo CELO** untuk gas — beda dari treasury yang tidak pernah menandatangani apa pun. Sediakan monitoring saldo; kalau habis, settle tiket berhenti diam-diam.
+
+Sampai `setOperator` dijalankan, kedua fungsi batch akan revert `UnauthorizedOperator(address)` untuk siapa pun kecuali owner.
+
+Catatan desain: debit tiket saat match tetap off-chain dan instan. `spendBatch` hanya menyusulkan hasilnya ke chain, jadi kalau panggilannya tertunda beberapa jam, gameplay tidak terganggu — yang terjadi cuma saldo on-chain sementara lebih tinggi daripada saldo DB. Rancang agar idempoten: kalau job gagal di tengah, jangan sampai batch yang sama terkirim dua kali dan mendebet ganda.
+
+### 2.8 Lain-lain
 
 - Ekstrak duplikasi `TIER_RULES` di `routes/leaderboard.ts:8-62` dan `routes/passport.ts:117-145` ke modul bersama **sebelum** menambah kompleksitas divisi.
 - `BACKEND_PRIVATE_KEY` masih `optionalEnv` dengan default `""` (`config/env.ts:70`) → ubah ke `requireEnv` supaya gagal cepat dengan pesan jelas.
@@ -255,9 +280,9 @@ Satu private key (`0x57394581…`) memegang wewenang upgrade ketiga kontrak. Per
 - ✅ **Treasury dipisah** ke alamat berbeda yang private key-nya tidak ada di mesin developer. Revenue yang sudah terkumpul tidak ikut jatuh kalau kunci owner bocor.
 - ⏸️ Multisig belum dipasang — masih peningkatan yang layak nanti, tapi bukan lagi lubang menganga.
 
-Konsekuensi operasional untuk semua orang: **operasi owner butuh terminal sungguhan** (prompt password perlu TTY). Tidak bisa dijalankan dari CI, script otomatis, atau agent tanpa penanganan khusus. Ini berlaku juga untuk `creditBatch` dan `spendBatch` — dua fungsi yang backend perlu panggil rutin.
+Konsekuensi operasional: **operasi owner butuh terminal sungguhan** (prompt password perlu TTY). Tidak bisa dijalankan dari CI, script otomatis, atau agent. Yang termasuk operasi owner: upgrade kontrak, `setTreasury`, `setToken`, `setOperator`, `pause`.
 
-> 🔑 **Ini keputusan arsitektur yang perlu kalian pikirkan sejak awal:** `creditBatch` (reward season) dan `spendBatch` (settle pemakaian tiket) keduanya `onlyOwner`. Kalau backend harus memanggilnya otomatis dan berkala, kunci owner tidak bisa terkunci di keystore interaktif — perlu kunci operasional terpisah dengan wewenang terbatas. Kontrak saat ini **belum punya pemisahan peran itu** (tidak ada role `operator`). Kalau kalian butuh, kabari sisi kontrak: itu perubahan kecil di upgrade berikutnya, tapi jauh lebih baik diputuskan sekarang daripada setelah backend terlanjur dibangun dengan asumsi salah.
+✅ **Backend TIDAK terkena batasan ini.** `creditBatch` dan `spendBatch` sudah dipindahkan ke role `operator` (§2.7) yang punya kunci sendiri dan bisa jalan otomatis di server. Ini sempat jadi masalah desain — kedua fungsi itu awalnya `onlyOwner`, yang berarti backend tidak akan pernah bisa memanggilnya tanpa menaruh kunci upgrade di server produksi. Sudah diperbaiki lewat upgrade 2026-07-22 dan live di kedua jaringan.
 
 ### 4.4 Belum diputuskan
 
