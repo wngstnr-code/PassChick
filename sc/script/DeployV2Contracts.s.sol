@@ -22,13 +22,12 @@ contract DeployV2Contracts is Script {
     }
 
     function run() external returns (TicketVault ticketVault) {
-        uint256 privateKey = vm.envOr("PRIVATE_KEY", uint256(0));
         address backendSigner = vm.envAddress("BACKEND_SIGNER");
         address treasury = vm.envAddress("TICKET_TREASURY");
         uint64 signatureTtl = uint64(vm.envOr("DAILY_CLAIM_SIGNATURE_TTL", uint256(DEFAULT_CLAIM_SIGNATURE_TTL)));
 
-        _startBroadcast(privateKey);
-        address initialOwner = _resolveInitialOwner(privateKey, vm.envOr("INITIAL_OWNER", address(0)));
+        vm.startBroadcast();
+        address initialOwner = _resolveInitialOwner(vm.envOr("INITIAL_OWNER", address(0)));
 
         TicketVault implementation = new TicketVault();
         ticketVault = TicketVault(
@@ -52,13 +51,31 @@ contract DeployV2Contracts is Script {
         console2.log("Claim signature TTL:", signatureTtl);
     }
 
+    /// @notice Point the existing TicketVault proxy at a new implementation.
+    /// @dev Storage additions are append-only (operators took slot 8 out of __gap), so
+    ///      no reinitializer call is needed. Set TICKET_VAULT_ADDRESS to the proxy for
+    ///      the network being targeted - mainnet and Sepolia differ.
+    function upgradeTicketVault() external returns (address implementation) {
+        address vaultProxy = vm.envAddress("TICKET_VAULT_ADDRESS");
+
+        vm.startBroadcast();
+
+        TicketVault newImplementation = new TicketVault();
+        TicketVault(vaultProxy).upgradeToAndCall(address(newImplementation), "");
+
+        vm.stopBroadcast();
+
+        implementation = address(newImplementation);
+        console2.log("TicketVault proxy:", vaultProxy);
+        console2.log("TicketVault new implementation:", implementation);
+    }
+
     /// @notice Point the existing TrustPassport proxy at the V2 implementation.
     /// @dev Storage additions are append-only, so no reinitializer call is needed.
     function upgradePassport() external returns (address implementation) {
-        uint256 privateKey = vm.envOr("PRIVATE_KEY", uint256(0));
         address passportProxy = vm.envAddress("TRUST_PASSPORT_ADDRESS");
 
-        _startBroadcast(privateKey);
+        vm.startBroadcast();
 
         TrustPassport newImplementation = new TrustPassport();
         TrustPassport(passportProxy).upgradeToAndCall(address(newImplementation), "");
@@ -89,24 +106,16 @@ contract DeployV2Contracts is Script {
         }
     }
 
-    function _startBroadcast(uint256 privateKey) internal {
-        if (privateKey == 0) {
-            vm.startBroadcast();
-        } else {
-            vm.startBroadcast(privateKey);
-        }
-    }
-
-    function _resolveInitialOwner(uint256 privateKey, address initialOwner) internal view returns (address) {
+    /// @dev The broadcasting wallet comes from the CLI only (`--account` / `--private-key`
+    ///      / `--ledger`), never from a PRIVATE_KEY env var. Reading the env here used to
+    ///      silently override `--account`, so an `--account passchick-owner` upgrade was
+    ///      signed by whatever stale key sat in .env instead.
+    function _resolveInitialOwner(address initialOwner) internal view returns (address) {
         if (initialOwner != address(0)) {
             return initialOwner;
         }
 
         (, address broadcaster,) = vm.readCallers();
-        if (privateKey == 0) {
-            return broadcaster;
-        }
-
-        return vm.addr(privateKey);
+        return broadcaster;
     }
 }

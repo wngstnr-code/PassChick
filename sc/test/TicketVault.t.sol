@@ -227,17 +227,6 @@ contract TicketVaultTest is Test {
         vault.creditBatch(users, amounts);
     }
 
-    function test_CreditBatchOnlyOwner() public {
-        address[] memory users = new address[](1);
-        uint256[] memory amounts = new uint256[](1);
-        users[0] = player;
-        amounts[0] = 1;
-
-        vm.prank(player);
-        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, player));
-        vault.creditBatch(users, amounts);
-    }
-
     function test_SpendBatchDebitsBalance() public {
         _creditOne(player, 10);
 
@@ -373,6 +362,100 @@ contract TicketVaultTest is Test {
         vault.rescueToken(address(usdc), treasury, 10e6);
 
         assertEq(vault.ticketBalance(player), 500);
+    }
+
+    // --------------------------------------------------------- operator
+
+    function test_OperatorCanRunBatchAccounting() public {
+        address backend = address(0xB4CE);
+        vault.setOperator(backend, true);
+
+        address[] memory users = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        users[0] = player;
+        amounts[0] = 30;
+
+        vm.prank(backend);
+        vault.creditBatch(users, amounts);
+        assertEq(vault.ticketBalance(player), 30);
+
+        amounts[0] = 4;
+        vm.prank(backend);
+        vault.spendBatch(users, amounts);
+        assertEq(vault.ticketBalance(player), 26);
+    }
+
+    function test_NonOperatorCannotRunBatchAccounting() public {
+        address[] memory users = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        users[0] = player;
+        amounts[0] = 1;
+
+        vm.prank(otherPlayer);
+        vm.expectRevert(abi.encodeWithSelector(TicketVault.UnauthorizedOperator.selector, otherPlayer));
+        vault.creditBatch(users, amounts);
+
+        vm.prank(otherPlayer);
+        vm.expectRevert(abi.encodeWithSelector(TicketVault.UnauthorizedOperator.selector, otherPlayer));
+        vault.spendBatch(users, amounts);
+    }
+
+    function test_OwnerStillAllowedWithoutBeingOperator() public {
+        assertFalse(vault.operators(address(this)), "owner is not registered as operator");
+        _creditOne(player, 7);
+        assertEq(vault.ticketBalance(player), 7, "owner keeps batch rights implicitly");
+    }
+
+    /// @dev The whole point of the role: a leaked backend key must not be able to touch
+    ///      upgrades, the treasury, the shop, or pausing.
+    function test_OperatorCannotTouchAnythingElse() public {
+        address backend = address(0xB4CE);
+        vault.setOperator(backend, true);
+
+        vm.startPrank(backend);
+
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, backend));
+        vault.setTreasury(address(0xDEAD));
+
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, backend));
+        vault.setToken(address(usdc), 6, true);
+
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, backend));
+        vault.pause();
+
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, backend));
+        vault.setOperator(backend, true);
+
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, backend));
+        vault.rescueToken(address(usdc), backend, 1);
+
+        vm.stopPrank();
+
+        TicketVaultV2 next = new TicketVaultV2();
+        vm.prank(backend);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, backend));
+        vault.upgradeToAndCall(address(next), "");
+    }
+
+    function test_OperatorCanBeRevoked() public {
+        address backend = address(0xB4CE);
+        vault.setOperator(backend, true);
+        vault.setOperator(backend, false);
+
+        address[] memory users = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+        users[0] = player;
+        amounts[0] = 1;
+
+        vm.prank(backend);
+        vm.expectRevert(abi.encodeWithSelector(TicketVault.UnauthorizedOperator.selector, backend));
+        vault.creditBatch(users, amounts);
+    }
+
+    function test_SetOperatorOnlyOwner() public {
+        vm.prank(player);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUpgradeable.OwnableUnauthorizedAccount.selector, player));
+        vault.setOperator(player, true);
     }
 
     // ---------------------------------------------------------- upgrade

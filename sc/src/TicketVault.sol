@@ -65,12 +65,14 @@ contract TicketVault is
     error InvalidSignatureSigner(address recovered, address expected);
     error LengthMismatch(uint256 usersLength, uint256 amountsLength);
     error InsufficientTickets(uint256 balance, uint256 requested);
+    error UnauthorizedOperator(address account);
 
     event BackendSignerUpdated(address indexed signer);
     event TreasuryUpdated(address indexed treasury);
     event ClaimSignatureTtlUpdated(uint64 ttl);
     event TokenConfigured(address indexed token, uint8 decimals, bool enabled);
     event TokenRescued(address indexed token, address indexed recipient, uint256 amount);
+    event OperatorUpdated(address indexed account, bool allowed);
     event TicketClaimed(address indexed user, uint32 indexed dayIndex, uint16 amount, uint256 nonce);
     event TicketPurchased(address indexed user, address indexed token, uint256 usdAmount, uint256 cost, uint256 tickets);
     event TicketCredited(address indexed user, uint256 amount);
@@ -101,11 +103,32 @@ contract TicketVault is
     mapping(uint256 nonce => bool used) public usedNonces;
     mapping(address token => TokenConfig config) public tokens;
 
-    uint256[50] private __gap;
+    // ---------------------------------------------------------------------
+    // V1.1 storage. Appended here and taken out of __gap (50 -> 49) so every
+    // slot above keeps its position: this contract is already live at
+    // 0x8a1bd73D (mainnet) and 0x1490e6B8 (Sepolia).
+    // ---------------------------------------------------------------------
+
+    /// @notice Addresses allowed to run batch ticket accounting on the owner's behalf.
+    /// @dev The backend has to settle ticket spend and season rewards automatically, but
+    ///      the owner key lives in an interactive keystore and cannot sign unattended.
+    ///      An operator can only move ticket balances - never upgrade, re-point the
+    ///      treasury, or touch the shop - so a leaked server key costs tickets, not control.
+    mapping(address account => bool allowed) public operators;
+
+    uint256[49] private __gap;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
+    }
+
+    /// @dev Owner is always allowed; operators are an addition, not a replacement.
+    modifier onlyOperator() {
+        if (msg.sender != owner() && !operators[msg.sender]) {
+            revert UnauthorizedOperator(msg.sender);
+        }
+        _;
     }
 
     function initialize(address initialOwner, address signer, address treasuryAddress, uint64 signatureTtl)
@@ -173,6 +196,18 @@ contract TicketVault is
 
         IERC20(token).safeTransfer(recipient, amount);
         emit TokenRescued(token, recipient, amount);
+    }
+
+    /// @notice Grant or revoke batch-accounting rights for a backend key.
+    /// @dev Deliberately narrow: an operator can call creditBatch and spendBatch and
+    ///      nothing else. Upgrades, treasury, shop config, and pausing stay with the owner.
+    function setOperator(address account, bool allowed) external onlyOwner {
+        if (account == address(0)) {
+            revert InvalidUser(account);
+        }
+
+        operators[account] = allowed;
+        emit OperatorUpdated(account, allowed);
     }
 
     function pause() external onlyOwner {
@@ -266,7 +301,7 @@ contract TicketVault is
     // --------------------------------------------------------------- batch
 
     /// @notice Credit season rewards (spec 6) or migration grants in one transaction.
-    function creditBatch(address[] calldata users, uint256[] calldata amounts) external onlyOwner {
+    function creditBatch(address[] calldata users, uint256[] calldata amounts) external onlyOperator {
         if (users.length != amounts.length) {
             revert LengthMismatch(users.length, amounts.length);
         }
@@ -285,7 +320,7 @@ contract TicketVault is
     }
 
     /// @notice Settle tickets consumed off-chain during matches (spec 9.2).
-    function spendBatch(address[] calldata users, uint256[] calldata amounts) external onlyOwner {
+    function spendBatch(address[] calldata users, uint256[] calldata amounts) external onlyOperator {
         if (users.length != amounts.length) {
             revert LengthMismatch(users.length, amounts.length);
         }
