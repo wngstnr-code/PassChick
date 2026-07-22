@@ -1,6 +1,6 @@
 # FE-04 ticket domain handoff
 
-**Status:** frontend domain and query boundary implemented; production integration intentionally fail-closed.
+**Status:** complete; production reads are connected to the signed-off TicketVault deployments.
 
 ## Delivered
 
@@ -10,8 +10,11 @@
 - React Query hooks for ticket balance, daily-claim status, supported tokens, and legacy GameVault balance.
 - Query keys scoped by chain and normalized wallet account, so switching either selects a different cache entry.
 - Celo Mainnet and Celo Sepolia configuration slots for `TicketVault`, deployment version, ABI, token metadata, and legacy GameVault.
+- Reviewed `TicketVault` ABI including `claimDaily`, `buyTickets`, read methods, events, and custom errors.
+- Concrete `createOnchainTicketDataSource()` implementation for authoritative on-chain ticket balance and legacy GameVault balance reads.
+- Signed-off proxy and implementation identifiers for Mainnet and Sepolia, with environment overrides that still fail closed when invalid.
 
-## Fail-closed production boundary
+## Production boundary
 
 `TicketVault` is only reported as `ready` when all three inputs are present:
 
@@ -19,7 +22,7 @@
 2. the reviewed ABI supplied by application code;
 3. a deployment version supplied through the public environment.
 
-An address alone is not enough. Until sign-off, no contract function name, argument shape, event, revert code, or confirmation policy is assumed by the frontend.
+An address alone is not enough. Invalid environment overrides or a missing reviewed ABI still make the deployment unavailable instead of guessing a contract interface.
 
 The production adapter accepts a `ProductionTicketDataSource` with these reads:
 
@@ -29,23 +32,27 @@ The production adapter accepts a `ProductionTicketDataSource` with these reads:
 - `getLegacyGameVaultBalance(scope)`
 - `quotePurchase(scope, request)`
 
-Backend/viem implementation stays behind that port; presentation components only consume queries and typed results.
+The on-chain production source now implements that port. `getDailyClaimStatus` remains an injected backend dependency because streak state, mystery-box output, passport perks, and the signed reward amount are backend policy rather than facts derivable from `TicketVault` alone. Presentation components only consume queries and typed results.
+
+`buyTickets(address token, uint256 usdAmount)` accepts whole US dollars. Quotes therefore reject ticket counts that are not multiples of 20; the previous `$0.05` per-ticket display math was accurate but could produce calldata the contract cannot execute.
 
 ## Celo configuration evidence
 
-Mainnet USDC, USDT, USDm, their decimals, and the USDC/USDT fee-currency adapters were checked against the official [Celo token contracts](https://docs.celo.org/tooling/contracts/token-contracts) and [fee abstraction](https://docs.celo.org/build-on-celo/fee-abstraction/using-fee-abstraction) documentation.
+Mainnet USDC, USDT, USDm, their decimals, and the USDC/USDT fee-currency adapters were checked against the installed Celopedia references sourced from official Celo documentation. PassChick deployment addresses and shop state come from `HANDOFF_V2.md` and the verified contract source.
 
-The live Celo docs currently disagree about Celo Sepolia USDC and USDm addresses. Consequently:
+The contract deployment handoff resolves the shop configuration:
 
-- Sepolia USDT remains enabled because its address is consistent across the checked official pages.
-- Sepolia USDC and USDm are disabled with `configurationStatus: "needs-review"`.
-- Neither address should be enabled until the deployment owner verifies the intended token contracts and fee-currency behavior.
+- Mainnet USDC, USDT, and USDm metadata is verified, but all three remain disabled for purchases because `setToken` has not been called.
+- Sepolia enables only the PassChick mock USDC at `0x8FB74c2a678811aECC6Ed98Bd5Bc70E1119b7B61`.
+- Sepolia USDT and USDm metadata remains available but disabled because neither token is whitelisted in TicketVault.
+- The mock USDC is a purchase token, not a Celo fee-currency adapter.
 
-## Required sign-off before FE-05
+## Sign-off status before FE-05
 
-- Verified `TicketVault` ABI, address, chain, and deployment version.
-- Whether `TicketShop` is merged into `TicketVault`.
-- Exact `claimDaily` and `buyTickets` payloads, events, revert codes, and confirmation rules.
-- Backend schemas for authoritative balance and daily-claim status.
-- Stablecoin allowance rules and the approved Celo Sepolia token set.
-- ERC-8021 app attribution code and verification that the final transaction path preserves the suffix.
+- Done: verified `TicketVault` ABI, proxy, implementation identifier, and chain mapping.
+- Done: `TicketShop` is merged into `TicketVault`.
+- Done: exact `claimDaily` and `buyTickets` arguments, events, and contract errors.
+- Done: approved shop state and Sepolia mock USDC token.
+- Decided: new Celo write paths should use the hostname-derived ERC-8021 attribution suffix; actual on-chain verification belongs to FE-05/FE-06 when those transaction paths exist.
+- Pending backend: daily-status/claim endpoint schema and wallet-bound authorization.
+- Pending integration policy: final receipt-confirmation count and normalized backend error codes.

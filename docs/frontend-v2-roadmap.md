@@ -98,7 +98,7 @@ Start only after the backend and smart-contract interface checklist below is sig
 
 ### FE-04 Ticket domain layer
 
-**Status:** Domain layer done in working tree; production source remains fail-closed pending the required interface sign-off
+**Status:** Complete; signed-off contracts and production read source integrated
 
 **Size:** M
 
@@ -110,7 +110,7 @@ Start only after the backend and smart-contract interface checklist below is sig
 
 **Acceptance:** mock and real adapters expose the same typed interface; chain/account changes invalidate queries; amounts use bigint/token decimals without floating-point math.
 
-**Implementation note:** the injected production adapter and mock adapter now share one interface, and all query keys include chain/account scope. Official Mainnet token metadata is configured. `TicketVault` only becomes `ready` when a valid address, signed-off ABI, and deployment version are supplied together. Ambiguous Celo Sepolia USDC/USDm addresses remain disabled and marked for review rather than guessed.
+**Implementation note:** the injected production adapter and mock adapter share one interface, and all query keys include chain/account scope. The reviewed ABI and verified deployments are configured for Mainnet and Sepolia. Mainnet purchase tokens remain disabled because the shop is closed; Sepolia enables only the deployed PassChick USDC mock. The production source reads authoritative ticket and legacy balances on-chain while daily policy remains behind an injected backend boundary. Purchase quotes enforce the contract's whole-dollar rule.
 
 ### Required interface sign-off
 
@@ -244,4 +244,4 @@ Use a feature flag until backend, contract, and frontend are deployable together
 
 ## Immediate next action
 
-Complete the Phase 2 interface sign-off, then provide the production data source behind the FE-04 adapter. Start FE-05 only after the TicketVault ABI/address/version, daily-claim payload, event semantics, confirmation policy, and authoritative backend balance behavior are signed off.
+FE-04 contract sign-off and production reads are complete. Next, begin FE-05 against the typed adapter, while keeping claim submission behind the feature boundary until the backend daily-claim endpoint, wallet-bound authorization, error schema, and receipt-confirmation policy are finalized. Add and verify the hostname-derived ERC-8021 suffix when the first FE-05 write transaction is wired.
