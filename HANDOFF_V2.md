@@ -27,6 +27,9 @@ Satu hal yang wajib dipahami sebelum menyentuh apa pun:
 | `TrustPassport` | `0x4Bf6D3C0dBbC14eF0C7f2a4daeD7D97418Fc5aDf` | sudah V2 |
 | `GameVault` | `0x8FB74c2a678811aECC6Ed98Bd5Bc70E1119b7B61` | dormant, withdraw-only |
 | `GameSettlement` | `0x29b5333E2fbd4de48BD5fe14b3972d6Af24aa01E` | dormant setelah cutover |
+| Treasury tiket | `0xEf29d941Be65495631f908EC3211625555D374b9` | penerima revenue `buyTickets` |
+
+Treasury sengaja **beda alamat dari owner**. `TicketVault` meneruskan dana pembelian langsung ke sana dan tidak pernah menyimpan stablecoin sendiri, jadi saldo kontrak selalu nol — kalau kalian melihat stablecoin nyangkut di alamat `TicketVault`, itu salah kirim, bukan alur normal.
 
 ### Celo Sepolia (chainId `11142220`) — pakai ini untuk development
 
@@ -244,9 +247,17 @@ Belum berdampak karena Season 1 diputuskan non-moneter, tapi ini akan muncul per
 
 Gerbangnya sudah dibangun (`canClaimMonetaryReward`), tapi **tidak ada kontrak yang benar-benar mencairkan stablecoin/CELO ke pemenang divisi** — padahal §9.2 menjanjikan "reward uang claimable on-chain". Konsekuensi keputusan Season 1 non-moneter, jadi tidak memblokir listing. Harus ada sebelum season berhadiah uang pertama **berakhir**, bukan saat pemenangnya sudah menagih.
 
-### 4.3 Kunci owner masih EOA tunggal
+### 4.3 Kunci owner: EOA tunggal, tapi sudah diamankan
 
-Satu private key memegang upgrade ketiga kontrak + treasury, dan tersimpan plaintext di `sc/.env`. Ditunda secara sadar karena saat ini hanya menjaga $0.13. **Pemicu wajib: sebelum `setToken` dipanggil di mainnet.** Sampai transaksi itu jalan, toko tertutup dan kunci itu tidak menjaga uang siapa pun.
+Satu private key (`0x57394581…`) memegang wewenang upgrade ketiga kontrak. Per 2026-07-22 sudah dibereskan sebagian:
+
+- ✅ Kunci dipindah dari plaintext `sc/.env` ke **keystore terenkripsi berpassword** (`~/.foundry/keystores/passchick-owner`). Semua operasi owner sekarang pakai `--account passchick-owner`, bukan `--private-key`.
+- ✅ **Treasury dipisah** ke alamat berbeda yang private key-nya tidak ada di mesin developer. Revenue yang sudah terkumpul tidak ikut jatuh kalau kunci owner bocor.
+- ⏸️ Multisig belum dipasang — masih peningkatan yang layak nanti, tapi bukan lagi lubang menganga.
+
+Konsekuensi operasional untuk semua orang: **operasi owner butuh terminal sungguhan** (prompt password perlu TTY). Tidak bisa dijalankan dari CI, script otomatis, atau agent tanpa penanganan khusus. Ini berlaku juga untuk `creditBatch` dan `spendBatch` — dua fungsi yang backend perlu panggil rutin.
+
+> 🔑 **Ini keputusan arsitektur yang perlu kalian pikirkan sejak awal:** `creditBatch` (reward season) dan `spendBatch` (settle pemakaian tiket) keduanya `onlyOwner`. Kalau backend harus memanggilnya otomatis dan berkala, kunci owner tidak bisa terkunci di keystore interaktif — perlu kunci operasional terpisah dengan wewenang terbatas. Kontrak saat ini **belum punya pemisahan peran itu** (tidak ada role `operator`). Kalau kalian butuh, kabari sisi kontrak: itu perubahan kecil di upgrade berikutnya, tapi jauh lebih baik diputuskan sekarang daripada setelah backend terlanjur dibangun dengan asumsi salah.
 
 ### 4.4 Belum diputuskan
 
