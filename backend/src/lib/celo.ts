@@ -62,6 +62,9 @@ export const TRUST_PASSPORT_ADDRESS = env.TRUST_PASSPORT_ADDRESS
 export const FAUCET_CONTRACT_ADDRESS = env.FAUCET_CONTRACT_ADDRESS
   ? getAddress(env.FAUCET_CONTRACT_ADDRESS)
   : ("0x0000000000000000000000000000000000000000" as Address);
+export const TICKET_VAULT_ADDRESS = env.TICKET_VAULT_ADDRESS
+  ? getAddress(env.TICKET_VAULT_ADDRESS)
+  : ("0x0000000000000000000000000000000000000000" as Address);
 
 export const ERC20_ABI = parseAbi([
   "function balanceOf(address owner) view returns (uint256)",
@@ -105,6 +108,98 @@ export const FAUCET_ABI = parseAbi([
   "function claim()",
   "event Claimed(address indexed account, uint256 amount)",
 ]);
+
+export const TICKET_VAULT_ABI = parseAbi([
+  "function claimDaily((address user,uint32 dayIndex,uint16 amount,uint64 issuedAt,uint256 nonce) claim, bytes signature)",
+  "function ticketBalance(address user) view returns (uint256)",
+  "function lastClaimDay(address user) view returns (uint32)",
+  "function DAILY_CLAIM_TYPEHASH() view returns (bytes32)",
+  "function creditBatch(address[] users, uint256[] amounts)",
+  "function spendBatch(address[] users, uint256[] amounts)",
+  "function operators(address account) view returns (bool)",
+  "error UnauthorizedOperator(address account)",
+  "event TicketClaimed(address indexed user, uint32 indexed dayIndex, uint16 amount, uint256 nonce)",
+  "event TicketPurchased(address indexed user, address indexed token, uint256 usdAmount, uint256 cost, uint256 tickets)",
+  "event TicketCredited(address indexed user, uint256 amount)",
+  "event TicketSpent(address indexed user, uint256 amount)",
+]);
+
+/// Returns false when TICKET_VAULT_ADDRESS is unset - the daily-claim feature
+/// (route + listener) must degrade gracefully in that case rather than throw.
+export function isTicketVaultConfigured(): boolean {
+  return TICKET_VAULT_ADDRESS !== "0x0000000000000000000000000000000000000000";
+}
+
+// ----------------------------------------------------------------------
+// Operator key (TicketVault.creditBatch / spendBatch, onlyOperator).
+//
+// Unlike `backendAccount` above (which throws at import time if the key is
+// invalid, because BACKEND_PRIVATE_KEY is required), the operator key is
+// OPTIONAL: the reward-batch worker must be able to degrade gracefully when
+// OPERATOR_PRIVATE_KEY is unset, so we lazily construct + cache the account
+// instead of failing at module load.
+// ----------------------------------------------------------------------
+
+let operatorAccountCache: ReturnType<typeof privateKeyToAccount> | null | undefined;
+
+/// Returns the operator viem Account, or null when OPERATOR_PRIVATE_KEY is
+/// not configured. Result is cached after first call.
+export function getOperatorAccount(): ReturnType<typeof privateKeyToAccount> | null {
+  if (operatorAccountCache !== undefined) return operatorAccountCache;
+
+  const raw = env.OPERATOR_PRIVATE_KEY.trim();
+  if (!raw) {
+    operatorAccountCache = null;
+    return operatorAccountCache;
+  }
+
+  operatorAccountCache = privateKeyToAccount(normalizePrivateKey(raw));
+  return operatorAccountCache;
+}
+
+export function isOperatorConfigured(): boolean {
+  return getOperatorAccount() !== null;
+}
+
+let operatorWalletClientCache: ReturnType<typeof createWalletClient> | null | undefined;
+
+/// Lazy operator wallet client (same chain/transport as `walletClient`),
+/// or null when the operator key is not configured.
+export function getOperatorWalletClient(): ReturnType<typeof createWalletClient> | null {
+  if (operatorWalletClientCache !== undefined) return operatorWalletClientCache;
+
+  const account = getOperatorAccount();
+  if (!account) {
+    operatorWalletClientCache = null;
+    return operatorWalletClientCache;
+  }
+
+  operatorWalletClientCache = createWalletClient({
+    account,
+    chain: celoChain,
+    transport: http(env.RPC_URL),
+  });
+  return operatorWalletClientCache;
+}
+
+/// Reads whether `address` is registered as an operator via
+/// `TicketVault.operators(address)`.
+export async function readIsRegisteredOperator(address: Address): Promise<boolean> {
+  return publicClient.readContract({
+    address: TICKET_VAULT_ADDRESS,
+    abi: TICKET_VAULT_ABI,
+    functionName: "operators",
+    args: [address],
+  });
+}
+
+/// Reads the operator account's native CELO balance (for gas monitoring).
+/// Returns 0n when the operator key is not configured.
+export async function readOperatorCeloBalance(): Promise<bigint> {
+  const account = getOperatorAccount();
+  if (!account) return 0n;
+  return publicClient.getBalance({ address: account.address });
+}
 
 export type PreparedEvmTransaction = {
   chainId: number;
@@ -484,6 +579,125 @@ export async function buildClaimEggPassTransaction(
       signature,
     ],
   });
+}
+
+export interface DailyClaimStruct {
+  user: Address;
+  dayIndex: number;
+  amount: number;
+  issuedAt: bigint;
+  nonce: bigint;
+}
+
+export interface SignedDailyClaim {
+  claim: {
+    user: Address;
+    dayIndex: number;
+    amount: number;
+    issuedAt: number;
+    nonce: string;
+  };
+  signature: Hex;
+  expiresAt: number;
+}
+
+/// Signs a TicketVault `DailyClaim` EIP-712 struct. `issuedAt` is always
+/// stamped as "now" server-side (never trusted from the caller) so the TTL
+/// window is meaningful. `expiresAt` (issuedAt + TTL) is informational only,
+/// for the frontend to know when to stop showing a cached signature - the
+/// contract itself is the source of truth for expiry enforcement.
+export async function signDailyClaim(params: {
+  user: string;
+  dayIndex: number;
+  amount: number;
+  nonce: bigint;
+}): Promise<SignedDailyClaim> {
+  const address = normalizePlayerAddress(params.user);
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const expiresAt = issuedAt + env.DAILY_CLAIM_SIGNATURE_TTL_SECONDS;
+
+  const signature = await walletClient.signTypedData({
+    account: backendAccount,
+    domain: {
+      name: "PassChickTicketVault",
+      version: "1",
+      chainId: env.CHAIN_ID,
+      verifyingContract: TICKET_VAULT_ADDRESS,
+    },
+    types: {
+      DailyClaim: [
+        { name: "user", type: "address" },
+        { name: "dayIndex", type: "uint32" },
+        { name: "amount", type: "uint16" },
+        { name: "issuedAt", type: "uint64" },
+        { name: "nonce", type: "uint256" },
+      ],
+    },
+    primaryType: "DailyClaim",
+    message: {
+      user: address,
+      dayIndex: params.dayIndex,
+      amount: params.amount,
+      issuedAt: BigInt(issuedAt),
+      nonce: params.nonce,
+    },
+  });
+
+  return {
+    claim: {
+      user: address,
+      dayIndex: params.dayIndex,
+      amount: params.amount,
+      issuedAt,
+      nonce: params.nonce.toString(),
+    },
+    signature,
+    expiresAt,
+  };
+}
+
+export async function buildClaimDailyTransaction(
+  claim: SignedDailyClaim["claim"],
+  signature: Hex,
+): Promise<PreparedEvmTransaction> {
+  const address = normalizePlayerAddress(claim.user);
+  return prepareContractTransaction({
+    from: address,
+    to: TICKET_VAULT_ADDRESS,
+    abi: TICKET_VAULT_ABI,
+    functionName: "claimDaily",
+    args: [
+      {
+        user: address,
+        dayIndex: claim.dayIndex,
+        amount: claim.amount,
+        issuedAt: BigInt(claim.issuedAt),
+        nonce: BigInt(claim.nonce),
+      },
+      signature,
+    ],
+  });
+}
+
+export async function readTicketBalance(player: string): Promise<bigint> {
+  const address = normalizePlayerAddress(player);
+  return publicClient.readContract({
+    address: TICKET_VAULT_ADDRESS,
+    abi: TICKET_VAULT_ABI,
+    functionName: "ticketBalance",
+    args: [address],
+  });
+}
+
+export async function readLastClaimDay(player: string): Promise<number> {
+  const address = normalizePlayerAddress(player);
+  const lastClaimDay = await publicClient.readContract({
+    address: TICKET_VAULT_ADDRESS,
+    abi: TICKET_VAULT_ABI,
+    functionName: "lastClaimDay",
+    args: [address],
+  });
+  return Number(lastClaimDay);
 }
 
 export async function signSettlementResolution(resolution: {

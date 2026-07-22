@@ -62,21 +62,35 @@ export const env = {
   GAME_VAULT_ADDRESS: optionalEnv("GAME_VAULT_ADDRESS", ""),
   GAME_SETTLEMENT_ADDRESS: optionalEnv("GAME_SETTLEMENT_ADDRESS", ""),
   TRUST_PASSPORT_ADDRESS: optionalEnv("TRUST_PASSPORT_ADDRESS", ""),
+  TICKET_VAULT_ADDRESS: optionalEnv("TICKET_VAULT_ADDRESS", ""),
   FAUCET_CONTRACT_ADDRESS: optionalAlias("FAUCET_CONTRACT_ADDRESS", "", "GAME_FAUCET_ADDRESS"),
   FAUCET_MODE: optionalEnv("FAUCET_MODE", "claim"),
   FAUCET_AMOUNT_UNITS: optionalEnv("FAUCET_AMOUNT_UNITS", "100000000"),
   FAUCET_COOLDOWN_SECONDS: parseInt(optionalEnv("FAUCET_COOLDOWN_SECONDS", "300"), 10),
 
-  BACKEND_PRIVATE_KEY: optionalEnv("BACKEND_PRIVATE_KEY", ""),
+  BACKEND_PRIVATE_KEY: requireEnv("BACKEND_PRIVATE_KEY"),
   ADMIN_ADDRESS: optionalAlias("ADMIN_ADDRESS", "", "ADMIN_PUBKEY"),
   BACKEND_SIGNER_ADDRESS: optionalAlias("BACKEND_SIGNER_ADDRESS", "", "BACKEND_SIGNER_PUBKEY"),
 
   SETTLEMENT_SIGNATURE_TTL_SECONDS: parseInt(optionalEnv("SETTLEMENT_SIGNATURE_TTL_SECONDS", "86400"), 10),
   PASSPORT_SIGNATURE_TTL_SECONDS: parseInt(optionalEnv("PASSPORT_SIGNATURE_TTL_SECONDS", "900"), 10),
   PASSPORT_VALIDITY_SECONDS: parseInt(optionalEnv("PASSPORT_VALIDITY_SECONDS", "2592000"), 10),
+  DAILY_CLAIM_SIGNATURE_TTL_SECONDS: parseInt(
+    optionalEnv("DAILY_CLAIM_SIGNATURE_TTL_SECONDS", "600"),
+    10,
+  ),
 
   SOCIAL_AUTH_ENABLED:
     optionalEnv("SOCIAL_AUTH_ENABLED", "true").toLowerCase() === "true",
+
+  MINIPAY_UA_CHECK_ENABLED: optionalEnv("MINIPAY_UA_CHECK_ENABLED", "true") === "true",
+  AUTH_STRICT_PROVIDERS: optionalEnv("AUTH_STRICT_PROVIDERS", "false") === "true",
+  SEASON_TICK_MS: Number(optionalEnv("SEASON_TICK_MS", "60000")),
+
+  // Operator key for TicketVault.creditBatch/spendBatch (onlyOperator). Optional:
+  // when empty the reward-batch worker degrades gracefully (skips ticking).
+  OPERATOR_PRIVATE_KEY: optionalEnv("OPERATOR_PRIVATE_KEY", ""),
+  REWARD_BATCH_TICK_MS: Number(optionalEnv("REWARD_BATCH_TICK_MS", "300000")),
 } as const;
 
 console.log(`🔧 Config loaded:`);

@@ -7,15 +7,23 @@ import {
   GAME_SETTLEMENT_ADDRESS,
   GAME_VAULT_ABI,
   GAME_VAULT_ADDRESS,
+  isTicketVaultConfigured,
   publicClient,
+  TICKET_VAULT_ABI,
+  TICKET_VAULT_ADDRESS,
 } from "../lib/celo.js";
+import { computeStreakDay, utcDayIndex } from "./dailyClaimService.js";
 
 type TransactionType =
   | "DEPOSIT"
   | "WITHDRAW"
   | "TREASURY_FUNDED"
   | "SESSION_STARTED"
-  | "SESSION_SETTLED";
+  | "SESSION_SETTLED"
+  | "TICKET_CLAIM"
+  | "TICKET_PURCHASE"
+  | "TICKET_CREDIT"
+  | "TICKET_SPEND";
 
 let isListening = false;
 let unwatchers: Array<() => void> = [];
@@ -57,6 +65,117 @@ async function logTransaction(params: {
 
 function txHash(log: { transactionHash?: string | null }) {
   return String(log.transactionHash || "");
+}
+
+function dateStringToDayIndex(value: string): number {
+  return utcDayIndex(new Date(`${value}T00:00:00.000Z`));
+}
+
+function dayIndexToDateString(dayIndex: number): string {
+  return new Date(dayIndex * 86400 * 1000).toISOString().slice(0, 10);
+}
+
+/// Mirrors ticket_balances against the on-chain TicketVault ledger.
+///
+/// Column semantics (see database/schema_v2.sql):
+///  - `onchain_credited` mirrors the NET on-chain ticket balance (every
+///    credit-shaped event adds to it, every on-chain spend subtracts).
+///  - `offchain_debited` is a debit *not yet settled on-chain* (reserved for
+///    the in-match ticket-spend flow, not implemented in this change).
+///  - `balance = onchain_credited - offchain_debited` is what the app shows.
+///
+/// TicketSpent means an off-chain debit batch was just settled on-chain, so
+/// it both decrements `onchain_credited` (the ledger moved) AND relieves the
+/// matching amount of `offchain_debited` (the debit is no longer pending).
+///
+/// Known limitation: this treats each event delivery as exactly-once. Forno
+/// (and `watchContractEvent` in general) is documented as at-least-once;
+/// `transactions` rows are protected by the `tx_hash` upsert key, but this
+/// mirror update is not additionally deduplicated. A double-delivered event
+/// would double-apply the delta. Accepted as a known gap per HANDOFF_V2.md
+/// §2.3 rather than building a dedup ledger here.
+async function applyTicketMirrorDelta(
+  walletAddress: string,
+  amount: bigint,
+  blockNumber: bigint | null,
+  kind: "credit" | "spend",
+) {
+  const { data: existing, error: fetchError } = await supabase
+    .from("ticket_balances")
+    .select("onchain_credited, offchain_debited")
+    .eq("wallet_address", walletAddress)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error(`❌ Failed to read ticket_balances for ${walletAddress}:`, fetchError);
+    return;
+  }
+
+  const prevOnchainCredited = BigInt(existing?.onchain_credited ?? 0);
+  const prevOffchainDebited = BigInt(existing?.offchain_debited ?? 0);
+
+  const onchainCredited =
+    kind === "credit" ? prevOnchainCredited + amount : prevOnchainCredited - amount;
+  const offchainDebited =
+    kind === "spend"
+      ? prevOffchainDebited > amount
+        ? prevOffchainDebited - amount
+        : 0n
+      : prevOffchainDebited;
+  const balance = onchainCredited - offchainDebited;
+
+  const { error: upsertError } = await supabase.from("ticket_balances").upsert(
+    {
+      wallet_address: walletAddress,
+      onchain_credited: onchainCredited.toString(),
+      offchain_debited: offchainDebited.toString(),
+      balance: balance.toString(),
+      last_synced_block: blockNumber !== null ? blockNumber.toString() : undefined,
+    },
+    { onConflict: "wallet_address" },
+  );
+
+  if (upsertError) {
+    console.error(`❌ Failed to upsert ticket_balances for ${walletAddress}:`, upsertError);
+  }
+}
+
+/// Advances the off-chain `daily_streaks` mirror when a `TicketClaimed`
+/// event is confirmed. This is the ONLY place streak_day is allowed to
+/// change - never in routes/tickets.ts - so a signed-but-never-submitted
+/// claim can't advance a user's streak (see routes/tickets.ts comment).
+async function advanceDailyStreak(walletAddress: string, dayIndex: number) {
+  const { data: existing, error: fetchError } = await supabase
+    .from("daily_streaks")
+    .select("streak_day, last_claim_day, total_claims")
+    .eq("wallet_address", walletAddress)
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error(`❌ Failed to read daily_streaks for ${walletAddress}:`, fetchError);
+    return;
+  }
+
+  const prevStreakDay = existing?.streak_day ?? 0;
+  const prevClaimDayIndex = existing?.last_claim_day
+    ? dateStringToDayIndex(String(existing.last_claim_day))
+    : null;
+  const streakDay = computeStreakDay(prevStreakDay, prevClaimDayIndex, dayIndex);
+  const totalClaims = (existing?.total_claims ?? 0) + 1;
+
+  const { error: upsertError } = await supabase.from("daily_streaks").upsert(
+    {
+      wallet_address: walletAddress,
+      streak_day: streakDay,
+      last_claim_day: dayIndexToDateString(dayIndex),
+      total_claims: totalClaims,
+    },
+    { onConflict: "wallet_address" },
+  );
+
+  if (upsertError) {
+    console.error(`❌ Failed to upsert daily_streaks for ${walletAddress}:`, upsertError);
+  }
 }
 
 export async function startBlockchainListener(): Promise<void> {
@@ -214,6 +333,120 @@ export async function startBlockchainListener(): Promise<void> {
                   amount: unitsToToken(log.args.amount),
                 });
               })().catch((err) => console.error("❌ Failed to handle Faucet Claimed event:", err));
+            }
+          },
+        }),
+      );
+    }
+
+    if (isTicketVaultConfigured()) {
+      unwatchers.push(
+        publicClient.watchContractEvent({
+          address: TICKET_VAULT_ADDRESS,
+          abi: TICKET_VAULT_ABI,
+          eventName: "TicketClaimed",
+          onLogs: (logs) => {
+            for (const log of logs) {
+              void (async () => {
+                const walletAddress = log.args.user;
+                const dayIndex = log.args.dayIndex;
+                if (!walletAddress || dayIndex === undefined || log.args.amount === undefined) return;
+                await ensurePlayer(walletAddress);
+                await logTransaction({
+                  txHash: txHash(log),
+                  walletAddress,
+                  type: "TICKET_CLAIM",
+                  amount: Number(log.args.amount),
+                });
+                await applyTicketMirrorDelta(
+                  walletAddress,
+                  BigInt(log.args.amount),
+                  log.blockNumber ?? null,
+                  "credit",
+                );
+                await advanceDailyStreak(walletAddress, Number(dayIndex));
+              })().catch((err) => console.error("❌ Failed to handle TicketClaimed event:", err));
+            }
+          },
+        }),
+        publicClient.watchContractEvent({
+          address: TICKET_VAULT_ADDRESS,
+          abi: TICKET_VAULT_ABI,
+          eventName: "TicketPurchased",
+          onLogs: (logs) => {
+            for (const log of logs) {
+              void (async () => {
+                const walletAddress = log.args.user;
+                if (!walletAddress || log.args.tickets === undefined) return;
+                await ensurePlayer(walletAddress);
+                // `amount` recorded here is the ticket count granted (not the
+                // USD spent or on-chain token cost), to stay consistent with
+                // the ticket-count semantics used by TICKET_CLAIM/CREDIT/SPEND.
+                await logTransaction({
+                  txHash: txHash(log),
+                  walletAddress,
+                  type: "TICKET_PURCHASE",
+                  amount: Number(log.args.tickets),
+                });
+                await applyTicketMirrorDelta(
+                  walletAddress,
+                  BigInt(log.args.tickets),
+                  log.blockNumber ?? null,
+                  "credit",
+                );
+              })().catch((err) => console.error("❌ Failed to handle TicketPurchased event:", err));
+            }
+          },
+        }),
+        publicClient.watchContractEvent({
+          address: TICKET_VAULT_ADDRESS,
+          abi: TICKET_VAULT_ABI,
+          eventName: "TicketCredited",
+          onLogs: (logs) => {
+            for (const log of logs) {
+              void (async () => {
+                const walletAddress = log.args.user;
+                if (!walletAddress || log.args.amount === undefined) return;
+                await ensurePlayer(walletAddress);
+                await logTransaction({
+                  txHash: txHash(log),
+                  walletAddress,
+                  type: "TICKET_CREDIT",
+                  amount: Number(log.args.amount),
+                });
+                await applyTicketMirrorDelta(
+                  walletAddress,
+                  BigInt(log.args.amount),
+                  log.blockNumber ?? null,
+                  "credit",
+                );
+              })().catch((err) => console.error("❌ Failed to handle TicketCredited event:", err));
+            }
+          },
+        }),
+        publicClient.watchContractEvent({
+          address: TICKET_VAULT_ADDRESS,
+          abi: TICKET_VAULT_ABI,
+          eventName: "TicketSpent",
+          onLogs: (logs) => {
+            for (const log of logs) {
+              void (async () => {
+                const walletAddress = log.args.user;
+                if (!walletAddress || log.args.amount === undefined) return;
+                await ensurePlayer(walletAddress);
+                await logTransaction({
+                  txHash: txHash(log),
+                  walletAddress,
+                  type: "TICKET_SPEND",
+                  amount: Number(log.args.amount),
+                });
+                await applyTicketMirrorDelta(
+                  walletAddress,
+                  BigInt(log.args.amount),
+                  log.blockNumber ?? null,
+                  "spend",
+                );
+              })().catch((err) => console.error("❌ Failed to handle TicketSpent event:", err));
             }
           },
         }),

@@ -7,6 +7,8 @@ import { env } from "./config/env.js";
 import { setupGameGateway } from "./gateway/gameGateway.js";
 import { startBlockchainListener } from "./services/blockchainListener.js";
 import { startRecoveryWorker } from "./services/recoveryWorker.js";
+import { startSeasonScheduler } from "./services/seasonScheduler.js";
+import { startRewardBatchWorker } from "./services/rewardBatchExecutor.js";
 import authRoutes from "./routes/auth.js";
 import gameRoutes from "./routes/game.js";
 import leaderboardRoutes from "./routes/leaderboard.js";
@@ -14,8 +16,16 @@ import playerRoutes from "./routes/player.js";
 import passportRoutes from "./routes/passport.js";
 import faucetRoutes from "./routes/faucet.js";
 import vaultRoutes from "./routes/vault.js";
+import ticketsRoutes from "./routes/tickets.js";
 import { getActiveGameCount } from "./services/gameState.js";
 import { readBackendSignerHealth } from "./services/opsHealth.js";
+import {
+  getOperatorAccount,
+  isOperatorConfigured,
+  isTicketVaultConfigured,
+  readIsRegisteredOperator,
+  readOperatorCeloBalance,
+} from "./lib/celo.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -42,15 +52,57 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
+// Reports operator-key health for TicketVault.creditBatch/spendBatch. Never
+// throws - a mis-registered operator or an RPC hiccup should not take down
+// /health, it should just be reported as part of the payload.
+async function readOperatorHealth() {
+  if (!isOperatorConfigured()) {
+    return { configured: false, address: null, registered: null, celoBalance: null };
+  }
+
+  const account = getOperatorAccount();
+  const address = account?.address ?? null;
+
+  // Without a TicketVault address there is no contract to query `operators`
+  // against — report the key as configured but skip the on-chain reads.
+  if (!isTicketVaultConfigured()) {
+    return { configured: true, address, registered: null, celoBalance: null };
+  }
+
+  try {
+    const [registered, balanceWei] = await Promise.all([
+      address ? readIsRegisteredOperator(address) : Promise.resolve(null),
+      readOperatorCeloBalance(),
+    ]);
+
+    return {
+      configured: true,
+      address,
+      registered,
+      celoBalance: balanceWei.toString(),
+    };
+  } catch (error) {
+    return {
+      configured: true,
+      address,
+      registered: null,
+      celoBalance: null,
+      error: String((error as { message?: string })?.message || error),
+    };
+  }
+}
+
 app.get("/health", async (_req, res) => {
   try {
     const backendSigner = await readBackendSignerHealth();
+    const operator = await readOperatorHealth();
 
     res.json({
       status: backendSigner.healthy ? "ok" : "degraded",
       timestamp: new Date().toISOString(),
       activeGames: getActiveGameCount(),
       backendSigner,
+      operator,
     });
   } catch (error) {
     console.error("❌ Failed to build health response:", error);
@@ -69,6 +121,7 @@ app.use("/api/player", playerRoutes);
 app.use("/api/passport", passportRoutes);
 app.use("/api/faucet", faucetRoutes);
 app.use("/api/vault", vaultRoutes);
+app.use("/api/tickets", ticketsRoutes);
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" });
 });
@@ -94,6 +147,8 @@ httpServer.listen(env.PORT, "0.0.0.0", () => {
   });
 
   startRecoveryWorker();
+  startSeasonScheduler();
+  startRewardBatchWorker();
 
   void readBackendSignerHealth()
     .then((backendSigner) => {
