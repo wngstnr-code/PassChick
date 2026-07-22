@@ -1,13 +1,18 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { Press_Start_2P } from "next/font/google";
 import type { ReactNode } from "react";
 import { AppProviders } from "~/providers/AppProviders";
 import { LoadingScreen } from "~/components/LoadingScreen";
+import { APP_DESCRIPTION, APP_NAME, APP_URL } from "~/lib/app/config";
 
-const APP_URL = "https://passchick.vercel.app";
-const APP_NAME = "PASSCHICK";
-const APP_DESCRIPTION =
-  "A high-performance, skill-based survival arena on Celo. Verifiable arcade gameplay featuring \"Proof of Survival\" and real-time on-chain reputation.";
+const pressStart2P = Press_Start_2P({
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+  variable: "--font-press-start-2p",
+});
+
 const APP_IMAGE = `${APP_URL}/images/1.webp`;
 const APP_ICON = "/favicon.png";
 const APP_SPLASH_BG = "#0a1428";
@@ -75,8 +80,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: "cover",
 };
 
@@ -86,7 +89,11 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={pressStart2P.variable}
+      suppressHydrationWarning
+    >
       <body>
         <LoadingScreen />
         <AppProviders>{children}</AppProviders>
@@ -94,31 +101,3 @@ export default function RootLayout({ children }: RootLayoutProps) {
     </html>
   );
 }
-
-// celo: today safe dev index 2004
-
-// celo: today safe dev index 2006
-
-// celo: today safe dev index 2009
-
-// celo: today safe dev index 2014
-
-// celo: today safe dev index 2021
-
-// celo: today safe dev index 2024
-
-// celo: today safe dev index 2026
-
-// celo: today safe dev index 2028
-
-// celo: today safe dev index 2029
-
-// celo: today safe dev index 2030
-
-// celo: today safe dev index 2037
-
-// celo: today safe dev index 2044
-
-// celo: today safe dev index 2049
-
-// celo: dynamic check index 3002

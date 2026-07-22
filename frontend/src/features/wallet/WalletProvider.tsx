@@ -51,6 +51,7 @@ type WalletContextValue = {
   isConnecting: boolean;
   isMiniPay: boolean;
   isWalletDetecting: boolean;
+  walletDetectionStatus: WalletDetectionStatus;
   error: string;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
@@ -69,6 +70,12 @@ type WalletContextValue = {
   logoutBackend: () => Promise<void>;
   refreshBackendSession: () => Promise<boolean>;
 };
+
+type WalletDetectionStatus =
+  | "detecting"
+  | "minipay"
+  | "injected"
+  | "unavailable";
 
 type WalletProviderProps = {
   children: ReactNode;
@@ -91,12 +98,13 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [isOpeningWalletModal, setIsOpeningWalletModal] = useState(false);
   const [injectedAccount, setInjectedAccount] = useState("");
   const [injectedChainId, setInjectedChainId] = useState("");
-  const [miniPayDetected, setMiniPayDetected] = useState(false);
-  const [isWalletDetecting, setIsWalletDetecting] = useState(true);
+  const [walletDetectionStatus, setWalletDetectionStatus] =
+    useState<WalletDetectionStatus>("detecting");
   const [backendAddress, setBackendAddress] = useState("");
   const [backendAuthLoading, setBackendAuthLoading] = useState(false);
   const [backendAuthError, setBackendAuthError] = useState("");
   const accountRef = useRef("");
+  const cleanupRef = useRef<(() => void) | null>(null);
   const backendSessionRef = useRef<{
     inFlight: Promise<boolean> | null;
     lastCheckedAt: number;
@@ -122,6 +130,8 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const isConnected = Boolean(appKitAccount.isConnected && account);
   const isInjectedConnected = Boolean(injectedAccount);
   const isWalletConnected = Boolean(isConnected || isInjectedConnected);
+  const miniPayDetected = walletDetectionStatus === "minipay";
+  const isWalletDetecting = walletDetectionStatus === "detecting";
   const walletProviderName =
     walletInfo?.name ||
     (miniPayDetected && isInjectedConnected ? "MiniPay" : isWalletConnected ? "EVM Wallet" : "");
@@ -143,6 +153,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     const injectedProvider = readInjectedEvmProvider();
 
     if (injectedProvider?.isMiniPay) {
+      setWalletDetectionStatus("detecting");
       setIsOpeningWalletModal(true);
       try {
         // Try eth_accounts first; fall back to eth_requestAccounts if empty
@@ -152,7 +163,6 @@ export function WalletProvider({ children }: WalletProviderProps) {
         }
         setInjectedAccount(accounts[0] || "");
         setInjectedChainId(await readProviderChainId(injectedProvider));
-        setMiniPayDetected(true);
       } catch (connectError) {
         setError(
           toUserFacingWalletError(connectError, "Failed to connect MiniPay.", {
@@ -160,6 +170,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
           }),
         );
       } finally {
+        setWalletDetectionStatus("minipay");
         setIsOpeningWalletModal(false);
       }
       return;
@@ -479,55 +490,60 @@ export function WalletProvider({ children }: WalletProviderProps) {
         if (accounts.length === 0 && provider.isMiniPay) {
           accounts = await requestProviderAccounts(provider);
         }
+        const nextChainId = await readProviderChainId(provider);
         if (cancelled) return;
         setInjectedAccount(provider.isMiniPay ? accounts[0] || "" : "");
-        setInjectedChainId(await readProviderChainId(provider));
+        setInjectedChainId(nextChainId);
       } catch (error) {
         console.warn("syncInjectedWallet failed:", error);
       }
     };
 
-    // waitForInjectedProvider handles the race where MiniPay injects window.ethereum
-    // after React mounts by polling + listening to ethereum#initialized event
-    waitForInjectedProvider(3000).then((provider) => {
-      if (cancelled) return;
-      setIsWalletDetecting(false);
-      if (!provider) return;
-
-      setMiniPayDetected(Boolean(provider.isMiniPay));
-
-      void syncInjectedWallet(provider);
-
-      const onAccountsChanged = (...args: unknown[]) => {
-        const accounts = Array.isArray(args[0]) ? args[0].map(String) : [];
-        if (provider.isMiniPay) {
-          setInjectedAccount(accounts[0] || "");
+    const detectInjectedWallet = async () => {
+      try {
+        // waitForInjectedProvider handles the race where MiniPay injects
+        // window.ethereum after React mounts.
+        const provider = await waitForInjectedProvider(3000);
+        if (cancelled) return;
+        if (!provider) {
+          setWalletDetectionStatus("unavailable");
+          return;
         }
-      };
-      const onChainChanged = (...args: unknown[]) => {
-        setInjectedChainId(String(args[0] || "").toLowerCase());
-      };
 
-      provider.on?.("accountsChanged", onAccountsChanged);
-      provider.on?.("chainChanged", onChainChanged);
+        await syncInjectedWallet(provider);
+        if (cancelled) return;
+        setWalletDetectionStatus(provider.isMiniPay ? "minipay" : "injected");
 
-      // Store cleanup references so we can remove them on unmount
-      cleanupRef.current = () => {
-        provider.removeListener?.("accountsChanged", onAccountsChanged);
-        provider.removeListener?.("chainChanged", onChainChanged);
-      };
-    }).catch((error) => {
-      if (!cancelled) setIsWalletDetecting(false);
-      console.warn("waitForInjectedProvider failed:", error);
-    });
+        const onAccountsChanged = (...args: unknown[]) => {
+          const accounts = Array.isArray(args[0]) ? args[0].map(String) : [];
+          if (provider.isMiniPay) {
+            setInjectedAccount(accounts[0] || "");
+          }
+        };
+        const onChainChanged = (...args: unknown[]) => {
+          setInjectedChainId(String(args[0] || "").toLowerCase());
+        };
+
+        provider.on?.("accountsChanged", onAccountsChanged);
+        provider.on?.("chainChanged", onChainChanged);
+
+        cleanupRef.current = () => {
+          provider.removeListener?.("accountsChanged", onAccountsChanged);
+          provider.removeListener?.("chainChanged", onChainChanged);
+        };
+      } catch (error) {
+        if (!cancelled) setWalletDetectionStatus("unavailable");
+        console.warn("waitForInjectedProvider failed:", error);
+      }
+    };
+
+    void detectInjectedWallet();
 
     return () => {
       cancelled = true;
       cleanupRef.current?.();
     };
   }, []);
-
-  const cleanupRef = useRef<(() => void) | null>(null);
 
   const value: WalletContextValue = {
     account,
@@ -538,6 +554,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
     isConnecting: isConnectingWallet,
     isMiniPay: miniPayDetected,
     isWalletDetecting,
+    walletDetectionStatus,
     error,
     connectWallet,
     disconnectWallet,

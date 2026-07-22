@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { readMiniPayDepositLinkProps } from "~/lib/minipay/addCash";
 import type { DepositFlowViewModel } from "./types";
 import { useDepositFlow } from "./useDepositFlow";
 
@@ -47,8 +49,8 @@ function readWalletStatusTone(flow: DepositFlowViewModel) {
 }
 
 function readPrimaryLabel(flow: DepositFlowViewModel) {
-  if (flow.isDepositBusy) return "PROCESSING...";
-  if (flow.isApproveBusy) return "APPROVING...";
+  if (flow.isDepositBusy) return "PROCESSING…";
+  if (flow.isApproveBusy) return "APPROVING…";
   return "DEPOSIT";
 }
 
@@ -58,6 +60,7 @@ export function ManageMoneyVaultCard({
 }: ManageMoneyVaultCardProps) {
   const flow = useDepositFlow();
   const [moneyAction, setMoneyAction] = useState<MoneyActionMode>("deposit");
+  const depositFallbackRef = useRef<HTMLAnchorElement>(null);
 
   const returnHref = "/";
   const returnLabel = "HOME";
@@ -136,6 +139,15 @@ export function ManageMoneyVaultCard({
       return;
     }
 
+    if (flow.hasInsufficientWalletBalance) {
+      if (flow.isMiniPay) {
+        window.location.assign(flow.addCashUrl);
+      } else {
+        depositFallbackRef.current?.focus();
+      }
+      return;
+    }
+
     await handleDepositClick();
   }
 
@@ -147,8 +159,12 @@ export function ManageMoneyVaultCard({
   const activeActionLabel =
     moneyAction === "withdraw"
       ? flow.isWithdrawBusy
-        ? "WITHDRAWING..."
+        ? "WITHDRAWING…"
         : "WITHDRAW"
+      : flow.hasInsufficientWalletBalance
+        ? flow.isMiniPay
+          ? "DEPOSIT IN MINIPAY"
+          : "VIEW DEPOSIT OPTIONS"
       : readPrimaryLabel(flow);
 
   const activeActionDisabled =
@@ -161,6 +177,7 @@ export function ManageMoneyVaultCard({
       : "Move wallet USDC into your playable vault balance.";
   const walletStatus = readWalletStatus(flow);
   const walletStatusTone = readWalletStatusTone(flow);
+  const depositLinkProps = readMiniPayDepositLinkProps(flow.isMiniPay);
 
   function onMoneyTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     const currentIndex = moneyActionTabs.findIndex(
@@ -183,6 +200,10 @@ export function ManageMoneyVaultCard({
 
     event.preventDefault();
     setMoneyAction(moneyActionTabs[nextIndex].mode);
+    const tabButtons = event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(
+      '[role="tab"]',
+    );
+    tabButtons?.[nextIndex]?.focus();
   }
 
   return (
@@ -194,7 +215,7 @@ export function ManageMoneyVaultCard({
           aria-label="Close manage money"
           onClick={onClose}
         >
-          X
+          <span aria-hidden="true">×</span>
         </button>
       ) : null}
       <header className="money-header">
@@ -241,9 +262,12 @@ export function ManageMoneyVaultCard({
               {moneyActionTabs.map((tab) => (
                 <button
                   key={tab.mode}
+                  id={`money-action-${tab.mode}`}
                   type="button"
                   role="tab"
                   aria-selected={moneyAction === tab.mode}
+                  aria-controls="money-action-panel"
+                  tabIndex={moneyAction === tab.mode ? 0 : -1}
                   className={`money-action-tab${
                     moneyAction === tab.mode ? " active" : ""
                   }`}
@@ -255,16 +279,30 @@ export function ManageMoneyVaultCard({
               ))}
             </div>
 
+            <div
+              id="money-action-panel"
+              className="money-action-content"
+              role="tabpanel"
+              aria-labelledby={`money-action-${moneyAction}`}
+            >
             <div className="money-message-stack">
-              <p className="money-action-hint">{activeActionHint}</p>
+              <p id="money-action-hint" className="money-action-hint">
+                {activeActionHint}
+              </p>
               {flow.configMessage ? (
-                <p className="flow-alert">{flow.configMessage}</p>
+                <p id="money-config-message" className="flow-alert" role="status">
+                  {flow.configMessage}
+                </p>
               ) : null}
               {flow.statusMessage ? (
-                <p className="flow-success">{flow.statusMessage}</p>
+                <p className="flow-success" role="status" aria-live="polite">
+                  {flow.statusMessage}
+                </p>
               ) : null}
               {flow.errorMessage ? (
-                <p className="flow-alert">{flow.errorMessage}</p>
+                <p className="flow-alert" role="alert">
+                  {flow.errorMessage}
+                </p>
               ) : null}
             </div>
 
@@ -278,7 +316,11 @@ export function ManageMoneyVaultCard({
                 type="number"
                 min="0"
                 step="0.0001"
-                placeholder="0.0001"
+                inputMode="decimal"
+                name="amount"
+                autoComplete="off"
+                placeholder="e.g. 0.0001…"
+                aria-describedby="money-action-hint"
                 value={flow.amount}
                 onChange={(event: ChangeEvent<HTMLInputElement>) =>
                   flow.setAmount(event.target.value)
@@ -310,24 +352,44 @@ export function ManageMoneyVaultCard({
               {activeActionLabel}
             </button>
 
+            {moneyAction === "deposit" && flow.hasInsufficientWalletBalance ? (
+              <aside className="money-add-cash" aria-labelledby="money-add-cash-title">
+                <strong id="money-add-cash-title">Need more USDC?</strong>
+                <p>
+                  {flow.isMiniPay
+                    ? "Deposit USDC, USDT, or USDm (cUSD) with MiniPay, then return here and retry."
+                    : "This browser is outside MiniPay. Open the official Deposit flow; if MiniPay is unavailable, fund this wallet through your usual provider and retry."}
+                </p>
+                <a
+                  ref={depositFallbackRef}
+                  className="flow-btn money-add-cash-link"
+                  href={flow.addCashUrl}
+                  {...depositLinkProps}
+                >
+                  DEPOSIT IN MINIPAY
+                </a>
+              </aside>
+            ) : null}
+
             {!onClose ? (
               <div className="money-panel-footer">
                 <div className="money-footer-actions">
-                  <a
+                  <Link
                     href={returnHref}
                     className="flow-btn money-nav-home-btn money-panel-nav-btn"
                   >
                     {returnLabel}
-                  </a>
-                  <a
+                  </Link>
+                  <Link
                     href="/play"
                     className="flow-btn money-nav-play-btn money-panel-nav-btn"
                   >
                     PLAY GAME
-                  </a>
+                  </Link>
                 </div>
               </div>
             ) : null}
+            </div>
           </section>
         </div>
 

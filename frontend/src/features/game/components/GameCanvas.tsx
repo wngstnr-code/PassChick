@@ -5,6 +5,14 @@ import Image from "next/image";
 import Script from "next/script";
 import { useEffect, useState } from "react";
 
+type PassChickThreeModule = typeof import("three");
+
+declare global {
+  interface Window {
+    __PASSCHICK_THREE__?: PassChickThreeModule;
+  }
+}
+
 type GameCanvasProps = {
   backgroundMode?: boolean;
 };
@@ -59,6 +67,8 @@ const characters = [
 
 export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
   const [characterModalOpen, setCharacterModalOpen] = useState(false);
+  const [isGameEngineDependencyReady, setIsGameEngineDependencyReady] =
+    useState(false);
   const [selectedCharacter, setSelectedCharacter] = useState(() => {
     if (typeof window === "undefined") return "chicken";
     try {
@@ -68,6 +78,24 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
       return "chicken";
     }
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void import("three")
+      .then((threeModule) => {
+        if (cancelled) return;
+        window.__PASSCHICK_THREE__ = threeModule;
+        setIsGameEngineDependencyReady(true);
+      })
+      .catch((error: unknown) => {
+        console.error("Failed to load the local Three.js bundle:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const openCharacterMenu = () => {
@@ -571,7 +599,9 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
         </div>
       </div>
 
-      <Script src="/script.js" strategy="afterInteractive" type="module" />
+      {isGameEngineDependencyReady ? (
+        <Script src="/script.js" strategy="afterInteractive" type="module" />
+      ) : null}
     </>
   );
 }

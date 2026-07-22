@@ -294,6 +294,7 @@ export function HomePage() {
     canDisconnect,
     isAppChain,
     isConnecting,
+    isWalletDetecting,
     error,
     walletProviderName,
     connectWallet,
@@ -819,13 +820,24 @@ export function HomePage() {
                   </section>
                 )}
               </div>
+            ) : isWalletDetecting ? (
+              <div
+                className="home-nav-login home-nav-login-loading"
+                role="status"
+                aria-live="polite"
+                aria-label="Checking wallet connection"
+              >
+                <span className="home-nav-login-spinner" aria-hidden="true" />
+                LOADING
+              </div>
             ) : (
               <button
                 className="flow-btn primary home-nav-login"
                 type="button"
                 onClick={openHeroConnectPrompt}
+                disabled={isConnecting}
               >
-                LOGIN
+                {isConnecting ? "CONNECTING..." : "LOGIN"}
               </button>
             )}
           </div>
