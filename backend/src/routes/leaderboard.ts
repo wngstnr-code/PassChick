@@ -1,16 +1,13 @@
 import { Router } from "express";
 import { supabase } from "../config/supabase.js";
+import {
+  CHECKPOINT_ROW_INTERVAL,
+  computeTier,
+  TIER_LABELS,
+  toFiniteNumber,
+} from "../lib/tiers.js";
 
 const router = Router();
-
-const CHECKPOINT_ROW_INTERVAL = 40;
-
-const TIER_RULES = [
-  { tier: 1, label: "Runner", checkpoint: 2, requiredCashouts: 3 },
-  { tier: 2, label: "Steady", checkpoint: 4, requiredCashouts: 4 },
-  { tier: 3, label: "Elite", checkpoint: 6, requiredCashouts: 4 },
-  { tier: 4, label: "Oracle", checkpoint: 8, requiredCashouts: 3 },
-] as const;
 
 const TIER_REWARDS = new Map<number, string>([
   [0, "Basic Profile"],
@@ -20,46 +17,10 @@ const TIER_REWARDS = new Map<number, string>([
   [4, "Partner Perks Passport"],
 ]);
 
-const TIER_LABELS = new Map<number, string>([
-  [0, "Rookie"],
-  ...TIER_RULES.map((rule) => [rule.tier, rule.label] as const),
-]);
-
 type LeaderboardRow = {
   wallet_address?: string | null;
   [key: string]: unknown;
 };
-
-function toFiniteNumber(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function countCashoutsAtOrAbove(
-  checkpointCashouts: Record<string, number>,
-  checkpoint: number,
-) {
-  return Object.entries(checkpointCashouts).reduce((sum, [cp, count]) => {
-    return Number(cp) >= checkpoint ? sum + count : sum;
-  }, 0);
-}
-
-function computeTier(checkpointCashouts: Record<string, number>) {
-  let tier = 0;
-
-  for (const rule of TIER_RULES) {
-    const qualifiedCashouts = countCashoutsAtOrAbove(
-      checkpointCashouts,
-      rule.checkpoint,
-    );
-
-    if (qualifiedCashouts >= rule.requiredCashouts) {
-      tier = rule.tier;
-    }
-  }
-
-  return tier;
-}
 
 function buildAccessFlags(tier: number) {
   return {
