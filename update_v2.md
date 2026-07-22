@@ -181,6 +181,8 @@ Tier passport naik dari **akumulasi pencapaian lintas season** (tidak bisa dibel
 
 ### 7.3 Kanvas karir
 
+> ⚠️ **Bertabrakan dengan kenyataan on-chain — lihat S9.** Passport punya `expiry` ~30 hari, dan per 2026-07-22 **seluruh passport pemain di mainnet sudah kedaluwarsa**. "Permanen selamanya" di bawah ini belum benar sampai model expiry-nya diputuskan.
+
 - Skin, badge season, gelar Oracle — semua menempel di passport dan tampil di leaderboard & profil.
 - Riwayat divisi per season tercatat on-chain (event/mapping di kontrak passport) — "pernah Oracle di S1" permanen selamanya.
 - Passport = trophy cabinet yang tidak mau ditinggalkan user.
@@ -355,7 +357,8 @@ Kondisi umum: paling siap di antara tiga modul. Lima kontrak UUPS dengan pola ko
 | S4 | Tidak ada `nonReentrant` di kontrak manapun; TicketShop akan pegang 3 stablecoin (USDT non-standar) | Bangun TicketVault/TicketShop dengan `ReentrancyGuardUpgradeable` + `SafeERC20` sejak awal |
 | S5 | `revokePassport` permanen tanpa jalur pemulihan (`TrustPassport.sol:114-122`) | Tambah `unrevokePassport` di upgrade V2 (kesalahan revoke = user hilang permanen) |
 | S6 | ✅ **Terjawab.** `FIXED_STAKE_AMOUNT = 100` (`GameSettlement.sol:21`) bukan debug leftover — itu memang nilai produksi, dan dengan USDC 6 desimal artinya stake riil **$0.0001 per match** (seperseratus sen) | Tidak ada aksi kode. Tapi catat implikasinya: V1 secara ekonomi adalah **demo**, bukan game uang sungguhan. Menguntungkan saat framing ke reviewer MiniPay ("belum pernah ada taruhan bernilai"), tapi **jangan** dipakai sebagai klaim traksi real-money di aplikasi grant |
-| S7 | 🔴 **Naik prioritas ke Fase 1.** Terverifikasi on-chain: owner ketiga kontrak = EOA tunggal `0x5739…3cFB9`. Satu private key bisa `upgradeToAndCall` ketiganya + `treasuryWithdraw` seluruh treasury | Hari ini taruhannya cuma $0.13 jadi tidak mendesak — **tapi TicketShop akan menerima revenue top-up asli.** Multisig wajib terpasang **sebelum `buyTickets` menerima pembayaran pertama**, bukan di Fase 4 seperti draft sebelumnya |
+| S7 | ⏸️ **DITUNDA — keputusan sadar 2026-07-22.** Owner ketiga kontrak = EOA tunggal `0x5739…3cFB9`, dan private key-nya kini tersimpan plaintext di `sc/.env`. Kunci itu bisa `upgradeToAndCall` ketiganya, `setTreasury`, `creditBatch`, dan `treasuryWithdraw` — setara kepemilikan penuh | **Pemicu wajib: sebelum `setToken` dipanggil di mainnet** (lihat §14 Fase 1b). Bukan sebelum deploy. Alasan penundaan: hari ini kunci itu menjaga $0.13, jadi gesekan multisig belum sepadan. Opsi minimum yang tetap menutup risiko terbesar (kunci plaintext) tanpa memperlambat operasi: hardware wallet + `forge --ledger`/keystore terenkripsi, tanpa multisig. Risiko sisa selama ditunda: kunci bocor bisa meng-upgrade GameVault dan mengambil $0.0187 milik pemain lama atau merusak kontrak — nominalnya remeh, tapi kalau terjadi saat review MiniPay berjalan, biaya listing-nya jauh lebih mahal |
+| S9 | 🆕 **Passport punya masa kedaluwarsa — bertabrakan dengan §7.3 "identitas karir permanen".** Ditemukan 2026-07-22 saat memverifikasi upgrade mainnet: keempat passport pemain asli yang dicek sudah **kedaluwarsa**, `expiry ≈ 1784522409` (18 Juli) sementara tanggal cek 22 Juli, sehingga `isPassportValid` mengembalikan `false` untuk semuanya. Bukan efek upgrade — kondisinya sudah begitu sebelum kontrak disentuh. Artinya passport berlaku ~30 hari dan tidak ada mekanisme perpanjangan otomatis | Perlu keputusan desain sebelum §7 dibangun. §7.3 menjanjikan gelar Oracle "permanen selamanya" dan passport sebagai *trophy cabinet* — mustahil kalau passport-nya mati sebulan sekali. Tiga opsi: (a) backend menandatangani ulang passport otomatis saat user login (paling kecil perubahannya, `claimWithSignature` sudah mendukung karena `issuedAt` yang lebih baru diterima), (b) pisahkan "identitas permanen" dari "kredensial berjangka" — badge/gelar/`seasonHistory` tidak pernah kedaluwarsa, hanya `tier` yang perlu refresh, (c) hilangkan expiry lewat upgrade. Rekomendasi: **(b)** — kebetulan storage V2 sudah begitu bentuknya, `badges` dan `seasonHistory` tidak mengenal expiry sama sekali, jadi tinggal memastikan gate reward tidak ikut membaca `isPassportValid` secara buta. **Catatan: `canClaimMonetaryReward` saat ini MEMBACA expiry** — dengan kondisi sekarang, tidak ada satu pun pemain yang bisa mencairkan reward uang |
 | S8 | ⬇️ **Turun prioritas.** Verifikasi on-chain: `18740 + 1300 + 113260 = 133300` = saldo USDC riil kontrak, **drift nol**. Pola akuntingnya terbukti benar di produksi | Fuzz/invariant test tetap layak ditulis untuk TicketVault, tapi **bukan blocker** — polanya sudah tervalidasi oleh data, aman direplikasi |
 
 ### 13.3 🟠 Backend (`backend/`)
@@ -402,8 +405,88 @@ Kondisi umum: **dua syarat MiniPay terberat sudah lolos** (auto-connect benar; l
 3. B/C §13.1: `requireEnv` private key, guard faucet mainnet
 
 **Fase 1 — Fondasi V2:**
-4. Kontrak `TicketVault` (S3, S4 — TicketShop digabung di dalamnya) + upgrade TrustPassport (S2, S5) + **pindah ownership ke multisig (S7) sebelum `buyTickets` live**
+
+4. ✅ **SELESAI 2026-07-22 — kontrak.** `TicketVault` (S3, S4 — TicketShop digabung di dalamnya) + upgrade TrustPassport (S2, S5) + fuzz invariant (S8). 103 test lulus. Terdeploy & terverifikasi `exact_match` di Celo Sepolia:
+
+   ```
+   TicketVault proxy      0x1490e6B836f552e8504fE6404C30953B15F899c8
+   TicketVault impl       0x6C131a955d24AAC1E978558e94D733c5dD967137
+   TrustPassport proxy    0xF8Bc8B497Cbb7D08a14Ba2107F2C521c78B0eC38  (di-upgrade)
+   TrustPassport impl V2  0x034caEB4a9bbfDDAe9C07FE897f6ec37F40609ea
+   ```
+
+   Terbukti di chain, bukan hanya di test: `claimDaily` dengan tanda tangan backend asli (`0x9579b27a…`), `buyTickets` $3 → 60 tiket dengan vault memegang 0 stablecoin (`0xe9f8c2f6…`), `spendBatch`, upgrade passport tanpa menggeser `owner`/`backendSigner`, serta guard `DayAlreadyClaimed` (diuji dengan nonce baru, jadi yang menolak memang `lastClaimDay`) dan `TicketAmountTooLarge`.
+
+   Tambahan di luar draft awal: cap `MAX_TICKETS_PER_CLAIM = 100` (membatasi kerusakan kalau signer bocor), `rescueToken`, dan `setToken` memverifikasi desimal ke `IERC20Metadata.decimals()` alih-alih mempercayai input manual.
+
 5. Skema DB (B3) + `signDailyClaim` (B5) + listener event tiket (B6) + `seasonScheduler` (B2) + ekstrak tier logic (B7)
+
+**Fase 1b — Deploy mainnet bertahap (toko tutup dulu):**
+
+Deploy TicketVault ke mainnet **tanpa memanggil `setToken` sama sekali**. `buyTickets` menolak token yang tidak di-whitelist (`TokenNotEnabled`), jadi jalur uangnya mati total sementara `claimDaily`, `creditBatch`, dan seluruh integrasi backend tetap jalan. Konsekuensinya: selama fase ini **nol uang berisiko**, sehingga S7 boleh tetap tertunda.
+
+```
+deploy mainnet, TANPA setToken   → backend integrasi penuh, daily claim hidup
+   ↓
+amankan kunci owner (S7)          → hardware wallet minimum
+   ↓
+setToken di mainnet              → toko tiket buka, uang mulai masuk
+```
+
+Garis `setToken` itu batasnya. Sebelum dilewati, kunci plaintext tidak menjaga uang siapa pun; sesudahnya, dia menjaga uang pengguna.
+
+**✅ Dieksekusi 2026-07-22 — Celo Mainnet (42220):**
+
+```
+TicketVault proxy   0x8a1bd73DDFb4E06779D9c578a6447aE9B48199D5
+TicketVault impl    0xAC5574EC54bAf71A855F9Fc5989F51f555965F71   verified di Celoscan
+```
+
+Status terverifikasi on-chain setelah deploy:
+
+| Item | Nilai |
+|---|---|
+| owner / treasury | `0x57394581…3cFB9` (konsisten dengan kontrak mainnet lain) |
+| backendSigner | `0xCa9298971140d120F010D5901DeC4f297C72c7Da` |
+| `claimSignatureTtl` | 600 detik |
+| `MAX_TICKETS_PER_CLAIM` | 100 |
+| USDC / USDT / cUSD | **`enabled = false` ketiganya** |
+| `buyTickets(USDC, $1)` | revert `0xd334e6bd` (`TokenNotEnabled`) ✅ |
+
+> ⚠️ **Jebakan saat deploy — wajib diulang kalau redeploy.** `sc/.env` berisi `USDC_ADDRESS` yang terisi. Kalau script dijalankan dengan `source .env` biasa, `_configureTokens` akan meng-whitelist USDC dan **toko langsung buka**. Ketiga variabel token harus ditimpa kosong secara eksplisit:
+>
+> ```bash
+> USDC_ADDRESS= USDT_ADDRESS= CUSD_ADDRESS= forge script ... --sig "run()"
+> ```
+>
+> Verifikasi sebelum broadcast: jalankan simulasi lebih dulu dan pastikan `broadcast/.../dry-run/run-latest.json` hanya berisi **2 transaksi CREATE** dan nol `setToken`.
+
+**✅ TrustPassport mainnet di-upgrade ke V2 — 2026-07-22.**
+
+```
+TrustPassport proxy   0x4Bf6D3C0dBbC14eF0C7f2a4daeD7D97418Fc5aDf
+impl lama             0x974743364164dfb8d8802ef9192db0f0d9c57b27
+impl baru             0x124a8B9C2e4549a4854c0EF8336827D03b49ce0D   verified di Celoscan
+```
+
+Bukti data pemain selamat — dicek dengan **passport 4 alamat sungguhan** (didapat dari Blockscout, bukan alamat uji), terbaca byte-identik sebelum dan sesudah upgrade:
+
+```
+0x065Ba780 : (tier 1, issuedAt 1781930409, expiry 1784522409, revoked false)
+0x17d53D8c : (tier 1, issuedAt 1781930393, expiry 1784522393, revoked false)
+0x191F3C7a : (tier 1, issuedAt 1781930369, expiry 1784522369, revoked false)
+0x31504D05 : (tier 1, issuedAt 1781930406, expiry 1784522406, revoked false)
+```
+
+`owner` dan `backendSigner` tidak bergeser; `verifiedHuman`/`badges`/`seasonHistory` lahir kosong, bukan hasil salah-baca byte V1.
+
+Perintah yang dipakai (`TRUST_PASSPORT_ADDRESS` di `.env` sudah menunjuk proxy mainnet, jadi **tidak** ditimpa — kebalikan dari saat menjalankannya untuk Sepolia, yang wajib ditimpa ke `0xF8Bc8B49…`):
+
+```bash
+PRIVATE_KEY="$WALLET_DEPLOYER_PRIVATE_KEY" \
+forge script script/DeployV2Contracts.s.sol:DeployV2Contracts --sig "upgradePassport()" \
+  --rpc-url https://forno.celo.org --broadcast
+```
 
 **Fase 2 — Migrasi gameplay:**
 6. Rewiring backend stake→tiket (B4)
@@ -419,7 +502,11 @@ Kondisi umum: **dua syarat MiniPay terberat sudah lolos** (auto-connect benar; l
 9. Jalankan checklist hari-H §11.1 (revisi ToS/Privacy, test di container MiniPay, ukur PageSpeed, sample tx kontrak V2, aset form, SLA) → **submit listing**
 
 **Fase 4 — Hardening pasca-launch:**
-10. Session store ke Redis/Supabase (B1), invariant test TicketVault (S8), sisanya §13 prioritas rendah (B9, F10)
+10. Session store ke Redis/Supabase (B1), sisanya §13 prioritas rendah (B9, F10)
+
+> **Utang yang sengaja ditinggalkan — jangan sampai hilang dari ingatan:**
+> 1. **S7 (kunci owner)** — pemicunya `setToken` di mainnet, lihat Fase 1b.
+> 2. **Kontrak pembayar reward uang belum ada.** §9.2 menjanjikan "reward uang claimable on-chain" dan §7.1 gerbangnya sudah dibangun (`canClaimMonetaryReward`), tapi tidak ada kontrak yang benar-benar mencairkan stablecoin/CELO ke pemenang divisi. Ini konsekuensi keputusan Season 1 non-moneter (§6), jadi tidak memblokir listing — tapi **harus ada sebelum season pertama yang berhadiah uang berakhir**, bukan saat pemenangnya sudah menagih.
 
 ---
 
