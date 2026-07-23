@@ -4,6 +4,7 @@ import {
   nettRows,
   aggregateSpendByWallet,
   chunkSpends,
+  filterTerminalSpends,
   type TicketLedgerRow,
 } from "./spendBatchExecutor.js";
 
@@ -120,4 +121,33 @@ test("chunkSpends: filters out non-positive amounts", () => {
 
 test("chunkSpends: empty input yields no batches (nothing sent)", () => {
   assert.deepEqual(chunkSpends([]), []);
+});
+
+test("filterTerminalSpends: keeps only CRASHED/COMPLETED sessions", () => {
+  const rows = [
+    row({ id: 1, session_id: "s1" }),
+    row({ id: 2, session_id: "s2" }),
+    row({ id: 3, session_id: "s3" }),
+    row({ id: 4, session_id: "s4" }),
+  ];
+  const statuses = [
+    { session_id: "s1", status: "CRASHED" },
+    { session_id: "s2", status: "COMPLETED" },
+    { session_id: "s3", status: "ACTIVE" },
+    { session_id: "s4", status: "VOIDED" },
+  ];
+  const filtered = filterTerminalSpends(rows, statuses);
+  assert.deepEqual(filtered.map((r) => r.id), [1, 2]);
+});
+
+test("filterTerminalSpends: unknown session (no game_sessions row) is excluded", () => {
+  const rows = [row({ id: 1, session_id: "s-missing" })];
+  assert.deepEqual(filterTerminalSpends(rows, []), []);
+});
+
+test("filterTerminalSpends: empty rows yield empty output", () => {
+  assert.deepEqual(
+    filterTerminalSpends([], [{ session_id: "s1", status: "CRASHED" }]),
+    [],
+  );
 });

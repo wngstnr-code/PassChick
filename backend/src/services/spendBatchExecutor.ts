@@ -68,6 +68,33 @@ export function nettRows(rows: TicketLedgerRow[]): NettingResult {
   return { spendableRows, netZeroIds };
 }
 
+/// Session statuses whose SPEND boleh disettle on-chain (syarat sign-off SC
+/// untuk BE-07): hanya sesi terminal. ACTIVE/paused tidak boleh — sesi itu
+/// masih bisa berakhir VOIDED+REFUND (net-zero) dan tidak boleh terlanjur
+/// didebit on-chain. Sesi VOIDED diselesaikan lewat jalur net-zero sentinel,
+/// bukan spendBatch.
+export const TERMINAL_SESSION_STATUSES: ReadonlySet<string> = new Set([
+  "CRASHED",
+  "COMPLETED",
+]);
+
+/**
+ * Pure filter: keeps only ledger rows whose session is in a terminal status
+ * (CRASHED/COMPLETED). Rows whose session is unknown are excluded — settling
+ * a spend we cannot prove terminal is never safe.
+ */
+export function filterTerminalSpends(
+  rows: TicketLedgerRow[],
+  sessionStatuses: Array<{ session_id: string; status: string }>,
+): TicketLedgerRow[] {
+  const terminalIds = new Set(
+    sessionStatuses
+      .filter((s) => TERMINAL_SESSION_STATUSES.has(s.status))
+      .map((s) => s.session_id),
+  );
+  return rows.filter((row) => terminalIds.has(row.session_id));
+}
+
 export interface AggregatedSpend {
   wallet_address: string;
   amount: number;
@@ -232,7 +259,29 @@ async function processNextBatch(): Promise<void> {
   }
   if (!pendingRowsRaw || pendingRowsRaw.length === 0) return;
 
-  const spendRows = pendingRowsRaw as TicketLedgerRow[];
+  const allPendingRows = pendingRowsRaw as TicketLedgerRow[];
+
+  // Guard sign-off SC BE-07: hanya settle SPEND milik sesi terminal
+  // (CRASHED/COMPLETED). Sesi ACTIVE ditunda ke tick berikutnya; sesi yang
+  // tidak ditemukan di game_sessions juga di-skip (tidak bisa dibuktikan terminal).
+  const { data: sessionStatusRaw, error: sessErr } = await supabase
+    .from("game_sessions")
+    .select("session_id, status")
+    .in(
+      "session_id",
+      Array.from(new Set(allPendingRows.map((r) => r.session_id))),
+    );
+
+  if (sessErr) {
+    console.error("[SpendBatchExecutor] Failed to query session statuses:", sessErr);
+    return;
+  }
+
+  const spendRows = filterTerminalSpends(
+    allPendingRows,
+    (sessionStatusRaw as Array<{ session_id: string; status: string }>) ?? [],
+  );
+  if (spendRows.length === 0) return;
 
   // Re-check for refunds on these exact sessions to be safe (settleNetZeroSessions
   // already ran this tick, but a REFUND could have landed in between).

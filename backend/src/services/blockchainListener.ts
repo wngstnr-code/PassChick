@@ -78,27 +78,24 @@ function dayIndexToDateString(dayIndex: number): string {
 /// Mirrors ticket_balances against the on-chain TicketVault ledger.
 ///
 /// Column semantics (see database/schema_v2.sql):
-///  - `onchain_credited` mirrors the NET on-chain ticket balance (every
-///    credit-shaped event adds to it, every on-chain spend subtracts).
-///  - `offchain_debited` is a debit *not yet settled on-chain* (reserved for
-///    the in-match ticket-spend flow, not implemented in this change).
+///  - `onchain_credited` accumulates credit-shaped events (claim, purchase,
+///    creditBatch). On-chain spends TIDAK dikurangkan di sini (lihat di bawah).
+///  - `offchain_debited` accumulates in-match ticket debits (debit RPC) and
+///    is relieved only by refunds. It is NOT relieved when a spend batch
+///    settles on-chain — the pair (credited stays high, debited stays high)
+///    cancels out, so `balance` stays correct.
 ///  - `balance = onchain_credited - offchain_debited` is what the app shows.
 ///
-/// TicketSpent means an off-chain debit batch was just settled on-chain, so
-/// it both decrements `onchain_credited` (the ledger moved) AND relieves the
-/// matching amount of `offchain_debited` (the debit is no longer pending).
-///
-/// Known limitation: this treats each event delivery as exactly-once. Forno
-/// (and `watchContractEvent` in general) is documented as at-least-once;
-/// `transactions` rows are protected by the `tx_hash` upsert key, but this
-/// mirror update is not additionally deduplicated. A double-delivered event
-/// would double-apply the delta. Accepted as a known gap per HANDOFF_V2.md
-/// §2.3 rather than building a dedup ledger here.
+/// KOREKSI SC (menggantikan HANDOFF_V2.md §2.3): TicketSpent TIDAK dipakai
+/// untuk mirror. Settlement spendBatch dicatat oleh spendBatchExecutor lewat
+/// `reconciled_tx_hash` — event delivery di sini at-least-once, dan
+/// double-apply akan merusak komponen ledger (offchain_debited bisa negatif).
+/// Jangan "memperbaiki" dengan menambahkan kembali mirror spend di sini.
+/// Fungsi ini sekarang hanya menangani credit-shaped events.
 async function applyTicketMirrorDelta(
   walletAddress: string,
   amount: bigint,
   blockNumber: bigint | null,
-  kind: "credit" | "spend",
 ) {
   const { data: existing, error: fetchError } = await supabase
     .from("ticket_balances")
@@ -112,16 +109,9 @@ async function applyTicketMirrorDelta(
   }
 
   const prevOnchainCredited = BigInt(existing?.onchain_credited ?? 0);
-  const prevOffchainDebited = BigInt(existing?.offchain_debited ?? 0);
+  const offchainDebited = BigInt(existing?.offchain_debited ?? 0);
 
-  const onchainCredited =
-    kind === "credit" ? prevOnchainCredited + amount : prevOnchainCredited - amount;
-  const offchainDebited =
-    kind === "spend"
-      ? prevOffchainDebited > amount
-        ? prevOffchainDebited - amount
-        : 0n
-      : prevOffchainDebited;
+  const onchainCredited = prevOnchainCredited + amount;
   const balance = onchainCredited - offchainDebited;
 
   const { error: upsertError } = await supabase.from("ticket_balances").upsert(
@@ -362,7 +352,6 @@ export async function startBlockchainListener(): Promise<void> {
                   walletAddress,
                   BigInt(log.args.amount),
                   log.blockNumber ?? null,
-                  "credit",
                 );
                 await advanceDailyStreak(walletAddress, Number(dayIndex));
               })().catch((err) => console.error("❌ Failed to handle TicketClaimed event:", err));
@@ -392,7 +381,6 @@ export async function startBlockchainListener(): Promise<void> {
                   walletAddress,
                   BigInt(log.args.tickets),
                   log.blockNumber ?? null,
-                  "credit",
                 );
               })().catch((err) => console.error("❌ Failed to handle TicketPurchased event:", err));
             }
@@ -418,7 +406,6 @@ export async function startBlockchainListener(): Promise<void> {
                   walletAddress,
                   BigInt(log.args.amount),
                   log.blockNumber ?? null,
-                  "credit",
                 );
               })().catch((err) => console.error("❌ Failed to handle TicketCredited event:", err));
             }
@@ -434,18 +421,15 @@ export async function startBlockchainListener(): Promise<void> {
                 const walletAddress = log.args.user;
                 if (!walletAddress || log.args.amount === undefined) return;
                 await ensurePlayer(walletAddress);
+                // KOREKSI SC: hanya catat riwayat transaksi. JANGAN apply
+                // mirror delta di sini — settlement spendBatch direkonsiliasi
+                // oleh spendBatchExecutor, bukan lewat event TicketSpent.
                 await logTransaction({
                   txHash: txHash(log),
                   walletAddress,
                   type: "TICKET_SPEND",
                   amount: Number(log.args.amount),
                 });
-                await applyTicketMirrorDelta(
-                  walletAddress,
-                  BigInt(log.args.amount),
-                  log.blockNumber ?? null,
-                  "spend",
-                );
               })().catch((err) => console.error("❌ Failed to handle TicketSpent event:", err));
             }
           },

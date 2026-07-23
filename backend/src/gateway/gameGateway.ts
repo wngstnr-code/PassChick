@@ -10,7 +10,6 @@ import { getWalletFromSocketCookies } from "../middleware/auth.js";
 import { getSession } from "../services/sessionStore.js";
 import { env } from "../config/env.js";
 import { supabase } from "../config/supabase.js";
-import { isValidEvmAddress, normalizeEvmAddress } from "../utils/celo.js";
 import {
   STEP_INCREMENT_BP,
   CP_BONUS_NUM,
@@ -65,9 +64,8 @@ const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9
 const SIGN_SETTLEMENT_TIMEOUT_MS = 10_000;
 
 type SocialSocketAuthPayload = {
-  walletAddress?: string;
-  walletProvider?: string;
-  chainId?: number | string;
+  // Field lain (walletAddress, walletProvider, chainId) mungkin masih dikirim
+  // frontend lama, tapi diabaikan — hanya session token yang dipercaya.
   token?: string;
 };
 
@@ -192,30 +190,10 @@ function getWalletFromSocketHandshake(socket: Socket): string | null {
     }
   }
 
-  if (!env.SOCIAL_AUTH_ENABLED) {
-    return null;
-  }
-
-  // FOLLOW-UP(v2 auth §13.1-A): fallback ini trust-on-claim; hapus setelah frontend selalu mengirim session token di socket.handshake.auth.token
-
-  const walletProvider = String(auth.walletProvider || "").toLowerCase();
-  const claimedAddress = String(auth.walletAddress || "");
-  void auth.chainId;
-
-  const isSocialOrEmbedded =
-    walletProvider.includes("reown") ||
-    walletProvider.includes("appkit") ||
-    walletProvider.includes("minipay") ||
-    walletProvider === "google" ||
-    walletProvider === "apple" ||
-    walletProvider === "discord" ||
-    walletProvider === "x";
-
-  if (!isSocialOrEmbedded || !isValidEvmAddress(claimedAddress)) {
-    return null;
-  }
-
-  return normalizeEvmAddress(claimedAddress);
+  // v2 auth §13.1-A: fallback trust-on-claim sudah dihapus — socket WAJIB
+  // membawa session cookie atau session token valid di handshake.auth.token.
+  // Alamat wallet yang diklaim client tidak pernah dipercaya langsung.
+  return null;
 }
 
 export function setupGameGateway(httpServer: HttpServer): SocketServer {
