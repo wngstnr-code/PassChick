@@ -451,6 +451,7 @@ async function readPassportOnchain(walletAddress: string) {
     return {
       configured: false,
       valid: false,
+      expired: false,
       tier: 0,
       issuedAt: 0,
       expiry: 0,
@@ -465,6 +466,7 @@ async function readPassportOnchain(walletAddress: string) {
       return {
         configured: true,
         valid: false,
+        expired: false,
         tier: 0,
         issuedAt: 0,
         expiry: 0,
@@ -474,10 +476,15 @@ async function readPassportOnchain(walletAddress: string) {
 
     const now = Math.floor(Date.now() / 1000);
     const valid = !eggPass.revoked && eggPass.expiry > now && eggPass.tier > 0;
+    // S9 decision (2026-07-23, opsi B): an expired tier credential is NOT a
+    // lost career. `expired` lets the FE render "renew your tier" instead of
+    // treating the player as passport-less; badges/season history never expire.
+    const expired = !eggPass.revoked && eggPass.tier > 0 && eggPass.expiry <= now;
 
     return {
       configured: true,
       valid,
+      expired,
       tier: eggPass.tier,
       issuedAt: eggPass.issuedAt,
       expiry: eggPass.expiry,
@@ -488,6 +495,7 @@ async function readPassportOnchain(walletAddress: string) {
     return {
       configured: true,
       valid: false,
+      expired: false,
       tier: 0,
       issuedAt: 0,
       expiry: 0,
