@@ -2,6 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import { useAppKitProvider } from "@reown/appkit/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { createTicketQueryScope } from "~/features/tickets/domain";
+import { ticketQueryKeys } from "~/features/tickets/queryKeys";
+import { ticketRuntimeAdapter } from "~/features/tickets/runtimeAdapter";
 import { useWallet } from "~/features/wallet/WalletProvider";
 import { backendFetch } from "~/lib/backend/api";
 import { CELO_NAMESPACE } from "~/lib/web3/appKit";
@@ -14,15 +18,30 @@ import {
 import {
   initializeSocket,
   emitGameStart,
+  emitGameStartV2,
   emitGameMove,
   emitGameCrash,
   emitGameCashout,
+  emitGameEndRun,
   onGameEvent,
   isSocketConnected,
+  disconnectSocket,
   type GameStartedPayload,
+  type GameStartErrorPayload,
+  type GameEndedV2Payload,
   type GameCashoutResultPayload,
   type GameCrashedPayload,
 } from "~/lib/web3/socket";
+import { GAME_V2_TICKET_MODE } from "../v2Config";
+import {
+  classifyGameStartError,
+  createGameClientSessionId,
+  parseGameEndedV2,
+  parseGameStartedV2,
+  parseSeasonLeaderboard,
+  type GameEndedV2,
+  type GameStartedV2,
+} from "../v2Domain";
 
 type GameBridgeClientProps = {
   backgroundMode?: boolean;
@@ -35,6 +54,16 @@ type ActiveBackendSessionPayload = {
     onchain_session_id?: string;
     stake_amount?: number | string;
     created_at?: string;
+  } | null;
+};
+
+type ActiveV2SessionPayload = {
+  active: boolean;
+  session?: {
+    sessionId?: string;
+    clientSessionId?: string;
+    startedAt?: string;
+    resumable?: boolean;
   } | null;
 };
 
@@ -131,6 +160,18 @@ async function fetchActiveBackendSession() {
   }
 }
 
+async function fetchActiveV2Session() {
+  try {
+    return await backendFetch<ActiveV2SessionPayload>("/api/game/session/active");
+  } catch (error) {
+    console.warn("Failed to inspect active V2 game session:", error);
+    return {
+      active: false,
+      session: null,
+    };
+  }
+}
+
 async function fetchPendingSettlements() {
   try {
     return await backendFetch<PendingSettlementsPayload>("/api/game/pending-settlement");
@@ -164,20 +205,21 @@ function isUserRejectedWalletError(message: string) {
 export function GameBridgeClient({
   backgroundMode = false,
 }: GameBridgeClientProps) {
+  const queryClient = useQueryClient();
   const { walletProvider } = useAppKitProvider<Eip1193Provider>(CELO_NAMESPACE);
   const {
     account,
+    chainIdHex,
     isAppChain,
     hasBackendApiConfig,
     ensureBackendSession,
     refreshBackendSession,
-    isMiniPay,
-    walletProviderName,
   } = useWallet();
 
   const pendingUnsubscribersRef = useRef<Array<() => void>>([]);
   const socketStatusListenersReadyRef = useRef(false);
   const lastSettleSweepAtRef = useRef(0);
+  const gameClientSessionIdRef = useRef<string | null>(null);
   const settleSweepBusyRef = useRef(false);
 
   useEffect(() => {
@@ -196,6 +238,7 @@ export function GameBridgeClient({
     if (backgroundMode) {
       window.__CHICKEN_GAME_BRIDGE__ = {
         backgroundMode: true,
+        mode: GAME_V2_TICKET_MODE ? "V2_TICKET" : "V1_STAKE",
         loadAvailableBalance: async () => 0,
         loadDepositBalances: async () => ({
           walletBalance: 0,
@@ -229,6 +272,10 @@ export function GameBridgeClient({
         }),
         getWalletAddress: () => "",
         openDeposit: (presetAmount?: number) => {
+          if (GAME_V2_TICKET_MODE) {
+            window.dispatchEvent(new CustomEvent("chicken:open-money-panel"));
+            return;
+          }
           window.dispatchEvent(
             new CustomEvent("chicken:open-deposit-modal", {
               detail: { amount: presetAmount },
@@ -331,6 +378,19 @@ export function GameBridgeClient({
       const authOkay = await refreshBackendSession();
       if (!authOkay) {
         return { kind: "none" };
+      }
+
+      if (GAME_V2_TICKET_MODE) {
+        const active = await fetchActiveV2Session();
+        if (!active.active) {
+          return { kind: "none" };
+        }
+        return {
+          kind: "v2_recovering",
+          message: "PREVIOUS RUN IS BEING RECOVERED",
+          actionLabel: "CHECK AGAIN",
+          sessionId: String(active.session?.sessionId || ""),
+        };
       }
 
       const [pending, activeBackendSession] = await Promise.all([
@@ -447,6 +507,30 @@ export function GameBridgeClient({
       return toFiniteAmount(snapshot?.availableBalance);
     }
 
+    async function readTicketBalance() {
+      const scope = createTicketQueryScope(account, chainIdHex);
+      if (!scope) {
+        throw new Error("Ticket balance requires a supported Celo wallet.");
+      }
+      const balance = await ticketRuntimeAdapter.getTicketBalance(scope);
+      if (balance.available > BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new Error("Ticket balance is too large to display safely.");
+      }
+      return Number(balance.available);
+    }
+
+    function ticketBalanceToNumber(value: bigint) {
+      if (value > BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new Error("Ticket balance is too large to display safely.");
+      }
+      return Number(value);
+    }
+
+    async function refreshV2Queries() {
+      await queryClient.invalidateQueries({ queryKey: ticketQueryKeys.all });
+      window.dispatchEvent(new CustomEvent("chicken:season-refresh"));
+    }
+
     async function waitForAvailableBalanceChange(previous: number, timeoutMs = 2500) {
       const startedAt = Date.now();
       let latest = previous;
@@ -469,8 +553,7 @@ export function GameBridgeClient({
         throw new Error("Connect Celo wallet first.");
       }
       if (isSocketConnected()) return;
-      const providerLabel = isMiniPay ? "minipay" : walletProviderName || "reown";
-      await initializeSocket(account, providerLabel);
+      await initializeSocket();
       if (!isSocketConnected()) {
         throw new Error("Socket connection is not ready.");
       }
@@ -586,15 +669,141 @@ export function GameBridgeClient({
       });
     }
 
+    function waitForGameStartV2(
+      clientSessionId: string,
+      timeoutMs = 12000,
+    ): Promise<GameStartedV2> {
+      return new Promise<GameStartedV2>((resolve, reject) => {
+        let settled = false;
+        let timeoutId = 0;
+        const cleanups: Array<() => void> = [];
+        const finalize = () => {
+          window.clearTimeout(timeoutId);
+          while (cleanups.length) cleanups.pop()?.();
+        };
+
+        const fail = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          finalize();
+          reject(error);
+        };
+
+        cleanups.push(
+          onGameEvent("game:started", (payload) => {
+            if (settled) return;
+            try {
+              const parsed = parseGameStartedV2(payload);
+              if (parsed.clientSessionId !== clientSessionId) return;
+              settled = true;
+              finalize();
+              resolve(parsed);
+            } catch {
+              // A legacy start event cannot complete a V2 request.
+            }
+          }),
+        );
+        cleanups.push(
+          onGameEvent("game:start_error", (payload: GameStartErrorPayload) => {
+            const state = classifyGameStartError(payload);
+            const error = new Error(state.message) as Error & {
+              code?: string;
+              action?: string;
+              retryable?: boolean;
+            };
+            error.code = state.code;
+            error.action = state.action;
+            error.retryable = state.retryable;
+            fail(error);
+          }),
+        );
+        cleanups.push(
+          onGameEvent("game:error", (payload) =>
+            fail(new Error(String(payload?.message || "Gateway error"))),
+          ),
+        );
+        pendingUnsubscribersRef.current.push(...cleanups);
+
+        timeoutId = window.setTimeout(
+          () => fail(new Error("Timeout waiting for game:started")),
+          timeoutMs,
+        );
+        if (!emitGameStartV2(clientSessionId)) {
+          fail(new Error("Failed to emit game:start"));
+        }
+      });
+    }
+
+    function waitForGameEndedV2(
+      emitAction: () => boolean,
+      timeoutMs = 12000,
+    ): Promise<GameEndedV2> {
+      return new Promise<GameEndedV2>((resolve, reject) => {
+        let settled = false;
+        let timeoutId = 0;
+        const cleanups: Array<() => void> = [];
+        const finalize = () => {
+          window.clearTimeout(timeoutId);
+          while (cleanups.length) cleanups.pop()?.();
+        };
+        const fail = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          finalize();
+          reject(error);
+        };
+
+        cleanups.push(
+          onGameEvent("game:ended", (payload: GameEndedV2Payload) => {
+            if (settled) return;
+            try {
+              const parsed = parseGameEndedV2(payload);
+              settled = true;
+              finalize();
+              resolve(parsed);
+            } catch (error) {
+              fail(error instanceof Error ? error : new Error(String(error)));
+            }
+          }),
+        );
+        cleanups.push(
+          onGameEvent("game:error", (payload) =>
+            fail(new Error(String(payload?.message || "Gateway error"))),
+          ),
+        );
+        pendingUnsubscribersRef.current.push(...cleanups);
+
+        timeoutId = window.setTimeout(
+          () => fail(new Error("Timeout waiting for game:ended")),
+          timeoutMs,
+        );
+        if (!emitAction()) {
+          fail(new Error("Failed to emit game end event"));
+        }
+      });
+    }
+
     window.__CHICKEN_GAME_BRIDGE__ = {
       backgroundMode: false,
+      mode: GAME_V2_TICKET_MODE ? "V2_TICKET" : "V1_STAKE",
       loadAvailableBalance: async () => {
         if (!account || !hasBackendApiConfig) return 0;
         await requireBackendWalletSession();
-        return readVaultAvailableBalance();
+        return GAME_V2_TICKET_MODE
+          ? readTicketBalance()
+          : readVaultAvailableBalance();
       },
       loadDepositBalances: async () => {
         await requireBackendWalletSession();
+        if (GAME_V2_TICKET_MODE) {
+          const ticketBalance = await readTicketBalance();
+          return {
+            walletBalance: 0,
+            availableBalance: ticketBalance,
+            lockedBalance: 0,
+            allowance: 0,
+          };
+        }
         const snapshot = await backendFetch<VaultStatusPayload>("/api/vault/status");
         return {
           walletBalance: toFiniteAmount(snapshot?.walletBalance),
@@ -606,6 +815,42 @@ export function GameBridgeClient({
       loadLeaderboard: async () => {
         if (!hasBackendApiConfig) {
           throw new Error("Frontend backend config is incomplete.");
+        }
+
+        if (GAME_V2_TICKET_MODE) {
+          const walletParam = account
+            ? `&wallet=${encodeURIComponent(account)}`
+            : "";
+          const loadDivision = (division: string) =>
+            backendFetch<unknown>(
+              `/api/leaderboard/season?division=${encodeURIComponent(
+                division,
+              )}${walletParam}&limit=100&offset=0`,
+            ).then(parseSeasonLeaderboard);
+          let seasonBoard = await loadDivision("ROOKIE");
+          if (
+            seasonBoard.viewer &&
+            seasonBoard.viewer.division !== seasonBoard.division
+          ) {
+            seasonBoard = await loadDivision(seasonBoard.viewer.division);
+          }
+
+          return {
+            mode: "V2_TICKET",
+            leaderboard: seasonBoard.standings.map((standing) => ({
+              wallet_address: standing.walletAddress,
+              best_score: standing.points,
+              rank: standing.rank,
+              points: standing.points,
+              zone: standing.zone,
+              movement: standing.movement,
+            })),
+            walletAddress: account || "",
+            season: seasonBoard.season,
+            division: seasonBoard.division,
+            zones: seasonBoard.zones,
+            viewer: seasonBoard.viewer,
+          };
         }
 
         const payload = await backendFetch<{
@@ -657,6 +902,10 @@ export function GameBridgeClient({
       },
       getWalletAddress: () => account || "",
       openDeposit: (presetAmount?: number) => {
+        if (GAME_V2_TICKET_MODE) {
+          window.dispatchEvent(new CustomEvent("chicken:open-money-panel"));
+          return;
+        }
         window.dispatchEvent(
           new CustomEvent("chicken:open-deposit-modal", {
             detail: { amount: presetAmount },
@@ -669,6 +918,32 @@ export function GameBridgeClient({
       },
       startBet: async (stakeInput: number) => {
         await requireBackendWalletSession();
+        if (GAME_V2_TICKET_MODE) {
+          const clientSessionId = createGameClientSessionId(
+            gameClientSessionIdRef.current,
+          );
+          gameClientSessionIdRef.current = clientSessionId;
+          await ensureGameSocket();
+          const started = await waitForGameStartV2(clientSessionId);
+          gameClientSessionIdRef.current = started.clientSessionId;
+          const ticketBalanceAfter = ticketBalanceToNumber(
+            started.ticketBalanceAfter,
+          );
+          await refreshV2Queries();
+          return {
+            mode: "V2_TICKET",
+            sessionId: started.sessionId,
+            onchainSessionId: "",
+            stake: 0,
+            availableBalance: ticketBalanceAfter,
+            txHash: "socket-game-started-v2",
+            ticketCost: started.ticketCost,
+            ticketBalanceAfter,
+            seasonId: started.seasonId,
+            division: started.division,
+          };
+        }
+
         const stake = normalizeStakeInput(stakeInput);
         const beforeAvailable = await readVaultAvailableBalance().catch(() => 0);
         const startSession = await backendFetch<StartSessionPayload>(
@@ -713,6 +988,41 @@ export function GameBridgeClient({
       },
       cashOut: async () => {
         await requireBackendWalletSession();
+        if (GAME_V2_TICKET_MODE) {
+          await ensureGameSocket();
+          const result = await waitForGameEndedV2(() => emitGameEndRun());
+          gameClientSessionIdRef.current = null;
+          const ticketBalance = ticketBalanceToNumber(result.ticketBalance);
+          await refreshV2Queries();
+          return {
+            mode: "V2_TICKET",
+            sessionId: result.sessionId,
+            onchainSessionId: "",
+            availableBalance: ticketBalance,
+            txHash: "socket-game-ended-v2",
+            resolution: {
+              sessionId: result.sessionId,
+              player: account || "",
+              stakeAmount: "0",
+              payoutAmount: "0",
+              finalMultiplierBp: "0",
+              outcome: result.status === "COMPLETED" ? 1 : 2,
+              deadline: result.endedAt,
+            },
+            signature: "",
+            multiplier: 0,
+            payoutAmount: 0,
+            profit: 0,
+            status: result.status,
+            finalCheckpoint: result.finalCheckpoint,
+            pointsAwarded: result.pointsAwarded,
+            seasonPointsTotal: result.seasonPointsTotal,
+            seasonId: result.seasonId,
+            division: result.division,
+            ticketBalance,
+          };
+        }
+
         const beforeAvailable = await readVaultAvailableBalance().catch(() => 0);
         await ensureGameSocket();
         const result = await waitForSocketResult<GameCashoutResultPayload>(
@@ -739,6 +1049,42 @@ export function GameBridgeClient({
       },
       crash: async (reason?: string) => {
         await requireBackendWalletSession();
+        if (GAME_V2_TICKET_MODE) {
+          await ensureGameSocket();
+          const result = await waitForGameEndedV2(() => emitGameCrash());
+          gameClientSessionIdRef.current = null;
+          const ticketBalance = ticketBalanceToNumber(result.ticketBalance);
+          await refreshV2Queries();
+          return {
+            mode: "V2_TICKET",
+            sessionId: result.sessionId,
+            onchainSessionId: "",
+            availableBalance: ticketBalance,
+            txHash: "socket-game-ended-v2",
+            resolution: {
+              sessionId: result.sessionId,
+              player: account || "",
+              stakeAmount: "0",
+              payoutAmount: "0",
+              finalMultiplierBp: "0",
+              outcome: 2,
+              deadline: result.endedAt,
+            },
+            signature: "",
+            multiplier: 0,
+            payoutAmount: 0,
+            profit: 0,
+            reason: reason || "collision",
+            status: result.status,
+            finalCheckpoint: result.finalCheckpoint,
+            pointsAwarded: result.pointsAwarded,
+            seasonPointsTotal: result.seasonPointsTotal,
+            seasonId: result.seasonId,
+            division: result.division,
+            ticketBalance,
+          };
+        }
+
         const beforeAvailable = await readVaultAvailableBalance().catch(() => 0);
         await ensureGameSocket();
         const result = await waitForSocketResult<GameCrashedPayload>("game:crashed", () =>
@@ -775,6 +1121,10 @@ export function GameBridgeClient({
         const blocker = await getPlayBlocker();
         emitPlayBlocker(blocker);
         if (blocker.kind === "none") return false;
+        if (GAME_V2_TICKET_MODE) {
+          const refreshed = await refreshPlayBlockerStatus();
+          return refreshed.kind === "none";
+        }
         await submitAllPendingSettlements();
         await backendFetch<{
           success: boolean;
@@ -795,6 +1145,10 @@ export function GameBridgeClient({
         const blocker = await getPlayBlocker();
         emitPlayBlocker(blocker);
         if (blocker.kind === "none") return false;
+        if (GAME_V2_TICKET_MODE) {
+          const refreshed = await refreshPlayBlockerStatus();
+          return refreshed.kind === "none";
+        }
         await submitAllPendingSettlements();
         await backendFetch<{
           success: boolean;
@@ -843,6 +1197,7 @@ export function GameBridgeClient({
       pendingUnsubscribersRef.current.forEach((dispose) => dispose());
       pendingUnsubscribersRef.current = [];
       socketStatusListenersReadyRef.current = false;
+      disconnectSocket();
       delete window.__CHICKEN_GAME_BRIDGE__;
     };
   }, [
@@ -851,10 +1206,10 @@ export function GameBridgeClient({
     ensureBackendSession,
     hasBackendApiConfig,
     isAppChain,
-    isMiniPay,
+    chainIdHex,
+    queryClient,
     refreshBackendSession,
     walletProvider,
-    walletProviderName,
   ]);
 
   return null;

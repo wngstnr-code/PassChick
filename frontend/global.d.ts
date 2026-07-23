@@ -16,6 +16,11 @@ type ChickenBridgeStartResult = {
   stake: number;
   availableBalance: number;
   txHash: string;
+  mode?: "V1_STAKE" | "V2_TICKET";
+  ticketCost?: number;
+  ticketBalanceAfter?: number;
+  seasonId?: string | null;
+  division?: string;
 };
 
 type ChickenBridgeSettlementResult = {
@@ -29,6 +34,14 @@ type ChickenBridgeSettlementResult = {
   payoutAmount: number;
   profit: number;
   reason?: string;
+  mode?: "V1_STAKE" | "V2_TICKET";
+  status?: "CRASHED" | "COMPLETED";
+  finalCheckpoint?: number;
+  pointsAwarded?: number;
+  seasonPointsTotal?: number;
+  seasonId?: string | null;
+  division?: string;
+  ticketBalance?: number;
 };
 
 type ChickenBridgeDepositResult = {
@@ -54,11 +67,36 @@ type ChickenBridgeLeaderboardEntry = {
   passportTierLabel?: string;
   passportReward?: string;
   passportAccessFlags?: ChickenBridgePassportAccessFlags;
+  rank?: number;
+  points?: number;
+  zone?: string;
+  movement?: string | null;
 };
 
 type ChickenBridgeLeaderboardPayload = {
   leaderboard: ChickenBridgeLeaderboardEntry[];
   walletAddress: string;
+  mode?: "V1_STAKE" | "V2_TICKET";
+  season?: {
+    seasonNumber: number;
+    startsAt: string;
+    endsAt: string;
+    status: string;
+  };
+  division?: string;
+  zones?: {
+    promotionCount: number;
+    relegationCount: number;
+    activePlayers: number;
+    smallDivision: boolean;
+  };
+  viewer?: {
+    walletAddress: string;
+    division: string;
+    rank: number | null;
+    points: number;
+    zone: string;
+  } | null;
 };
 
 type ChickenBridgePlayerStats = {
@@ -119,6 +157,12 @@ type ChickenBridgePlayBlocker =
       actionLabel: string;
       onchainSessionId?: string;
       pendingCount?: number;
+    }
+  | {
+      kind: "v2_recovering";
+      message: string;
+      actionLabel: string;
+      sessionId?: string;
     };
 
 type ChickenBridgePassportStats = {
@@ -229,6 +273,7 @@ type ChickenBridgePassportStatus = {
 
 type ChickenBridgeApi = {
   backgroundMode: boolean;
+  mode: "V1_STAKE" | "V2_TICKET";
   loadAvailableBalance: () => Promise<number>;
   loadDepositBalances: () => Promise<ChickenBridgeDepositBalances>;
   loadLeaderboard: () => Promise<ChickenBridgeLeaderboardPayload>;

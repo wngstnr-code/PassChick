@@ -100,6 +100,29 @@ describe("FE-07 ticket gameplay domain", () => {
       }).action,
       "RETRY",
     );
+    assert.equal(
+      classifyGameStartError({ code: "UNAUTHENTICATED" }).action,
+      "REAUTH",
+    );
+    assert.equal(
+      classifyGameStartError({ code: "SESSION_ALREADY_ACTIVE" }).action,
+      "RECOVER",
+    );
+    assert.deepEqual(classifyGameStartError({}), {
+      code: "INTERNAL",
+      message: "Unable to start the game.",
+      retryable: false,
+      ticketBalance: null,
+      action: "NONE",
+    });
+    assert.throws(
+      () =>
+        classifyGameStartError({
+          code: "INSUFFICIENT_TICKETS",
+          data: { ticketBalance: "-1" },
+        }),
+      /ticket balance/i,
+    );
   });
 
   it("parses server-authoritative points and ticket balance after a run", () => {
@@ -129,6 +152,52 @@ describe("FE-07 ticket gameplay domain", () => {
         ticketBalance: 6n,
         endedAt: "2026-07-23T09:14:31.000Z",
       },
+    );
+
+    const crashed = parseGameEndedV2({
+      success: true,
+      result: {
+        sessionId: SERVER_SESSION_ID,
+        status: "crashed",
+        finalCheckpoint: "0",
+        pointsAwarded: 0,
+        seasonPointsTotal: 0,
+        seasonId: null,
+        division: "runner",
+        ticketBalance: 2,
+        endedAt: "2026-07-23T09:14:31.000Z",
+      },
+    });
+    assert.equal(crashed.status, "CRASHED");
+    assert.equal(crashed.seasonId, null);
+    assert.equal(crashed.division, "RUNNER");
+    assert.throws(
+      () => parseGameEndedV2({ success: false }),
+      /missing or invalid/i,
+    );
+  });
+
+  it("rejects malformed server start payloads", () => {
+    assert.throws(() => parseGameStartedV2(null), /missing or invalid/i);
+    assert.throws(
+      () => parseGameStartedV2({ success: false }),
+      /missing or invalid/i,
+    );
+    assert.throws(
+      () =>
+        parseGameStartedV2({
+          success: true,
+          session: {
+            sessionId: SERVER_SESSION_ID,
+            clientSessionId: CLIENT_SESSION_ID,
+            ticketCost: 2,
+            ticketBalanceAfter: "6",
+            division: "ROOKIE",
+            startedAt: "not-a-date",
+          },
+          replayed: "false",
+        }),
+      /ticket cost/i,
     );
   });
 });
@@ -211,6 +280,83 @@ describe("FE-08 season leaderboard domain", () => {
           offset: 0,
         }),
       /season leaderboard/i,
+    );
+  });
+
+  it("accepts nullable viewer rank and server movement history", () => {
+    const parsed = parseSeasonLeaderboard({
+      success: true,
+      season: {
+        seasonNumber: "2",
+        startsAt: "2026-08-01T00:00:00.000Z",
+        endsAt: "2026-09-01T00:00:00.000Z",
+        status: "freezing",
+      },
+      division: "runner",
+      standings: [
+        {
+          rank: "1",
+          walletAddress: WALLET.toUpperCase(),
+          points: "9",
+          lastPointAt: null,
+          zone: "safe",
+          movement: "promoted",
+        },
+      ],
+      zones: {
+        promotionCount: 0,
+        relegationCount: 0,
+        activePlayers: 1,
+        smallDivision: false,
+      },
+      viewer: {
+        walletAddress: WALLET,
+        division: "runner",
+        rank: null,
+        points: 0,
+        zone: "passive",
+      },
+      total: 1,
+      limit: 100,
+      offset: 0,
+    });
+
+    assert.equal(parsed.season.status, "FREEZING");
+    assert.equal(parsed.standings[0].lastPointAt, null);
+    assert.equal(parsed.standings[0].movement, "PROMOTED");
+    assert.equal(parsed.viewer?.rank, null);
+    assert.equal(parsed.zones.smallDivision, false);
+  });
+
+  it("wraps malformed leaderboard shapes in one public error", () => {
+    assert.throws(
+      () => parseSeasonLeaderboard({ success: true, standings: [] }),
+      /Season leaderboard is invalid/i,
+    );
+    assert.throws(
+      () =>
+        parseSeasonLeaderboard({
+          success: true,
+          season: {
+            seasonNumber: 1,
+            startsAt: "bad",
+            endsAt: "2026-09-01T00:00:00.000Z",
+            status: "ACTIVE",
+          },
+          division: "ROOKIE",
+          standings: [],
+          zones: {
+            promotionCount: 0,
+            relegationCount: 0,
+            activePlayers: 0,
+            smallDivision: true,
+          },
+          viewer: null,
+          total: 0,
+          limit: 50,
+          offset: 0,
+        }),
+      /season start time/i,
     );
   });
 });

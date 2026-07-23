@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test:game-v2": "node --experimental-strip-types --experimental-test-coverage --test src/features/game/__tests__/v2Flow.test.mjs",
     "test:tickets": "node --experimental-strip-types --experimental-test-coverage --test src/features/tickets/__tests__/*.test.mjs",
     "test:daily-reward": "node --experimental-strip-types --experimental-test-coverage --test src/features/daily-reward/__tests__/*.test.mjs"
   },

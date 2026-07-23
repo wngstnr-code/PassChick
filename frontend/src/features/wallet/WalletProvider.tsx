@@ -362,13 +362,22 @@ export function WalletProvider({ children }: WalletProviderProps) {
           token?: string;
         }>("/auth/social", {
           address: account,
-          walletProvider: walletProviderName || "reown",
+          chainId: Number(CELO_CHAIN_ID_HEX),
+          // AppKit exposes wallet display labels such as "MetaMask"; backend
+          // strict-provider auth expects the stable integration identifier.
+          walletProvider: "reown",
         });
       }
 
       // MiniPay's WebView blocks the cross-site session cookie — persist the
       // token so backendFetch and the socket can authenticate via Bearer header.
-      setSessionToken(authResult.token || "");
+      const sessionToken = String(authResult.token || "").trim();
+      if (!sessionToken) {
+        throw new Error(
+          "Backend authenticated the wallet without returning a session token.",
+        );
+      }
+      setSessionToken(sessionToken);
 
       setBackendAddress(account);
       backendSessionRef.current = {
