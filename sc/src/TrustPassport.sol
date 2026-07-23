@@ -245,10 +245,15 @@ contract TrustPassport is Initializable, OwnableUpgradeable, UUPSUpgradeable, Pa
     }
 
     /// @notice Whether `player` may claim money-valued rewards: valid passport AND verified human.
+    /// @notice Whether `player` may claim money-valued rewards.
+    /// @dev Deliberately does NOT read `expiry` (S9, option b). A reward already earned in
+    ///      a finished season should not evaporate because the player skipped a month, and
+    ///      expiry adds no anti-sybil value here: `verifiedHuman` is the sybil gate and
+    ///      `revoked` is the enforcement lever. `isPassportValid` still honours expiry -
+    ///      that one answers "is this an active credential", which is a different question.
     function canClaimMonetaryReward(address player) external view returns (bool) {
         Passport memory passport = passports[player];
-        bool passportValid = passport.tier > 0 && !passport.revoked && passport.expiry >= block.timestamp;
-        return passportValid && verifiedHuman[player];
+        return passport.tier > 0 && !passport.revoked && verifiedHuman[player];
     }
 
     function hashPassportClaim(PassportClaim calldata claim) public view returns (bytes32) {

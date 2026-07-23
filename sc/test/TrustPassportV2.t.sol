@@ -191,6 +191,53 @@ contract TrustPassportV2Test is Test {
         assertFalse(passport.canClaimMonetaryReward(player), "revocation closes the gate again");
     }
 
+    /// @dev S9 option (b): a reward earned in a finished season must survive the tier
+    ///      credential lapsing. Every live mainnet passport is already past its expiry,
+    ///      so without this the gate would be shut for literally everyone.
+    function test_CanClaimMonetaryRewardSurvivesExpiry() public {
+        TrustPassport.PassportClaim memory claim = TrustPassport.PassportClaim({
+            player: player,
+            tier: 4,
+            issuedAt: uint64(block.timestamp),
+            expiry: uint64(block.timestamp + 30 days),
+            nonce: 21
+        });
+        vm.prank(player);
+        passport.claimWithSignature(claim, _signPassport(claim, backendSignerPk));
+
+        TrustPassport.VerifyClaim memory verify = _verifyClaim(player, 22);
+        vm.prank(player);
+        passport.verifyHuman(verify, _signVerify(verify, backendSignerPk));
+        assertTrue(passport.canClaimMonetaryReward(player));
+
+        // Walk past the tier credential's expiry.
+        vm.warp(block.timestamp + 31 days);
+
+        assertFalse(passport.isPassportValid(player), "tier credential has lapsed");
+        assertTrue(passport.canClaimMonetaryReward(player), "but the earned reward stays claimable");
+
+        // Enforcement still works on an expired passport.
+        passport.revokePassport(player);
+        assertFalse(passport.canClaimMonetaryReward(player), "revoke still shuts the gate");
+    }
+
+    function test_CanClaimMonetaryRewardStillNeedsVerification() public {
+        TrustPassport.PassportClaim memory claim = TrustPassport.PassportClaim({
+            player: player,
+            tier: 3,
+            issuedAt: uint64(block.timestamp),
+            expiry: uint64(block.timestamp + 30 days),
+            nonce: 31
+        });
+        vm.prank(player);
+        passport.claimWithSignature(claim, _signPassport(claim, backendSignerPk));
+
+        vm.warp(block.timestamp + 31 days);
+
+        // Dropping expiry must not accidentally drop the sybil gate with it.
+        assertFalse(passport.canClaimMonetaryReward(player), "unverified stays locked out");
+    }
+
     // ---------------------------------------------------------------- revoke
 
     function test_UnrevokeRestoresPassport() public {

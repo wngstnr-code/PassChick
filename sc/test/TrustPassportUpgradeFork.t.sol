@@ -63,6 +63,44 @@ contract TrustPassportUpgradeForkTest is Test {
         assertFalse(passport.canClaimMonetaryReward(OWNER), "reward gate closed without verification");
     }
 
+    /// @notice Proves the S9 fix against real production data: a genuine player whose tier
+    ///         credential has already lapsed must still be able to claim an earned reward.
+    /// @dev Every passport on mainnet is currently past its expiry, so before this change
+    ///      the gate was shut for the entire player base. Verification is forced through
+    ///      storage rather than a signature because the backend signing key is not available
+    ///      to tests; the gate logic under test is unaffected by how the flag got set.
+    function test_MainnetExpiredPassportCanStillClaimReward() public {
+        try vm.createSelectFork(rpcUrl) {}
+        catch {
+            vm.skip(true);
+            return;
+        }
+        vm.rollFork(block.number);
+
+        // A real player, claimed via the live backend, whose passport has since expired.
+        address player = 0x065Ba78045b55c037e21170319eB5e75E0af8286;
+        TrustPassport passport = TrustPassport(PASSPORT_PROXY);
+
+        TrustPassport.Passport memory stored = passport.getPassport(player);
+        assertGt(stored.tier, 0, "fork sanity: expected a real passport");
+        assertLt(stored.expiry, block.timestamp, "fork sanity: expected it to be expired");
+
+        TrustPassport newImplementation = new TrustPassport();
+        vm.prank(OWNER);
+        passport.upgradeToAndCall(address(newImplementation), "");
+
+        assertFalse(passport.isPassportValid(player), "tier credential is lapsed");
+        assertFalse(passport.canClaimMonetaryReward(player), "still gated on verification");
+
+        // verifiedHuman lives in slot 3.
+        vm.store(PASSPORT_PROXY, keccak256(abi.encode(player, uint256(3))), bytes32(uint256(1)));
+        assertTrue(passport.verifiedHuman(player), "storage slot assumption holds");
+
+        assertTrue(
+            passport.canClaimMonetaryReward(player), "expired-but-verified player can claim what they earned"
+        );
+    }
+
     /// @notice Rehearses the operator-role upgrade against the Sepolia TicketVault, which
     ///         already holds real usage: ticket balances, a claimed day, a whitelisted token.
     /// @dev Mainnet's TicketVault is still untouched, so Sepolia is the only deployment
