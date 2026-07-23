@@ -41,6 +41,11 @@ import {
   waitForInjectedProvider,
 } from "~/lib/web3/celo";
 import { readRawErrorMessage, toUserFacingWalletError } from "~/lib/errors";
+import {
+  buildSiweMessage,
+  selectBackendAuthRoute,
+  signSiweMessage,
+} from "./authDomain";
 
 type WalletContextValue = {
   account: string;
@@ -344,9 +349,15 @@ export function WalletProvider({ children }: WalletProviderProps) {
     setBackendAuthError("");
 
     try {
-      let authResult: { success: boolean; address: string; token?: string };
-      if (miniPayDetected) {
-        // MiniPay: use dedicated endpoint — no signature required, trustless by wallet context
+      let authResult: { success: boolean; address?: string; token?: string };
+      const authRoute = selectBackendAuthRoute({
+        isMiniPay: miniPayDetected,
+        embeddedAuthProvider: appKitAccount.embeddedWalletInfo?.authProvider,
+        walletProviderName,
+      });
+
+      if (authRoute.method === "minipay") {
+        // MiniPay must never receive a sign-message prompt.
         authResult = await backendPost<{
           success: boolean;
           address: string;
@@ -355,7 +366,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
           address: account,
           chainId: Number(CELO_CHAIN_ID_HEX),
         });
-      } else {
+      } else if (authRoute.method === "social") {
         authResult = await backendPost<{
           success: boolean;
           address: string;
@@ -363,14 +374,33 @@ export function WalletProvider({ children }: WalletProviderProps) {
         }>("/auth/social", {
           address: account,
           chainId: Number(CELO_CHAIN_ID_HEX),
-          // AppKit exposes wallet display labels such as "MetaMask"; backend
-          // strict-provider auth expects the stable integration identifier.
-          walletProvider: "reown",
+          walletProvider: authRoute.walletProvider,
+        });
+      } else {
+        const provider = walletProvider || readInjectedEvmProvider();
+        if (!provider) {
+          throw new Error("External wallet provider is unavailable for SIWE.");
+        }
+
+        const { nonce } = await backendFetch<{ nonce: string }>("/auth/nonce");
+        const message = buildSiweMessage({
+          address: account,
+          chainId: Number(CELO_CHAIN_ID_HEX),
+          nonce,
+          origin: window.location.origin,
+        });
+        const signature = await signSiweMessage(provider, message, account);
+        authResult = await backendPost<{
+          success: boolean;
+          token?: string;
+        }>("/auth/verify", {
+          message,
+          signature,
         });
       }
 
-      // MiniPay's WebView blocks the cross-site session cookie — persist the
-      // token so backendFetch and the socket can authenticate via Bearer header.
+      // Persist the token so both cross-site WebViews and the socket can
+      // authenticate via the Bearer header.
       const sessionToken = String(authResult.token || "").trim();
       if (!sessionToken) {
         throw new Error(
