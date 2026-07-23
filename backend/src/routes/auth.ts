@@ -157,10 +157,11 @@ router.post("/social", authAddressLimiter, async (req, res) => {
       lowerProvider === "discord" ||
       lowerProvider === "x";
 
-    // NOTE: do not whitelist strictly by default — the frontend sends
-    // arbitrary AppKit wallet names ("MetaMask", "EVM Wallet", etc) and
-    // those are legitimate logins. Only enforce the whitelist when
-    // AUTH_STRICT_PROVIDERS is explicitly enabled.
+    // v2 auth §13.1-A: strict by default. Non-social wallets (MetaMask,
+    // "EVM Wallet", dst.) harus login via SIWE (/auth/verify), bukan endpoint
+    // ini — endpoint ini trust-on-claim dan hanya untuk provider social/embedded
+    // yang tidak bisa sign-message. Set AUTH_STRICT_PROVIDERS=false hanya
+    // untuk debug lokal.
     if (!isSocialOrEmbedded && env.AUTH_STRICT_PROVIDERS) {
       res.status(401).json({ error: "Unknown or unsupported wallet provider." });
       return;

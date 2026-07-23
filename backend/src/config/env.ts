@@ -84,7 +84,9 @@ export const env = {
     optionalEnv("SOCIAL_AUTH_ENABLED", "true").toLowerCase() === "true",
 
   MINIPAY_UA_CHECK_ENABLED: optionalEnv("MINIPAY_UA_CHECK_ENABLED", "true") === "true",
-  AUTH_STRICT_PROVIDERS: optionalEnv("AUTH_STRICT_PROVIDERS", "false") === "true",
+  // v2 auth §13.1-A: default strict — hanya provider social/embedded yang
+  // di-whitelist yang boleh lewat /auth/social. Set "false" hanya untuk debug lokal.
+  AUTH_STRICT_PROVIDERS: optionalEnv("AUTH_STRICT_PROVIDERS", "true") === "true",
   SEASON_TICK_MS: Number(optionalEnv("SEASON_TICK_MS", "60000")),
 
   // Operator key for TicketVault.creditBatch/spendBatch (onlyOperator). Optional:
