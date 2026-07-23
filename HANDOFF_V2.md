@@ -2,8 +2,19 @@
 
 **Untuk:** tim backend & frontend
 **Dari:** sisi smart contract
-**Tanggal:** 2026-07-22
+**Terakhir diperbarui:** 2026-07-23
 **Referensi lengkap:** [`update_v2.md`](./update_v2.md) — dokumen ini hanya bagian yang perlu kalian kerjakan.
+
+## Yang berubah sejak versi 2026-07-22
+
+Kalau kalian sudah membaca versi sebelumnya, empat hal ini yang baru:
+
+| | Perubahan | Aksi |
+|---|---|---|
+| 🔴 | **Koreksi §2.3:** dokumen lama menyuruh listener memantau `TicketSpent` untuk mirror. **Itu salah** — kalau diikuti, spend terpotong dua kali | Pastikan tidak ada yang "memperbaiki" mengikuti versi lama |
+| 🔴 | **Syarat sign-off SC untuk BE-07** (§2.7): settle `spendBatch` hanya untuk sesi terminal | Konfirmasi implementasi kalian sudah begitu |
+| ✅ | **Role `operator` aktif** di kedua chain — `0x72b77349…61d8` | Worker batch siap jalan |
+| ✅ | **S9 selesai** (§4.1) — gate reward tidak lagi membaca expiry | FE-10 tidak perlu paksa renewal tier |
 
 ---
 
@@ -39,9 +50,37 @@ Treasury sengaja **beda alamat dari owner**. `TicketVault` meneruskan dana pembe
 | `TrustPassport` | `0xF8Bc8B497Cbb7D08a14Ba2107F2C521c78B0eC38` | sudah V2 |
 | USDC mock | `0x8FB74c2a678811aECC6Ed98Bd5Bc70E1119b7B61` | 6 desimal, ada `mint()` untuk minter |
 
-Backend signer (kedua jaringan): `0xCa9298971140d120F010D5901DeC4f297C72c7Da` — sama dengan yang sudah dipakai GameSettlement & TrustPassport, jadi tidak ada kunci baru untuk diurus.
-
 ABI ada di `sc/out/TicketVault.sol/TicketVault.json` setelah `forge build`, atau ambil dari Celoscan (kontraknya verified).
+
+### Kunci & peran (jangan tertukar)
+
+| Peran | Alamat | Siapa pegang | Boleh apa |
+|---|---|---|---|
+| **Backend signer** | `0xCa9298971140d120F010D5901DeC4f297C72c7Da` | server backend | Tanda tangan EIP-712 `DailyClaim` & `PassportClaim`. Tidak bisa kirim transaksi ke kontrak |
+| **Operator** | `0x72b77349d70574fB853f00708a9DeB5Fa00061d8` | server backend (Railway) | **Hanya** `creditBatch` & `spendBatch` |
+| **Owner** | `0x57394581E832cD31EE0233618c58035033D3cFB9` | keystore terenkripsi, mesin SC | Upgrade, `setTreasury`, `setToken`, `pause`, `setOperator`, `rescueToken` |
+| **Treasury** | `0xEf29d941Be65495631f908EC3211625555D374b9` | terpisah, kunci tidak di mesin mana pun | Hanya menerima. Tidak pernah tanda tangan |
+
+**Status role operator: ✅ aktif di kedua chain** (mainnet `0xe3074d2d…26aab0`, sepolia `0x9cda5000…9f9c8f`).
+
+Terbukti lewat simulasi: `creditBatch`/`spendBatch` dari operator lolos; dari alamat lain → `UnauthorizedOperator` (`0x740fbe61`); `setTreasury`/`upgradeToAndCall` dari operator → `OwnableUnauthorizedAccount` (`0x118cdaa7`).
+
+> ⚠️ `spendBatch` di **mainnet** akan revert `InsufficientTickets` (`0x4a8bf486`) selama `totalTicketsIssued = 0` — toko masih tertutup, belum ada tiket untuk di-settle. Itu normal, **bukan** masalah role: kalau role-nya yang gagal, errornya `UnauthorizedOperator`. Worker settle mainnet praktis idle sampai `setToken`.
+
+### Riwayat implementasi (proxy tidak berubah, hanya impl di baliknya)
+
+| Kontrak | Jaringan | Implementasi aktif |
+|---|---|---|
+| `TicketVault` | mainnet | `0xc32dbb76e7ee4fbf474348ff39a584f608ec82a7` |
+| `TicketVault` | sepolia | `0x9b3f536cE8fEa209daD6baee039c5A25F3289405` |
+| `TrustPassport` | mainnet | `0xfc5027b43431db46112115d4e90a8c6e8d83401e` |
+| `TrustPassport` | sepolia | `0x328dc278644eba5c0f5514da8b47d51215d79c6a` |
+
+Kalau perlu memastikan implementasi yang live sama dengan source di repo, baca slot EIP-1967 lalu bandingkan bytecode-nya (ingat menyalin slot immutable — `UUPSUpgradeable` menanam alamatnya sendiri di sana):
+
+```bash
+cast storage <PROXY> 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc --rpc-url <RPC>
+```
 
 > **Selalu pakai alamat proxy di atas, jangan alamat implementasi.** Kontraknya UUPS, jadi implementasi bisa berganti tanpa alamat proxy berubah — dan memang sudah berganti sekali pada 2026-07-22 untuk menambah role `operator`. Kalau kalian hardcode alamat implementasi, integrasi akan diam-diam membaca kontrak lama yang tidak punya state apa pun.
 
@@ -136,14 +175,24 @@ TTL 600 detik berarti signature basi setelah 10 menit — jangan di-cache lama d
 
 Tambahkan `watchContractEvent` di `backend/src/services/blockchainListener.ts` — pola untuk event lain sudah ada di sana.
 
-| Event | Signature | topic0 |
-|---|---|---|
-| `TicketClaimed` | `(address indexed user, uint32 indexed dayIndex, uint16 amount, uint256 nonce)` | `0xb530be75…4622c0` |
-| `TicketPurchased` | `(address indexed user, address indexed token, uint256 usdAmount, uint256 cost, uint256 tickets)` | `0x073b30de…72bdee` |
-| `TicketCredited` | `(address indexed user, uint256 amount)` | `0xe9947732…a7934b` |
-| `TicketSpent` | `(address indexed user, uint256 amount)` | `0xbedd45ec…ae092cb` |
+| Event | Signature | topic0 | Efek ke mirror |
+|---|---|---|---|
+| `TicketClaimed` | `(address indexed user, uint32 indexed dayIndex, uint16 amount, uint256 nonce)` | `0xb530be75…4622c0` | **+** kredit |
+| `TicketPurchased` | `(address indexed user, address indexed token, uint256 usdAmount, uint256 cost, uint256 tickets)` | `0x073b30de…72bdee` | **+** kredit |
+| `TicketCredited` | `(address indexed user, uint256 amount)` | `0xe9947732…a7934b` | **+** kredit |
+| `TicketSpent` | `(address indexed user, uint256 amount)` | `0xbedd45ec…ae092cb` | **jangan sentuh mirror** — catat ke `transactions` saja |
+| `OperatorUpdated` | `(address indexed account, bool allowed)` | `0x966c160e…32672d` | audit saja |
 
-Semuanya meng-update mirror `ticket_balances` + menulis ke tabel `transactions`.
+> 🔴 **Koreksi 2026-07-23 — versi sebelumnya dokumen ini salah.** Baris asli menulis "semua event meng-update mirror", termasuk `TicketSpent`. **Jangan diikuti.** `TicketSpent` adalah hasil `spendBatch`, yaitu penyetoran ke chain atas spend yang **sudah** dicatat di ledger off-chain. Kalau event itu ikut mengurangi mirror, spend terpotong dua kali dan saldo pemain merosot diam-diam.
+>
+> Invarian yang benar:
+>
+> ```
+> mirror.available = Σ(event kredit on-chain) − Σ(ledger SPEND off-chain) + Σ(ledger REFUND)
+> saldo on-chain   ≥ mirror.available          ← selalu, konvergen saat semua spend ter-settle
+> ```
+>
+> Pendekatan yang sudah dipakai backend di `docs/be07-game-session-contract.md` §1 sudah benar; dokumen inilah yang tertinggal.
 
 > ⚠️ **Forno bukan archive node.** Query `eth_getLogs` dibatasi **5.000 blok** per request, dan state lama dipangkas. Untuk backfill riwayat, jangan andalkan Forno — pakai RPC berbayar (Alchemy/Infura) atau paginasi 5.000 blok dengan checkpoint tersimpan. Untuk listener realtime, Forno cukup.
 
@@ -187,9 +236,17 @@ Yang perlu kalian lakukan:
 2. Kirim **alamatnya** (bukan private key-nya) ke sisi kontrak untuk didaftarkan lewat `setOperator`.
 3. Kunci operator butuh **saldo CELO** untuk gas — beda dari treasury yang tidak pernah menandatangani apa pun. Sediakan monitoring saldo; kalau habis, settle tiket berhenti diam-diam.
 
-Sampai `setOperator` dijalankan, kedua fungsi batch akan revert `UnauthorizedOperator(address)` untuk siapa pun kecuali owner.
+Catatan desain: debit tiket saat match tetap off-chain dan instan. `spendBatch` hanya menyusulkan hasilnya ke chain, jadi kalau panggilannya tertunda beberapa jam, gameplay tidak terganggu — yang terjadi cuma saldo on-chain sementara lebih tinggi daripada saldo DB.
 
-Catatan desain: debit tiket saat match tetap off-chain dan instan. `spendBatch` hanya menyusulkan hasilnya ke chain, jadi kalau panggilannya tertunda beberapa jam, gameplay tidak terganggu — yang terjadi cuma saldo on-chain sementara lebih tinggi daripada saldo DB. Rancang agar idempoten: kalau job gagal di tengah, jangan sampai batch yang sama terkirim dua kali dan mendebet ganda.
+> 🔴 **Syarat sign-off SC untuk BE-07: settle hanya sesi terminal.**
+>
+> Job settle harus **hanya mengambil baris SPEND dari sesi yang sudah `CRASHED`/`COMPLETED`** — jangan pernah dari sesi `ACTIVE`.
+>
+> Kalau sesi `ACTIVE` ikut ter-settle, urutan ini merusak invarian: start → ledger SPEND → job settle broadcast `spendBatch` → saldo on-chain turun → *baru* recovery worker menemukan sesi orphan tanpa move → VOID + REFUND ke mirror. Hasilnya **mirror > saldo on-chain**, melanggar prinsip BE-07 §1.3 ("server tidak akan pernah mendebit melebihi saldo yang terbukti dari chain"), dan `spendBatch` berikutnya revert `InsufficientTickets` sehingga job settle macet.
+>
+> Dengan filter terminal, SPEND milik sesi yang akan di-void tidak pernah sampai ke chain dan SPEND+REFUND-nya saling menghapus off-chain — skenarionya jadi mustahil secara struktural, bukan sekadar jarang.
+>
+> Idempotency sisanya (sign → persist hash → broadcast, cek receipt saat startup) sudah ditangani backend dan dinilai cukup; `batchId` on-chain disepakati **tidak perlu**. Ingat `spendBatch` sendiri tidak punya proteksi replay apa pun — kirim dua kali = debit dua kali.
 
 ### 2.8 Lain-lain
 
@@ -257,16 +314,31 @@ Syarat listing. Domain yang teridentifikasi: `esm.sh` (hilang setelah F2), `font
 
 Tiga hal ini **belum ada**, dan semuanya butuh keputusan produk, bukan sekadar implementasi.
 
-### 4.1 🔴 Passport pemain semuanya sudah kedaluwarsa
+### 4.1 ✅ Passport expiry (S9) — SELESAI 2026-07-23
 
-Passport punya `expiry` ~30 hari. Per 2026-07-22, **seluruh passport pemain di mainnet sudah lewat masa berlakunya** — `isPassportValid` mengembalikan `false` untuk semua. Ini bukan bug baru, kondisinya memang sudah begitu.
+Dulu: passport punya `expiry` ~30 hari, seluruh passport pemain di mainnet sudah lewat masa berlaku, dan `canClaimMonetaryReward` ikut membaca expiry — artinya tidak ada satu pun pemain yang bisa mencairkan reward uang, bahkan seandainya sudah verified.
 
-Dua konsekuensi:
+Keputusan produk (`docs/s9-passport-decision.md`) memilih opsi (b), dan sisi kontrak mengeksekusi **opsi 1**: gate reward berhenti membaca expiry.
 
-1. Spec §7.3 menjanjikan gelar Oracle "permanen selamanya" dan passport sebagai *trophy cabinet*. Mustahil kalau passport-nya mati sebulan sekali.
-2. **`canClaimMonetaryReward` ikut membaca expiry** — jadi dengan kondisi sekarang, tidak ada satu pun pemain yang bisa mencairkan reward uang, bahkan seandainya sudah verified.
+```solidity
+// sekarang
+return passport.tier > 0 && !passport.revoked && verifiedHuman[player];
+```
 
-Belum berdampak karena Season 1 diputuskan non-moneter, tapi ini akan muncul persis di season pertama yang berhadiah uang. Perlu diputuskan: perpanjang otomatis saat login, atau pisahkan identitas permanen (badge/gelar/riwayat — sudah tidak mengenal expiry) dari kredensial berjangka (tier).
+`isPassportValid` **tetap** menghormati expiry — itu menjawab pertanyaan berbeda ("apakah kredensial ini aktif"). Yang berubah hanya gate uang.
+
+Live di mainnet & Sepolia. Terbukti pada kontrak mainnet yang live, memakai pemain asli `0x065Ba78045b55c037e21170319eB5e75E0af8286` yang passport-nya kedaluwarsa 18 Juli (state override, read-only):
+
+| | |
+|---|---|
+| `isPassportValid` | `false` — kredensial tier memang lapse |
+| `canClaimMonetaryReward` (verified dipaksa true) | **`true`** — reward yang sudah diperoleh tetap bisa diklaim |
+
+**Konsekuensi untuk FE-10:** tidak perlu memaksa renewal tier sebelum tx claim reward. Syarat gate sekarang murni `tier > 0` + tidak `revoked` + `verifiedHuman`.
+
+**Konsekuensi untuk FE-09:** copy "gelar permanen selamanya" aman untuk badge/gelar/riwayat. Untuk `tier`, tetap pakai `passport.expired` dari `/status` dan tampilkan CTA perpanjang — bukan state kosong.
+
+Karena belum ada pemain yang diverifikasi Self.xyz, `canClaimMonetaryReward` masih `false` untuk semua orang. Itu benar — itu gerbang sybil-nya, bukan sisa masalah expiry.
 
 ### 4.2 Kontrak pembayar reward uang belum ada
 

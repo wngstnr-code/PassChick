@@ -2,7 +2,7 @@
 
 **Status:** Draft final untuk implementasi
 **Target:** Submit listing Mini App di MiniPay
-**Terakhir diupdate:** 2026-07-22 (revisi setelah verifikasi state on-chain — lihat §15)
+**Terakhir diupdate:** 2026-07-23 (role operator + gate S9 live di mainnet; alamat & status di §14 Fase 1b)
 
 ---
 
@@ -181,7 +181,7 @@ Tier passport naik dari **akumulasi pencapaian lintas season** (tidak bisa dibel
 
 ### 7.3 Kanvas karir
 
-> ⚠️ **Bertabrakan dengan kenyataan on-chain — lihat S9.** Passport punya `expiry` ~30 hari, dan per 2026-07-22 **seluruh passport pemain di mainnet sudah kedaluwarsa**. "Permanen selamanya" di bawah ini belum benar sampai model expiry-nya diputuskan.
+> ✅ **Diselesaikan 2026-07-23 (S9).** Passport punya `expiry` ~30 hari dan seluruh passport pemain di mainnet sudah kedaluwarsa, sehingga "permanen selamanya" sempat tidak benar. Sekarang identitas permanen dipisah dari kredensial berjangka: **badge, gelar, dan `seasonHistory` tidak pernah kedaluwarsa** (memang tidak mengenal expiry di storage), hanya `tier` yang perlu diperpanjang lewat `claimWithSignature`. Gate reward uang juga sudah berhenti membaca expiry. Klaim "permanen" di bawah ini kini akurat untuk badge/gelar/riwayat — **tapi tidak untuk `tier`**, yang tetap butuh refresh berkala.
 
 - Skin, badge season, gelar Oracle — semua menempel di passport dan tampil di leaderboard & profil.
 - Riwayat divisi per season tercatat on-chain (event/mapping di kontrak passport) — "pernah Oracle di S1" permanen selamanya.
@@ -357,8 +357,8 @@ Kondisi umum: paling siap di antara tiga modul. Lima kontrak UUPS dengan pola ko
 | S4 | Tidak ada `nonReentrant` di kontrak manapun; TicketShop akan pegang 3 stablecoin (USDT non-standar) | Bangun TicketVault/TicketShop dengan `ReentrancyGuardUpgradeable` + `SafeERC20` sejak awal |
 | S5 | `revokePassport` permanen tanpa jalur pemulihan (`TrustPassport.sol:114-122`) | Tambah `unrevokePassport` di upgrade V2 (kesalahan revoke = user hilang permanen) |
 | S6 | ✅ **Terjawab.** `FIXED_STAKE_AMOUNT = 100` (`GameSettlement.sol:21`) bukan debug leftover — itu memang nilai produksi, dan dengan USDC 6 desimal artinya stake riil **$0.0001 per match** (seperseratus sen) | Tidak ada aksi kode. Tapi catat implikasinya: V1 secara ekonomi adalah **demo**, bukan game uang sungguhan. Menguntungkan saat framing ke reviewer MiniPay ("belum pernah ada taruhan bernilai"), tapi **jangan** dipakai sebagai klaim traksi real-money di aplikasi grant |
-| S7 | ⏸️ **DITUNDA — keputusan sadar 2026-07-22.** Owner ketiga kontrak = EOA tunggal `0x5739…3cFB9`, dan private key-nya kini tersimpan plaintext di `sc/.env`. Kunci itu bisa `upgradeToAndCall` ketiganya, `setTreasury`, `creditBatch`, dan `treasuryWithdraw` — setara kepemilikan penuh | **Pemicu wajib: sebelum `setToken` dipanggil di mainnet** (lihat §14 Fase 1b). Bukan sebelum deploy. Alasan penundaan: hari ini kunci itu menjaga $0.13, jadi gesekan multisig belum sepadan. Opsi minimum yang tetap menutup risiko terbesar (kunci plaintext) tanpa memperlambat operasi: hardware wallet + `forge --ledger`/keystore terenkripsi, tanpa multisig. Risiko sisa selama ditunda: kunci bocor bisa meng-upgrade GameVault dan mengambil $0.0187 milik pemain lama atau merusak kontrak — nominalnya remeh, tapi kalau terjadi saat review MiniPay berjalan, biaya listing-nya jauh lebih mahal |
-| S9 | 🆕 **Passport punya masa kedaluwarsa — bertabrakan dengan §7.3 "identitas karir permanen".** Ditemukan 2026-07-22 saat memverifikasi upgrade mainnet: keempat passport pemain asli yang dicek sudah **kedaluwarsa**, `expiry ≈ 1784522409` (18 Juli) sementara tanggal cek 22 Juli, sehingga `isPassportValid` mengembalikan `false` untuk semuanya. Bukan efek upgrade — kondisinya sudah begitu sebelum kontrak disentuh. Artinya passport berlaku ~30 hari dan tidak ada mekanisme perpanjangan otomatis | Perlu keputusan desain sebelum §7 dibangun. §7.3 menjanjikan gelar Oracle "permanen selamanya" dan passport sebagai *trophy cabinet* — mustahil kalau passport-nya mati sebulan sekali. Tiga opsi: (a) backend menandatangani ulang passport otomatis saat user login (paling kecil perubahannya, `claimWithSignature` sudah mendukung karena `issuedAt` yang lebih baru diterima), (b) pisahkan "identitas permanen" dari "kredensial berjangka" — badge/gelar/`seasonHistory` tidak pernah kedaluwarsa, hanya `tier` yang perlu refresh, (c) hilangkan expiry lewat upgrade. Rekomendasi: **(b)** — kebetulan storage V2 sudah begitu bentuknya, `badges` dan `seasonHistory` tidak mengenal expiry sama sekali, jadi tinggal memastikan gate reward tidak ikut membaca `isPassportValid` secara buta. **Catatan: `canClaimMonetaryReward` saat ini MEMBACA expiry** — dengan kondisi sekarang, tidak ada satu pun pemain yang bisa mencairkan reward uang. **KEPUTUSAN 2026-07-23: opsi (b) diambil** — detail & pembagian kerja di `docs/s9-passport-decision.md` |
+| S7 | ⏸️ **DITUNDA sebagian — diperbarui 2026-07-23.** Owner ketiga kontrak = EOA tunggal `0x5739…3cFB9`. ✅ Kunci sudah **keluar dari plaintext** ke keystore terenkripsi (`passchick-owner`); ✅ **treasury dipisah** ke `0xEf29d941…374b9` yang kuncinya tidak ada di mesin mana pun; ✅ **role `operator`** memisahkan kerja batch backend dari wewenang owner. Sisa yang ditunda: multisig. Kunci itu bisa `upgradeToAndCall` ketiganya, `setTreasury`, `creditBatch`, dan `treasuryWithdraw` — setara kepemilikan penuh | **Pemicu wajib: sebelum `setToken` dipanggil di mainnet** (lihat §14 Fase 1b). Bukan sebelum deploy. Alasan penundaan: hari ini kunci itu menjaga $0.13, jadi gesekan multisig belum sepadan. Opsi minimum yang tetap menutup risiko terbesar (kunci plaintext) tanpa memperlambat operasi: hardware wallet + `forge --ledger`/keystore terenkripsi, tanpa multisig. Risiko sisa selama ditunda: kunci bocor bisa meng-upgrade GameVault dan mengambil $0.0187 milik pemain lama atau merusak kontrak — nominalnya remeh, tapi kalau terjadi saat review MiniPay berjalan, biaya listing-nya jauh lebih mahal |
+| S9 | ✅ **SELESAI — passport punya masa kedaluwarsa, sempat bertabrakan dengan §7.3 "identitas karir permanen".** Ditemukan 2026-07-22 saat memverifikasi upgrade mainnet: keempat passport pemain asli yang dicek sudah **kedaluwarsa**, `expiry ≈ 1784522409` (18 Juli) sementara tanggal cek 22 Juli, sehingga `isPassportValid` mengembalikan `false` untuk semuanya. Bukan efek upgrade — kondisinya sudah begitu sebelum kontrak disentuh. Artinya passport berlaku ~30 hari dan tidak ada mekanisme perpanjangan otomatis | Perlu keputusan desain sebelum §7 dibangun. §7.3 menjanjikan gelar Oracle "permanen selamanya" dan passport sebagai *trophy cabinet* — mustahil kalau passport-nya mati sebulan sekali. Tiga opsi: (a) backend menandatangani ulang passport otomatis saat user login (paling kecil perubahannya, `claimWithSignature` sudah mendukung karena `issuedAt` yang lebih baru diterima), (b) pisahkan "identitas permanen" dari "kredensial berjangka" — badge/gelar/`seasonHistory` tidak pernah kedaluwarsa, hanya `tier` yang perlu refresh, (c) hilangkan expiry lewat upgrade. Rekomendasi: **(b)** — kebetulan storage V2 sudah begitu bentuknya, `badges` dan `seasonHistory` tidak mengenal expiry sama sekali, jadi tinggal memastikan gate reward tidak ikut membaca `isPassportValid` secara buta. **Catatan: `canClaimMonetaryReward` saat ini MEMBACA expiry** — dengan kondisi sekarang, tidak ada satu pun pemain yang bisa mencairkan reward uang. **✅ SELESAI 2026-07-23.** Keputusan produk opsi (b) (`docs/s9-passport-decision.md`); sisi kontrak mengeksekusi **opsi 1** — `canClaimMonetaryReward` berhenti membaca expiry, `isPassportValid` tetap menghormatinya. Live di mainnet (`0xfc5027b4…401e`) & Sepolia (`0x328dc278…9c6a`), bytecode terverifikasi identik dengan source. Terbukti pada kontrak live memakai pemain asli `0x065Ba780` yang passport-nya kedaluwarsa 18 Juli: `isPassportValid=false` tapi `canClaimMonetaryReward=true` (verified dipaksa lewat state override, read-only). Gate sekarang: `tier > 0` + tidak `revoked` + `verifiedHuman` |
 | S8 | ⬇️ **Turun prioritas.** Verifikasi on-chain: `18740 + 1300 + 113260 = 133300` = saldo USDC riil kontrak, **drift nol**. Pola akuntingnya terbukti benar di produksi | Fuzz/invariant test tetap layak ditulis untuk TicketVault, tapi **bukan blocker** — polanya sudah tervalidasi oleh data, aman direplikasi |
 
 ### 13.3 🟠 Backend (`backend/`)
@@ -439,7 +439,8 @@ Garis `setToken` itu batasnya. Sebelum dilewati, kunci plaintext tidak menjaga u
 
 ```
 TicketVault proxy   0x8a1bd73DDFb4E06779D9c578a6447aE9B48199D5
-TicketVault impl    0xAC5574EC54bAf71A855F9Fc5989F51f555965F71   verified di Celoscan
+TicketVault impl    0xAC5574EC54bAf71A855F9Fc5989F51f555965F71   (deploy awal)
+                    0xc32dbb76e7ee4fbf474348ff39a584f608ec82a7   ← AKTIF, upgrade role operator
 ```
 
 Status terverifikasi on-chain setelah deploy:
@@ -465,8 +466,9 @@ Status terverifikasi on-chain setelah deploy:
 
 ```
 TrustPassport proxy   0x4Bf6D3C0dBbC14eF0C7f2a4daeD7D97418Fc5aDf
-impl lama             0x974743364164dfb8d8802ef9192db0f0d9c57b27
-impl baru             0x124a8B9C2e4549a4854c0EF8336827D03b49ce0D   verified di Celoscan
+impl V1               0x974743364164dfb8d8802ef9192db0f0d9c57b27
+impl V2               0x124a8B9C2e4549a4854c0EF8336827D03b49ce0D
+impl V2 + gate S9     0xfc5027b43431db46112115d4e90a8c6e8d83401e   ← AKTIF
 ```
 
 Bukti data pemain selamat — dicek dengan **passport 4 alamat sungguhan** (didapat dari Blockscout, bukan alamat uji), terbaca byte-identik sebelum dan sesudah upgrade:
