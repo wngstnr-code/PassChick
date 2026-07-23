@@ -7,12 +7,15 @@ export type DepositFlowViewModel = {
   statusMessage: string;
   errorMessage: string;
   isConnected: boolean;
+  isMiniPay: boolean;
   isAppChain: boolean;
   canTransact: boolean;
   hasValidContracts: boolean;
   usdcAddress: string;
   vaultAddress: string;
   walletBalanceDisplay: string;
+  hasInsufficientWalletBalance: boolean;
+  addCashUrl: string;
   allowanceDisplay: string;
   availableBalanceDisplay: string;
   lockedBalanceDisplay: string;

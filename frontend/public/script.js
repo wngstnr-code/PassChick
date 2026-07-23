@@ -1,4 +1,8 @@
-import * as THREE from "https://esm.sh/three";
+const THREE = window.__PASSCHICK_THREE__;
+
+if (!THREE) {
+  throw new Error("PassChick game engine started before Three.js was ready.");
+}
 
 const minTileIndex = -8;
 const maxTileIndex = 8;
@@ -611,7 +615,7 @@ function startLiveBalanceSync() {
   liveBalanceSyncInterval = setInterval(() => {
     if (!hasLiveBridge()) return;
     void loadBalance();
-  }, 1500);
+  }, 10000);
 }
 
 function getBridge() {
@@ -6288,30 +6292,3 @@ setTimeout(() => {
     }, 500);
   }
 }, 800);
-
-// celo: today safe dev index 2005
-
-// celo: today safe dev index 2008
-
-// celo: today safe dev index 2010
-
-// celo: today safe dev index 2013
-
-// celo: today safe dev index 2015
-
-// celo: today safe dev index 2018
-
-// celo: today safe dev index 2020
-
-// celo: today safe dev index 2025
-
-// celo: today safe dev index 2031
-
-// celo: today safe dev index 2042
-
-// celo: today safe dev index 2048
-
-// celo: dynamic check index 3006
-
-// celo: dynamic check index 3009
-// celo: dynamic check index 3001

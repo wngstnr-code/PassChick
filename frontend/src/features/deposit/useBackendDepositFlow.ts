@@ -5,6 +5,7 @@ import { useAppKitProvider } from "@reown/appkit/react";
 import { useWallet } from "~/features/wallet/WalletProvider";
 import { backendFetch, backendPost } from "~/lib/backend/api";
 import { hasBackendApiConfig } from "~/lib/backend/config";
+import { MINIPAY_ADD_CASH_URL } from "~/lib/minipay/addCash";
 import { CELO_NAMESPACE } from "~/lib/web3/appKit";
 import {
   explorerTxUrl,
@@ -14,6 +15,8 @@ import {
   type Eip1193Provider,
 } from "~/lib/web3/celo";
 import type { DepositFlowViewModel } from "./types";
+
+const VAULT_SNAPSHOT_POLL_INTERVAL_MS = 10000;
 
 type FaucetStatusPayload = {
   success?: boolean;
@@ -83,7 +86,7 @@ function toFriendlyTxError(error: unknown, fallback: string) {
   const lower = raw.toLowerCase();
 
   if (lower.includes("insufficient funds")) {
-    return "Insufficient USDC balance in wallet. Claim faucet dulu atau kurangi amount deposit.";
+    return "Not enough USDC. Deposit in MiniPay or enter a smaller amount.";
   }
 
   return raw;
@@ -93,6 +96,7 @@ export function useBackendDepositFlow(): DepositFlowViewModel {
   const { walletProvider } = useAppKitProvider<Eip1193Provider>(CELO_NAMESPACE);
   const {
     account,
+    isMiniPay,
     isAppChain,
     ensureBackendSession,
     isBackendAuthenticated,
@@ -119,6 +123,11 @@ export function useBackendDepositFlow(): DepositFlowViewModel {
   const hasBackendConfig = hasBackendApiConfig();
   const canUseBackend = isConnected && isAppChain && hasBackendConfig;
   const parsedAmount = parseAmount(amount);
+  const hasInsufficientWalletBalance = Boolean(
+    parsedAmount &&
+      walletBalanceDisplay !== "-" &&
+      parseDisplayAmount(walletBalanceDisplay) < parsedAmount,
+  );
 
   useEffect(() => {
     if (!canUseBackend || !isBackendAuthenticated) return;
@@ -163,7 +172,7 @@ export function useBackendDepositFlow(): DepositFlowViewModel {
     void syncVaultSnapshot();
     const intervalId = window.setInterval(() => {
       void syncVaultSnapshot();
-    }, 1500);
+    }, VAULT_SNAPSHOT_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
@@ -244,7 +253,7 @@ export function useBackendDepositFlow(): DepositFlowViewModel {
       const walletBalance = parseDisplayAmount(walletBalanceDisplay);
       if (walletBalance < parsedAmount) {
         setErrorMessage(
-          `Saldo wallet tidak cukup. Balance ${walletBalance.toFixed(6)} USDC, butuh ${parsedAmount.toFixed(6)} USDC.`,
+          `Not enough USDC. Wallet balance is ${walletBalance.toFixed(6)} USDC; this action needs ${parsedAmount.toFixed(6)} USDC. Deposit in MiniPay or enter a smaller amount.`,
         );
         return;
       }
@@ -382,12 +391,15 @@ export function useBackendDepositFlow(): DepositFlowViewModel {
     statusMessage,
     errorMessage,
     isConnected,
+    isMiniPay,
     isAppChain,
     canTransact: canUseBackend,
     hasValidContracts: hasBackendConfig,
     usdcAddress: process.env.NEXT_PUBLIC_USDC_TOKEN_ADDRESS || "",
     vaultAddress: process.env.NEXT_PUBLIC_VAULT_ADDRESS || "",
     walletBalanceDisplay,
+    hasInsufficientWalletBalance,
+    addCashUrl: MINIPAY_ADD_CASH_URL,
     allowanceDisplay: "-",
     availableBalanceDisplay,
     lockedBalanceDisplay,

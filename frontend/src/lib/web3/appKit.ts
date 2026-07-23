@@ -9,6 +9,7 @@ import {
   CELO_CHAIN_MODE,
   CELO_RPC_URL,
 } from "~/lib/web3/celo";
+import { APP_URL } from "~/lib/app/config";
 
 export const CELO_NAMESPACE = "eip155" as const;
 export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID || "";
@@ -22,7 +23,7 @@ function readAppUrl() {
     return window.location.origin;
   }
 
-  return "https://passchick.vercel.app";
+  return APP_URL;
 }
 
 function readAppKitNetwork(): AppKitNetwork {
@@ -59,6 +60,10 @@ export const appKit = hasReownProjectId()
         icons: [`${readAppUrl()}/favicon.png`],
       },
       themeMode: "dark",
+      themeVariables: {
+        "--apkt-font-family": "Arial, Helvetica, sans-serif",
+        "--w3m-font-family": "Arial, Helvetica, sans-serif",
+      },
       features: {
         analytics: false,
         email: true,

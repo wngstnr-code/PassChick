@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css?family=Press+Start+2P");
 @import "tailwindcss";
 
 html,
@@ -14,7 +13,7 @@ body {
 
 body {
   display: block;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   background: linear-gradient(180deg,
       #6ec6ff 0%,
       #a9dcff 45%,
@@ -2264,7 +2263,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .leaderboard-panel-head h3 {
   margin: 0;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 16px;
   letter-spacing: 1px;
   color: #fff4dd;
@@ -2284,7 +2283,7 @@ body.checkpoint-arrival #hud-scrim::after {
   border-radius: 8px;
   background: rgba(12, 24, 42, 0.58);
   color: #bdd5f0;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 8px;
   letter-spacing: 0.6px;
   cursor: pointer;
@@ -2321,14 +2320,14 @@ body.checkpoint-arrival #hud-scrim::after {
 }
 
 .leaderboard-self-card span {
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 8px;
   color: #f1d39e;
   letter-spacing: 0.5px;
 }
 
 .leaderboard-self-card strong {
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 10px;
   color: #fff4dd;
 }
@@ -2363,7 +2362,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .leaderboard-rank {
   color: #1a3858;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 9px;
 }
 
@@ -2426,7 +2425,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .leaderboard-score {
   color: #0c7255;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 9px;
 }
 
@@ -2507,14 +2506,14 @@ body.checkpoint-arrival #hud-scrim::after {
 }
 
 .stats-summary-card span {
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 7px;
   letter-spacing: 0.5px;
   color: #f1d39e;
 }
 
 .stats-summary-card strong {
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 10px;
   color: #fff4dd;
   white-space: nowrap;
@@ -2578,7 +2577,7 @@ body.checkpoint-arrival #hud-scrim::after {
   border: 2px solid rgba(184, 212, 255, 0.22);
   background: rgba(242, 248, 255, 0.92);
   color: #1a3858;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 9px;
   letter-spacing: 0.5px;
   cursor: pointer;
@@ -2624,7 +2623,7 @@ body.checkpoint-arrival #hud-scrim::after {
   padding: 12px;
   box-sizing: border-box;
   color: #bdd5f0;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 8px;
   line-height: 1.8;
 }
@@ -2722,7 +2721,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .stats-row-value {
   color: #183552;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 9px;
 }
 
@@ -3493,7 +3492,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .play-menu-wallet {
   color: #2c3e50;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 11px;
   letter-spacing: 0.5px;
   background: white;
@@ -3516,7 +3515,7 @@ body.checkpoint-arrival #hud-scrim::after {
   border-radius: 14px;
   padding: 0 24px;
   height: 58px;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 11px;
   cursor: pointer;
   transition: all 0.1s;
@@ -3549,7 +3548,7 @@ body.checkpoint-arrival #hud-scrim::after {
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 11px;
   letter-spacing: 0.5px;
   cursor: pointer;
@@ -3666,7 +3665,7 @@ body.checkpoint-arrival #hud-scrim::after {
     linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, transparent 36%),
     linear-gradient(135deg, #ffe071 0%, #a76bed 50%, #7b5fc4 100%);
   color: #22103f;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 10px;
   letter-spacing: 1px;
   cursor: pointer;
@@ -3891,7 +3890,7 @@ body.checkpoint-arrival #hud-scrim::after {
   background:
     linear-gradient(135deg, #14f195 0%, #10d98d 42%, #9945ff 100%);
   color: #09121d;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 10px;
   letter-spacing: 1px;
   text-decoration: none;
@@ -4568,7 +4567,7 @@ body.checkpoint-arrival #hud-scrim::after {
   border: 3px solid #9bbcff;
   background: rgba(255, 255, 255, 0.12);
   color: #e7f0ff;
-  font-family: "Press Start 2P", cursive;
+  font-family: var(--font-press-start-2p), monospace;
   font-size: 8px;
   letter-spacing: 1px;
   cursor: pointer;
@@ -6358,6 +6357,13 @@ body.checkpoint-arrival #hud-scrim::after {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.035);
 }
 
+.money-action-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
 .money-action-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6577,6 +6583,53 @@ body.checkpoint-arrival #hud-scrim::after {
   filter: saturate(0.75);
 }
 
+.money-add-cash {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(142, 238, 223, 0.34);
+  border-radius: 12px;
+  background: rgba(16, 61, 70, 0.42);
+  color: rgba(232, 247, 255, 0.9);
+}
+
+.money-add-cash strong {
+  color: #ffe887;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.money-add-cash p {
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.money-add-cash-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid rgba(142, 238, 223, 0.62);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #8eeedf 0%, #42bfae 100%);
+  color: #082a2a;
+  font-size: 9px;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+}
+
+.money-add-cash-link:hover {
+  background: linear-gradient(180deg, #adf7eb 0%, #5ed4c3 100%);
+}
+
+.money-add-cash-link:focus-visible {
+  outline: 2px solid #ffe887;
+  outline-offset: 3px;
+}
+
 .money-activity {
   border-top: 1px solid rgba(187, 209, 243, 0.12);
   padding-top: 8px;
@@ -6624,7 +6677,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .money-footer-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
   gap: 10px;
 }
@@ -6748,7 +6801,7 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .money-card-page .money-status-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .money-card-page .money-status-row {
@@ -6769,7 +6822,7 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .money-card-page .money-footer-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .money-card.money-card-play-modal {
@@ -6866,9 +6919,13 @@ body.checkpoint-arrival #hud-scrim::after {
 
   .money-action-tab {
     min-width: 0;
-    min-height: 30px;
+    min-height: 44px;
     font-size: 6.4px;
     letter-spacing: 0.45px;
+  }
+
+  .money-card-page .money-action-tab {
+    min-height: 44px;
   }
 
   .money-action-hint {
@@ -6882,12 +6939,12 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .money-quick-pick {
-    min-height: 30px;
+    min-height: 44px;
     font-size: 6.5px;
   }
 
   .money-amount-block .money-input {
-    min-height: 36px;
+    min-height: 44px;
     font-size: 15px;
     padding: 8px 10px;
   }
@@ -6904,7 +6961,7 @@ body.checkpoint-arrival #hud-scrim::after {
   .money-primary-btn,
   .money-footer-actions .money-panel-nav-btn.money-nav-home-btn,
   .money-footer-actions .money-panel-nav-btn.money-nav-play-btn {
-    min-height: 34px;
+    min-height: 44px;
     font-size: 7px;
   }
 
@@ -7327,6 +7384,36 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .home-nav-login:hover {
   transform: translateY(-1px);
+}
+
+.home-nav-login-loading {
+  cursor: progress;
+  opacity: 0.78;
+  user-select: none;
+}
+
+.home-nav-login-loading:hover {
+  transform: none;
+}
+
+.home-nav-login-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(255, 244, 221, 0.35);
+  border-top-color: #fff4dd;
+  border-radius: 50%;
+  animation: home-wallet-spin 0.8s linear infinite;
+}
+
+@keyframes home-wallet-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-nav-login-spinner {
+    animation: none;
+  }
 }
 
 .home-profile-wrap {
@@ -12864,6 +12951,11 @@ body.checkpoint-arrival #hud-scrim::after {
 }
 
 @media (max-width: 768px) {
+  .close-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
   .home-title {
     font-size: clamp(20px, 8vw, 28px) !important;
     letter-spacing: 1px !important;
@@ -12878,7 +12970,7 @@ body.checkpoint-arrival #hud-scrim::after {
 
   .home-btn-main {
     width: min(240px, 85%) !important;
-    min-height: 40px !important;
+    min-height: 44px !important;
     padding: 8px 16px !important;
     font-size: 10px !important;
     letter-spacing: 0.5px !important;
@@ -12886,7 +12978,7 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .dashboard-btn {
-    min-height: 40px !important;
+    min-height: 44px !important;
     font-size: 10px !important;
   }
 
@@ -12896,32 +12988,334 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 }
 
-/* celo: today style tweak index 2002 */
+.legal-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: max(48px, env(safe-area-inset-top)) 20px max(80px, env(safe-area-inset-bottom));
+  background: #0a1428;
+  color: #e8ecf5;
+  font-family: Arial, Helvetica, sans-serif;
+}
 
-/* celo: today style tweak index 2003 */
+.legal-shell {
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
 
-/* celo: today style tweak index 2007 */
+.legal-skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 3000;
+  min-height: 44px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #fdd35c;
+  color: #081426;
+  font-size: 12px;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform 0.15s ease;
+}
 
-/* celo: today style tweak index 2011 */
+.legal-skip-link:focus-visible {
+  outline: 3px solid #8fb4ff;
+  outline-offset: 2px;
+  transform: translateY(0);
+}
 
-/* celo: today style tweak index 2012 */
+.legal-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: #9ebeff;
+  font-size: 13px;
+  text-decoration: none;
+}
 
-/* celo: today style tweak index 2017 */
+.legal-back-link:hover {
+  color: #c8d7ff;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 
-/* celo: today style tweak index 2022 */
+.legal-back-link:focus-visible,
+.legal-section a:focus-visible {
+  outline: 3px solid #fdd35c;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
 
-/* celo: today style tweak index 2023 */
+.legal-header {
+  margin: 28px 0 32px;
+}
 
-/* celo: today style tweak index 2033 */
+.legal-header h1 {
+  margin: 0 0 10px;
+  color: #f7fbff;
+  font-family: var(--font-press-start-2p), monospace;
+  font-size: clamp(20px, 5vw, 28px);
+  line-height: 1.5;
+  text-wrap: balance;
+}
 
-/* celo: today style tweak index 2036 */
+.legal-header p {
+  margin: 0;
+  color: rgba(232, 236, 245, 0.68);
+  font-size: 13px;
+}
 
-/* celo: today style tweak index 2039 */
+.legal-sections {
+  display: grid;
+  gap: 30px;
+}
 
-/* celo: today style tweak index 2040 */
+.legal-section {
+  scroll-margin-top: 24px;
+}
 
-/* celo: today style tweak index 2041 */
+.legal-section h2 {
+  margin: 0 0 10px;
+  color: #fdd35c;
+  font-size: 16px;
+  line-height: 1.45;
+  text-wrap: balance;
+}
 
-/* celo: today style tweak index 2047 */
+.legal-section div {
+  color: rgba(232, 236, 245, 0.9);
+  font-size: 14px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
 
-/* celo: dynamic style check index 3000 */
+.legal-section p {
+  margin: 0 0 14px;
+}
+
+.legal-section p:last-child {
+  margin-bottom: 0;
+}
+
+.legal-section a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #9ebeff;
+  text-underline-offset: 4px;
+}
+
+@media (max-width: 480px) {
+  .legal-page {
+    padding-inline: 16px;
+  }
+
+  .legal-header {
+    margin-top: 20px;
+  }
+
+  .legal-section div {
+    font-size: 13px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .legal-skip-link {
+    transition: none;
+  }
+}
+
+/* FE-06 ticket top-up */
+.money-token-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.money-token-fieldset .flow-label {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.money-token-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.money-token-option {
+  min-width: 0;
+  min-height: 52px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid rgba(187, 209, 243, 0.18);
+  border-radius: 10px;
+  background: rgba(7, 16, 31, 0.54);
+  color: rgba(237, 245, 255, 0.88);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.money-token-option strong {
+  color: #f7fbff;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+}
+
+.money-token-option span {
+  overflow: hidden;
+  color: rgba(214, 226, 245, 0.68);
+  font-size: 7px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.money-token-option.active {
+  border-color: rgba(255, 232, 135, 0.62);
+  background: linear-gradient(180deg, rgba(255, 224, 102, 0.2), rgba(255, 224, 102, 0.08));
+  box-shadow: inset 0 0 0 1px rgba(255, 232, 135, 0.08);
+}
+
+.money-token-option:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.money-token-option:focus-visible {
+  outline: 2px solid rgba(142, 238, 223, 0.78);
+  outline-offset: 2px;
+}
+
+.money-ticket-quote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 232, 135, 0.26);
+  border-radius: 11px;
+  background: rgba(255, 224, 102, 0.08);
+}
+
+.money-ticket-quote span,
+.money-loading {
+  margin: 0;
+  color: rgba(214, 226, 245, 0.72);
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+
+.money-ticket-quote strong {
+  color: #ffe887;
+  font-size: 15px;
+  text-align: right;
+}
+
+.money-inline-activity {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid rgba(187, 209, 243, 0.14);
+  border-radius: 9px;
+  color: rgba(226, 236, 255, 0.82);
+  font-size: 8px;
+}
+
+.money-inline-activity a {
+  color: #ffe066;
+}
+
+@media (max-width: 768px) {
+  .money-card-page .money-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .money-card-page .money-status-panel {
+    display: none;
+  }
+
+  .money-card-page .money-action-content {
+    gap: 7px;
+  }
+
+  .money-card-page .money-token-option {
+    min-height: 46px;
+    padding: 6px;
+  }
+
+  .money-card-page .money-amount-block {
+    gap: 5px;
+  }
+
+  .money-card-page .money-amount-block .money-input {
+    min-height: 42px;
+    padding: 8px 12px;
+    font-size: 18px;
+  }
+
+  .money-card-page .money-quick-picks {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .money-card-page .money-quick-pick {
+    min-height: 32px;
+    padding-inline: 4px;
+    font-size: 7px;
+  }
+
+  .money-card-page .money-ticket-quote {
+    min-height: 42px;
+  }
+
+  .money-card-page .money-primary-btn {
+    min-height: 44px;
+  }
+
+  .money-card-page .money-panel-footer {
+    padding-top: 5px;
+  }
+}
+
+@media (max-width: 380px) and (max-height: 680px) {
+  .money-card.money-card-page {
+    padding: 8px 7px;
+    gap: 6px;
+  }
+
+  .money-card-page .money-head-badges,
+  .money-card-page .money-subtitle,
+  .money-card-page .money-helper,
+  .money-card-page .money-activity {
+    display: none;
+  }
+
+  .money-card-page .money-title {
+    font-size: 19px;
+  }
+
+  .money-card-page .money-action-panel {
+    padding: 7px;
+  }
+
+  .money-card-page .money-action-hint {
+    padding: 5px 7px;
+    font-size: 7.5px;
+  }
+
+  .money-card-page .money-token-option {
+    min-height: 42px;
+  }
+
+  .money-card-page .money-token-option span {
+    font-size: 6px;
+  }
+}

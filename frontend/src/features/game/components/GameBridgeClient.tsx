@@ -495,14 +495,16 @@ export function GameBridgeClient({
       const startedAt = Date.now();
       while (Date.now() - startedAt < timeoutMs) {
         try {
-          const receipt = await provider.request<any>({
+          const receipt = await provider.request<{
+            blockNumber?: string | null;
+          } | null>({
             method: "eth_getTransactionReceipt",
             params: [txHash],
           });
           if (receipt && receipt.blockNumber) {
             return true;
           }
-        } catch (error) {
+        } catch {
           // ignore
         }
         await new Promise((resolve) => window.setTimeout(resolve, 1000));
