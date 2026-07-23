@@ -8,7 +8,6 @@ import {
 
 export function useGameSocket(
   walletAddress?: string,
-  walletProvider?: string,
   enabled: boolean = true
 ) {
   const socketInitializedRef = useRef(false);
@@ -27,7 +26,7 @@ export function useGameSocket(
 
     const initSocket = async () => {
       try {
-        await initializeSocket(walletAddress, walletProvider);
+        await initializeSocket();
       } catch (error) {
         console.error("Failed to initialize socket:", error);
         socketInitializedRef.current = false;
@@ -40,7 +39,7 @@ export function useGameSocket(
       
       
     };
-  }, [enabled, walletAddress, walletProvider]);
+  }, [enabled, walletAddress]);
 
   const subscribe = useCallback(
     <K extends keyof GameEventMap>(

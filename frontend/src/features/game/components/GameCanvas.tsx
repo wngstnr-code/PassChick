@@ -4,6 +4,7 @@ import { GameBridgeClient } from "./GameBridgeClient";
 import Image from "next/image";
 import Script from "next/script";
 import { useEffect, useState } from "react";
+import { GAME_V2_TICKET_MODE } from "../v2Config";
 
 type PassChickThreeModule = typeof import("three");
 
@@ -194,27 +195,33 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
             >
               <div className="bet-hud-metric-grid">
                 <div className="bet-hud-metric bet-hud-metric-primary">
-                  <span className="bet-hud-metric-label">STAKE</span>
+                  <span className="bet-hud-metric-label">
+                    {GAME_V2_TICKET_MODE ? "TICKET COST" : "STAKE"}
+                  </span>
                   <span id="bet-stake" className="bet-hud-metric-value">
-                    $0.00000
+                    {GAME_V2_TICKET_MODE ? "1 TICKET" : "$0.00000"}
                   </span>
                 </div>
                 <div className="bet-hud-metric bet-hud-metric-primary">
-                  <span className="bet-hud-metric-label">MULTIPLIER</span>
+                  <span className="bet-hud-metric-label">
+                    {GAME_V2_TICKET_MODE ? "HOPS" : "MULTIPLIER"}
+                  </span>
                   <span
                     id="bet-multiplier"
                     className="bet-hud-metric-value multiplier-value"
                   >
-                    0.00x
+                    {GAME_V2_TICKET_MODE ? "0" : "0.00x"}
                   </span>
                 </div>
                 <div className="bet-hud-metric bet-hud-metric-wide">
-                  <span className="bet-hud-metric-label">CASH OUT</span>
+                  <span className="bet-hud-metric-label">
+                    {GAME_V2_TICKET_MODE ? "CHECKPOINTS" : "CASH OUT"}
+                  </span>
                   <span
                     id="bet-payout"
                     className="bet-hud-metric-value payout-value"
                   >
-                    $0.00000
+                    {GAME_V2_TICKET_MODE ? "0 CP" : "$0.00000"}
                   </span>
                 </div>
               </div>
@@ -232,7 +239,9 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
             </div>
 
             <div id="bet-hud-idle" className="bet-hud-idle">
-              Paid run shows live payout and multiplier.
+              {GAME_V2_TICKET_MODE
+                ? "Each ranked run uses 1 ticket and earns season points."
+                : "Paid run shows live payout and multiplier."}
             </div>
 
             <button
@@ -241,15 +250,17 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               disabled
               style={{ display: "none" }}
             >
-              CASH OUT
+              {GAME_V2_TICKET_MODE ? "END RUN" : "CASH OUT"}
             </button>
           </div>
         </div>
         <div id="top-bar-center">
           <div className="stat-card play-balance-card">
-            <div className="stat-label">BALANCE</div>
+            <div className="stat-label">
+              {GAME_V2_TICKET_MODE ? "TICKETS" : "BALANCE"}
+            </div>
             <div className="stat-value" id="balance">
-              $0.00000
+              {GAME_V2_TICKET_MODE ? "0 TICKETS" : "$0.00000"}
             </div>
           </div>
           <div className="stat-card timer-card" id="timer-card">
@@ -269,39 +280,72 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
           <button className="close-btn" id="bet-panel-close" aria-label="Close">
             X
           </button>
-          <h2>CONFIRM PAID RUN</h2>
+          <h2>
+            {GAME_V2_TICKET_MODE ? "CONFIRM TICKET RUN" : "CONFIRM PAID RUN"}
+          </h2>
           <p className="subtitle">
-            Set your stake, on-chain outcome, checkpoint cash out
+            {GAME_V2_TICKET_MODE
+              ? "Spend one ticket, reach checkpoints, earn season points"
+              : "Set your stake, on-chain outcome, checkpoint cash out"}
           </p>
 
           <div className="odds-info">
             <div className="field bet-stake-form">
-              <label>ENTRY FEE (USDC)</label>
+              <label>
+                {GAME_V2_TICKET_MODE ? "ENTRY COST" : "ENTRY FEE (USDC)"}
+              </label>
               <div className="bet-stake-fixed" style={{ fontSize: "1.2rem", fontWeight: "bold", padding: "10px 0", textAlign: "center", color: "#f6fbff" }}>
-                0.0001
+                {GAME_V2_TICKET_MODE ? "1 TICKET" : "0.0001"}
               </div>
-              <input type="hidden" id="bet-stake-input" value="0.0001" />
+              <input
+                type="hidden"
+                id="bet-stake-input"
+                value={GAME_V2_TICKET_MODE ? "1" : "0.0001"}
+              />
             </div>
           </div>
 
           <div className="odds-info">
             <p className="odds-title">RUN RULES</p>
-            <div className="odds-row">
-              <span className="odds-key">Start multiplier</span>
-              <strong>0.00x</strong>
-            </div>
-            <div className="odds-row">
-              <span className="odds-key">Per forward step</span>
-              <strong>+0.025x</strong>
-            </div>
-            <div className="odds-row">
-              <span className="odds-key">Every 40 steps</span>
-              <strong>Checkpoint x1.2</strong>
-            </div>
-            <div className="odds-row">
-              <span className="odds-key">Speed per checkpoint</span>
-              <strong>x1.10</strong>
-            </div>
+            {GAME_V2_TICKET_MODE ? (
+              <>
+                <div className="odds-row">
+                  <span className="odds-key">Ticket cost</span>
+                  <strong>1 ticket</strong>
+                </div>
+                <div className="odds-row">
+                  <span className="odds-key">Every 40 hops</span>
+                  <strong>1 checkpoint</strong>
+                </div>
+                <div className="odds-row">
+                  <span className="odds-key">Run result</span>
+                  <strong>Server verified</strong>
+                </div>
+                <div className="odds-row">
+                  <span className="odds-key">Progress</span>
+                  <strong>Season points</strong>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="odds-row">
+                  <span className="odds-key">Start multiplier</span>
+                  <strong>0.00x</strong>
+                </div>
+                <div className="odds-row">
+                  <span className="odds-key">Per forward step</span>
+                  <strong>+0.025x</strong>
+                </div>
+                <div className="odds-row">
+                  <span className="odds-key">Every 40 steps</span>
+                  <strong>Checkpoint x1.2</strong>
+                </div>
+                <div className="odds-row">
+                  <span className="odds-key">Speed per checkpoint</span>
+                  <strong>x1.10</strong>
+                </div>
+              </>
+            )}
             <div className="odds-divider" aria-hidden="true" />
             <div className="odds-note-list">
               <div className="odds-note-item">
@@ -309,19 +353,23 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
                 between checkpoints
               </div>
               <div className="odds-note-item">
-                <span className="dot dot-green" aria-hidden="true" /> Cash out
-                only while at checkpoint
+                <span className="dot dot-green" aria-hidden="true" />{" "}
+                {GAME_V2_TICKET_MODE
+                  ? "End the run while at a checkpoint"
+                  : "Cash out only while at checkpoint"}
               </div>
               <div className="odds-note-item">
-                <span className="dot dot-red" aria-hidden="true" /> Overtime
-                penalty: -0.1x per second
+                <span className="dot dot-red" aria-hidden="true" />{" "}
+                {GAME_V2_TICKET_MODE
+                  ? "A collision ends the current run"
+                  : "Overtime penalty: -0.1x per second"}
               </div>
             </div>
           </div>
 
           <div className="modal-actions">
             <button id="start-bet-btn" className="primary">
-              START PLAY
+              {GAME_V2_TICKET_MODE ? "START RUN" : "START PLAY"}
             </button>
             <button id="free-play-btn" className="ghost">
               FREE PRACTICE
@@ -330,12 +378,13 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
         </div>
       </div>
 
-      <div id="deposit-modal" className="modal-bg" style={{ display: "none" }}>
-        <div className="modal-box modal-box-deposit">
-          <button className="close-btn" id="deposit-close" aria-label="Close">
-            X
-          </button>
-          <h2>DEPOSIT TO VAULT</h2>
+      {!GAME_V2_TICKET_MODE ? (
+        <div id="deposit-modal" className="modal-bg" style={{ display: "none" }}>
+          <div className="modal-box modal-box-deposit">
+            <button className="close-btn" id="deposit-close" aria-label="Close">
+              X
+            </button>
+            <h2>DEPOSIT TO VAULT</h2>
 
           <div className="field">
             <label>AMOUNT (USDC)</label>
@@ -393,8 +442,9 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               MANAGE MONEY
             </button>
           </div>
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <div id="result-container">
         <div id="result">
@@ -538,7 +588,11 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
           <div className="game-help-header">
             <span className="game-help-kicker">HOW TO PLAY</span>
             <h2 id="game-help-title">GAME RULES</h2>
-            <p>Hop smart, reach checkpoint, cash out before the road wins.</p>
+            <p>
+              {GAME_V2_TICKET_MODE
+                ? "Spend one ticket, reach checkpoints, and climb the season leaderboard."
+                : "Hop smart, reach checkpoint, cash out before the road wins."}
+            </p>
           </div>
           <div className="home-help-content">
             <div className="help-step">
@@ -546,18 +600,22 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               <div>
                 <p className="step-title">CORE LOOP</p>
                 <p>
-                  Move forward to increase multiplier. Survive traffic and reach
-                  checkpoints.
+                  {GAME_V2_TICKET_MODE
+                    ? "Move forward, survive traffic, and reach checkpoints to earn season points."
+                    : "Move forward to increase multiplier. Survive traffic and reach checkpoints."}
                 </p>
               </div>
             </div>
             <div className="help-step">
               <span className="step-num">2</span>
               <div>
-                <p className="step-title">MULTIPLIER</p>
+                <p className="step-title">
+                  {GAME_V2_TICKET_MODE ? "SEASON POINTS" : "MULTIPLIER"}
+                </p>
                 <p>
-                  Every forward step adds +0.025x. Checkpoint bonus is x1.2
-                  compound.
+                  {GAME_V2_TICKET_MODE
+                    ? "Your final checkpoint and run result determine the points recorded by the server."
+                    : "Every forward step adds +0.025x. Checkpoint bonus is x1.2 compound."}
                 </p>
               </div>
             </div>
@@ -566,8 +624,9 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               <div>
                 <p className="step-title">CHECKPOINT WINDOW</p>
                 <p>
-                  Checkpoint appears every 40 hops. Cash out only while you are
-                  at a checkpoint.
+                  {GAME_V2_TICKET_MODE
+                    ? "A checkpoint appears every 40 hops. You can end the run from a checkpoint."
+                    : "Checkpoint appears every 40 hops. Cash out only while you are at a checkpoint."}
                 </p>
               </div>
             </div>
@@ -576,8 +635,9 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               <div>
                 <p className="step-title">TIME & DECAY</p>
                 <p>
-                  You have 60s between checkpoints. If overtime, multiplier
-                  decays at -0.1x per second.
+                  {GAME_V2_TICKET_MODE
+                    ? "You have 60 seconds between checkpoints; keep moving when time runs low."
+                    : "You have 60s between checkpoints. If overtime, multiplier decays at -0.1x per second."}
                 </p>
               </div>
             </div>
@@ -585,7 +645,11 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
               <span className="step-num">5</span>
               <div>
                 <p className="step-title">LOSE CONDITION</p>
-                <p>Hit by a vehicle before cash out means stake is lost.</p>
+                <p>
+                  {GAME_V2_TICKET_MODE
+                    ? "A collision ends the run; completed checkpoints still determine season points."
+                    : "Hit by a vehicle before cash out means stake is lost."}
+                </p>
               </div>
             </div>
           </div>

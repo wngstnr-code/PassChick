@@ -627,6 +627,10 @@ function hasLiveBridge() {
   return Boolean(bridge && !bridge.backgroundMode);
 }
 
+function isTicketMode() {
+  return getBridge()?.mode === "V2_TICKET";
+}
+
 async function loadBalance() {
   if (hasLiveBridge()) {
     try {
@@ -672,7 +676,9 @@ function formatSignedUsdAmount(amount) {
 }
 
 function renderBalance() {
-  const formatted = formatUsdAmount(bet.balance);
+  const formatted = isTicketMode()
+    ? `${Math.max(0, Math.floor(Number(bet.balance) || 0))} TICKETS`
+    : formatUsdAmount(bet.balance);
   const mainBalance = document.getElementById("balance");
   if (mainBalance) mainBalance.innerText = formatted;
   const mobileBalance = document.getElementById("balance-mobile");
@@ -720,9 +726,11 @@ function syncLiveBetStatus() {
 
   const mult = bet.multiplierBp / 10000;
   const payout = bet.stake * mult;
-  const message = `LIVE RUN ${formatUsdAmount(bet.stake)} • ${mult.toFixed(
-    2,
-  )}x • ${formatUsdAmount(payout)} • CP ${bet.currentCp}`;
+  const message = isTicketMode()
+    ? `LIVE RUN • CP ${bet.currentCp} • ${bet.maxRow} HOPS`
+    : `LIVE RUN ${formatUsdAmount(bet.stake)} • ${mult.toFixed(
+        2,
+      )}x • ${formatUsdAmount(payout)} • CP ${bet.currentCp}`;
 
   if (message === lastLiveBetStatusMessage) return;
   lastLiveBetStatusMessage = message;
@@ -766,7 +774,7 @@ function formatBridgeError(error, fallback, userRejectedMessage) {
     lower.includes("intrinsic gas too low") ||
     lower.includes("exceeds allowance")
   ) {
-    return "Wallet needs CELO for network fees before starting a bet.";
+    return "Wallet needs funds for the network fee before starting a run.";
   }
 
   if (
@@ -960,17 +968,26 @@ function getCurrentEffectiveMultiplierBp(now = Date.now()) {
 }
 
 async function startBet(stake) {
-  const effectiveStake = normalizeStakeInput(stake, DEFAULT_STAKE);
+  const effectiveStake = isTicketMode()
+    ? 1
+    : normalizeStakeInput(stake, DEFAULT_STAKE);
 
   if (hasLiveBridge()) {
     try {
       const result = await getBridge().startBet(effectiveStake);
-      return activateBet(effectiveStake, result.availableBalance);
+      return activateBet(
+        effectiveStake,
+        result.ticketBalanceAfter ?? result.availableBalance,
+      );
     } catch (error) {
       const message = formatBridgeError(
         error,
-        "Failed to start live bet.",
-        "Start bet was canceled in wallet.",
+        isTicketMode()
+          ? "Failed to start ticket run."
+          : "Failed to start live bet.",
+        isTicketMode()
+          ? "Start run was canceled."
+          : "Start bet was canceled in wallet.",
       );
       console.warn("Failed to start live bet:", message);
       window.dispatchEvent(
@@ -1068,7 +1085,7 @@ async function cashOut(reason) {
     setBetButtonState();
     let keepStatusMessage = false;
     dispatchPlayStatus({
-      message: "SETTLING CASH OUT...",
+      message: isTicketMode() ? "ENDING RUN..." : "SETTLING CASH OUT...",
       tone: "busy",
       sticky: true,
     });
@@ -1088,6 +1105,10 @@ async function cashOut(reason) {
         profit: result.profit,
         rows: bet.maxRow,
         cp: bet.currentCp,
+        finalCheckpoint: result.finalCheckpoint,
+        pointsAwarded: result.pointsAwarded,
+        seasonPointsTotal: result.seasonPointsTotal,
+        division: result.division,
       });
     } catch (error) {
       console.error("Failed to settle cashout:", error);
@@ -1097,13 +1118,17 @@ async function cashOut(reason) {
       stopBetTicker();
       showBetHud(false);
       showBetPanel(true);
-      const fallbackMessage = isUserRejectedBridgeError(error)
+      const fallbackMessage = isTicketMode()
+        ? "Failed to end the run. Check your connection and try again."
+        : isUserRejectedBridgeError(error)
         ? "Cash out was canceled in wallet. Resolve pending settlement, then start playing again."
         : "Failed to settle cashout.";
       const message = formatBridgeError(
         error,
         fallbackMessage,
-        "Cash out was canceled in wallet.",
+        isTicketMode()
+          ? "End run was canceled."
+          : "Cash out was canceled in wallet.",
       );
       keepStatusMessage = true;
       dispatchPlayStatus({
@@ -1162,17 +1187,21 @@ async function crashBet(reason) {
     bet.active = false;
     stopBetTicker();
     showBetHud(false);
-    showResult({
-      type: "crash",
-      stake: lostStake,
-      multiplier: mult,
-      payout: 0,
-      profit: -lostStake,
-      rows: bet.maxRow,
-      cp: bet.currentCp,
-    });
+    if (!isTicketMode()) {
+      showResult({
+        type: "crash",
+        stake: lostStake,
+        multiplier: mult,
+        payout: 0,
+        profit: -lostStake,
+        rows: bet.maxRow,
+        cp: bet.currentCp,
+      });
+    }
     dispatchPlayStatus({
-      message: "CRASHED. SETTLING...",
+      message: isTicketMode()
+        ? "CRASHED. RECORDING RESULT..."
+        : "CRASHED. SETTLING...",
       tone: "warning",
       sticky: true,
     });
@@ -1191,14 +1220,22 @@ async function crashBet(reason) {
         profit: -lostStake,
         rows: bet.maxRow,
         cp: bet.currentCp,
+        finalCheckpoint: result?.finalCheckpoint,
+        pointsAwarded: result?.pointsAwarded,
+        seasonPointsTotal: result?.seasonPointsTotal,
+        division: result?.division,
         silent: true,
       });
     } catch (error) {
       console.error("Failed to settle crash:", error);
       const message = formatBridgeError(
         error,
-        "Failed to settle crash.",
-        "Run settlement was canceled in wallet.",
+        isTicketMode()
+          ? "Failed to record the crashed run."
+          : "Failed to settle crash.",
+        isTicketMode()
+          ? "Run result was canceled."
+          : "Run settlement was canceled in wallet.",
       );
       keepStatusMessage = true;
       dispatchPlayStatus({
@@ -1324,7 +1361,11 @@ function renderBetHud() {
   const effectiveMultiplierBp = getCurrentEffectiveMultiplierBp();
   const decayPenaltyBp = getCurrentDecayPenaltyBp();
   const isDecayActive =
-    bet.active && !bet.reconnecting && !bet.cashoutWindow && decayPenaltyBp > 0;
+    !isTicketMode() &&
+    bet.active &&
+    !bet.reconnecting &&
+    !bet.cashoutWindow &&
+    decayPenaltyBp > 0;
   const mult = effectiveMultiplierBp / 10000;
   const payout = bet.stake * mult;
   const headKickerEl = document.querySelector(".bet-hud-kicker");
@@ -1342,9 +1383,21 @@ function renderBetHud() {
   bet.multiplierBp = effectiveMultiplierBp;
   bet.isDecaying = isDecayActive;
 
-  if (stakeEl) stakeEl.innerText = formatUsdAmount(bet.stake);
-  if (multEl) multEl.innerText = mult.toFixed(2) + "x";
-  if (payEl) payEl.innerText = formatUsdAmount(payout);
+  if (stakeEl) {
+    stakeEl.innerText = isTicketMode()
+      ? "1 TICKET"
+      : formatUsdAmount(bet.stake);
+  }
+  if (multEl) {
+    multEl.innerText = isTicketMode()
+      ? String(bet.maxRow)
+      : mult.toFixed(2) + "x";
+  }
+  if (payEl) {
+    payEl.innerText = isTicketMode()
+      ? `${bet.currentCp} CP`
+      : formatUsdAmount(payout);
+  }
   if (scoreCpEl) {
     scoreCpEl.innerText = String(bet.currentCp);
     const cpColors = ["#f6fbff", "#b9dcf4", "#6fa9cf", "#f7a45a", "#d86c32", "#8fc8e8", "#ffffff"];
@@ -1353,13 +1406,19 @@ function renderBetHud() {
   }
 
   if (headKickerEl) {
-    headKickerEl.textContent = bet.active ? "Live Bet" : "Run Summary";
+    headKickerEl.textContent = bet.active
+      ? isTicketMode()
+        ? "Live Run"
+        : "Live Bet"
+      : "Run Summary";
   }
   if (headLineEl) {
     if (bet.reconnecting) {
       headLineEl.textContent = "Reconnecting...";
     } else if (!bet.active) {
-      headLineEl.textContent = "No active bet";
+      headLineEl.textContent = isTicketMode()
+        ? "No active run"
+        : "No active bet";
     } else if (bet.cashoutWindow) {
       headLineEl.textContent = "Checkpoint window open";
     } else if (isDecayActive) {
@@ -1394,7 +1453,7 @@ function renderBetHud() {
       cashoutBtn.style.display = "block";
       cashoutBtn.disabled = false;
       cashoutBtn.classList.remove("disabled");
-      cashoutBtn.innerText = "CASH OUT";
+      cashoutBtn.innerText = isTicketMode() ? "END RUN" : "CASH OUT";
     } else {
       cashoutBtn.style.display = "none";
       cashoutBtn.disabled = true;
@@ -1556,7 +1615,28 @@ function showResult(data) {
   const shouldPlaySfx = !data.silent;
   resultDOM.dataset.result = data.type || "gameover";
 
-  if (data.type === "cashout") {
+  if (isTicketMode() && (data.type === "cashout" || data.type === "crash")) {
+    if (shouldPlaySfx) {
+      if (data.type === "crash") playCrashSfx();
+      else playCashoutSfx();
+    }
+    titleEl.innerText =
+      data.type === "crash" ? "RUN ENDED" : "RUN COMPLETE";
+    const checkpoint = Math.max(
+      0,
+      Number(data.finalCheckpoint ?? data.cp) || 0,
+    );
+    const points = Math.max(0, Number(data.pointsAwarded) || 0);
+    const total = Math.max(0, Number(data.seasonPointsTotal) || 0);
+    const division = String(data.division || "ROOKIE");
+    bodyEl.innerHTML = `
+      <p>Final checkpoint: <strong>${checkpoint}</strong></p>
+      <p>Hops survived: <strong>${Math.max(0, Number(data.rows) || 0)}</strong></p>
+      <p>Points earned: <strong>+${points} PTS</strong></p>
+      <p>Season total: <strong>${total} PTS</strong></p>
+      <p>Division: <strong>${division}</strong></p>
+    `;
+  } else if (data.type === "cashout") {
     if (shouldPlaySfx) playCashoutSfx();
     titleEl.innerText = "CASHED OUT";
     const profitClass =
@@ -5328,7 +5408,7 @@ function initBettingUI() {
 
       const rankEl = document.createElement("span");
       rankEl.className = "leaderboard-rank";
-      rankEl.innerText = `#${index + 1}`;
+      rankEl.innerText = `#${Number(entry?.rank) || index + 1}`;
 
       const walletEl = document.createElement("div");
       walletEl.className = "leaderboard-wallet-stack";
@@ -5355,7 +5435,9 @@ function initBettingUI() {
 
       const scoreEl = document.createElement("strong");
       scoreEl.className = "leaderboard-score";
-      scoreEl.innerText = `HOPS ${leaderboardBestScore(entry)}`;
+      scoreEl.innerText = isTicketMode()
+        ? `${leaderboardBestScore(entry)} PTS`
+        : `HOPS ${leaderboardBestScore(entry)}`;
 
       row.appendChild(rankEl);
       row.appendChild(walletEl);
@@ -5425,7 +5507,15 @@ function initBettingUI() {
 
           if (rankIndex >= 0) {
             const bestScore = leaderboardBestScore(leaderboard[rankIndex]);
-            leaderboardYourRank.innerText = `#${rankIndex + 1} (HOPS ${bestScore})`;
+            const rank =
+              Number(leaderboard[rankIndex]?.rank) || rankIndex + 1;
+            leaderboardYourRank.innerText = isTicketMode()
+              ? `#${rank} (${bestScore} PTS)`
+              : `#${rank} (HOPS ${bestScore})`;
+          } else if (isTicketMode() && payload?.viewer) {
+            leaderboardYourRank.innerText = payload.viewer.rank
+              ? `#${payload.viewer.rank} (${payload.viewer.points} PTS)`
+              : `UNRANKED (${payload.viewer.points} PTS)`;
           } else if (leaderboard.length > 0) {
             leaderboardYourRank.innerText = "Outside Top 100";
           } else {
@@ -5436,6 +5526,10 @@ function initBettingUI() {
 
       if (topTen.length === 0) {
         setLeaderboardStatus("No leaderboard data yet.");
+      } else if (isTicketMode()) {
+        setLeaderboardStatus(
+          `Season ${payload?.season?.seasonNumber || "-"} • ${payload?.division || "ROOKIE"} • ranked by points.`,
+        );
       } else if (leaderboardFilter === "verified") {
         const verifiedCount = topTen.filter(
           (entry) => leaderboardPassportTier(entry) >= 1,
@@ -5462,6 +5556,13 @@ function initBettingUI() {
       if (leaderboardRefresh) leaderboardRefresh.disabled = false;
     }
   }
+
+  window.addEventListener("chicken:season-refresh", () => {
+    leaderboardLastLoadedAt = 0;
+    if (leaderboardModal?.style.display === "flex") {
+      void refreshLeaderboard(true);
+    }
+  });
 
   function openLeaderboardModal() {
     const el = document.getElementById("leaderboard-modal");
@@ -6027,8 +6128,8 @@ function initBettingUI() {
   startBetBtn?.addEventListener("click", async () => {
     if (startBetBusy) return;
     playUiClickSfx();
-    const stake = syncStakeInput();
-    if (!isValidStakeAmount(stake)) {
+    const stake = isTicketMode() ? 1 : syncStakeInput();
+    if (!isTicketMode() && !isValidStakeAmount(stake)) {
       showErrorToast(`Stake must be between ${MIN_STAKE} and ${MAX_STAKE} USDC.`);
       return;
     }
@@ -6046,17 +6147,26 @@ function initBettingUI() {
           const available = await bridge.loadAvailableBalance();
           if (!isFinite(available) || available < stake) {
             showErrorToast(
-              `Insufficient vault balance. Available ${formatUsdAmount(available || 0)}. Deposit first.`,
+              isTicketMode()
+                ? `No tickets available. Claim the daily reward or top up in Manage Money.`
+                : `Insufficient vault balance. Available ${formatUsdAmount(available || 0)}. Deposit first.`,
             );
             return;
           }
         } catch (error) {
           const message = formatBridgeError(
             error,
-            "Failed to check vault balance.",
+            isTicketMode()
+              ? "Failed to check ticket balance."
+              : "Failed to check vault balance.",
             "Request was canceled in wallet.",
           );
-          console.error("Failed to load available vault balance:", error);
+          console.error(
+            isTicketMode()
+              ? "Failed to load ticket balance:"
+              : "Failed to load available vault balance:",
+            error,
+          );
           dispatchPlayStatus({
             message,
             tone: "error",
@@ -6090,7 +6200,7 @@ function initBettingUI() {
     } finally {
       startBetBusy = false;
       if (startBetBtn) {
-        startBetBtn.innerText = "START PLAY";
+        startBetBtn.innerText = isTicketMode() ? "START RUN" : "START PLAY";
         startBetBtn.disabled = false;
       }
       if (!bet.active && !keepStatusMessage) {
