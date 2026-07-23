@@ -168,3 +168,162 @@ ALTER TYPE tx_type ADD VALUE IF NOT EXISTS 'TICKET_CLAIM';
 ALTER TYPE tx_type ADD VALUE IF NOT EXISTS 'TICKET_PURCHASE';
 ALTER TYPE tx_type ADD VALUE IF NOT EXISTS 'TICKET_CREDIT';
 ALTER TYPE tx_type ADD VALUE IF NOT EXISTS 'TICKET_SPEND';
+
+-- ── V2.2 — one-ticket play (BE-07 / B4) ─────────────────────────────────
+-- Additive, safe to re-run. Adds the off-chain ticket spend ledger, the
+-- atomic debit/refund functions behind `game:start`, and the V2 columns
+-- on game_sessions. See docs/be07-game-session-contract.md.
+
+ALTER TYPE game_status ADD VALUE IF NOT EXISTS 'COMPLETED';
+ALTER TYPE game_status ADD VALUE IF NOT EXISTS 'VOIDED';
+
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS client_session_id TEXT;
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS game_mode TEXT NOT NULL DEFAULT 'V1';
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS final_checkpoint INTEGER;
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS points_awarded INTEGER;
+ALTER TABLE game_sessions ADD COLUMN IF NOT EXISTS season_id BIGINT REFERENCES seasons(id);
+
+-- Idempotency anchor for `game:start`: one row per (wallet, client intent).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_sessions_client_intent
+  ON game_sessions (wallet_address, client_session_id)
+  WHERE client_session_id IS NOT NULL;
+
+DO $$ BEGIN
+  CREATE TYPE ticket_ledger_kind AS ENUM ('SPEND', 'REFUND');
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Off-chain ticket movements. Invariant: at most one SPEND and at most one
+-- REFUND per session (enforced by uq_ticket_ledger_session_kind), and a
+-- REFUND only ever follows a SPEND of the same session.
+-- `reconciled_tx_hash` is stamped by the spendBatch reconciliation job
+-- once the spend has been pushed on-chain via TicketVault.spendBatch.
+CREATE TABLE IF NOT EXISTS ticket_ledger (
+  id BIGSERIAL PRIMARY KEY,
+  wallet_address TEXT NOT NULL REFERENCES players(wallet_address),
+  kind ticket_ledger_kind NOT NULL,
+  amount INTEGER NOT NULL CHECK (amount > 0),
+  session_id UUID NOT NULL REFERENCES game_sessions(session_id),
+  reconciled_tx_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_ticket_ledger_session_kind
+  ON ticket_ledger (session_id, kind);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_ledger_unreconciled
+  ON ticket_ledger (wallet_address) WHERE reconciled_tx_hash IS NULL;
+
+ALTER TABLE ticket_ledger ENABLE ROW LEVEL SECURITY;
+-- No public policy: service-role only, like ticket_balances.
+
+-- Atomically debits exactly one ticket for a session. Row-locks the
+-- balance so concurrent starts serialize; the ledger unique index makes
+-- replays (same session_id) return the current state without a second
+-- debit. Result codes:
+--   OK                     - ticket debited now
+--   REPLAY                 - this session already debited (idempotent hit)
+--   INSUFFICIENT_TICKETS   - balance < 1 (or no balance row yet)
+--   SESSION_ALREADY_ACTIVE - another session of this wallet already holds
+--                            an unrefunded SPEND while still ACTIVE
+CREATE OR REPLACE FUNCTION debit_ticket_for_session(p_wallet TEXT, p_session UUID)
+RETURNS TABLE (code TEXT, new_balance BIGINT)
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_balance BIGINT;
+BEGIN
+  -- Idempotent replay?
+  IF EXISTS (
+    SELECT 1 FROM ticket_ledger
+    WHERE session_id = p_session AND kind = 'SPEND'
+  ) THEN
+    SELECT balance INTO v_balance FROM ticket_balances WHERE wallet_address = p_wallet;
+    RETURN QUERY SELECT 'REPLAY'::TEXT, COALESCE(v_balance, 0);
+    RETURN;
+  END IF;
+
+  -- Serialize concurrent debits for this wallet.
+  SELECT balance INTO v_balance
+  FROM ticket_balances
+  WHERE wallet_address = p_wallet
+  FOR UPDATE;
+
+  IF v_balance IS NULL OR v_balance < 1 THEN
+    RETURN QUERY SELECT 'INSUFFICIENT_TICKETS'::TEXT, COALESCE(v_balance, 0);
+    RETURN;
+  END IF;
+
+  -- Exactly-one-active guard: another session that spent a ticket, was not
+  -- refunded, and is still ACTIVE blocks a second debit.
+  IF EXISTS (
+    SELECT 1
+    FROM ticket_ledger tl
+    JOIN game_sessions gs ON gs.session_id = tl.session_id
+    WHERE tl.wallet_address = p_wallet
+      AND tl.kind = 'SPEND'
+      AND tl.session_id <> p_session
+      AND gs.status = 'ACTIVE'
+      AND NOT EXISTS (
+        SELECT 1 FROM ticket_ledger r
+        WHERE r.session_id = tl.session_id AND r.kind = 'REFUND'
+      )
+  ) THEN
+    RETURN QUERY SELECT 'SESSION_ALREADY_ACTIVE'::TEXT, v_balance;
+    RETURN;
+  END IF;
+
+  UPDATE ticket_balances
+  SET balance = balance - 1,
+      offchain_debited = offchain_debited + 1,
+      updated_at = now()
+  WHERE wallet_address = p_wallet;
+
+  INSERT INTO ticket_ledger (wallet_address, kind, amount, session_id)
+  VALUES (p_wallet, 'SPEND', 1, p_session);
+
+  RETURN QUERY SELECT 'OK'::TEXT, v_balance - 1;
+END;
+$$;
+
+-- Refunds the SPEND of a session (recovery of an orphaned session with no
+-- progress, BE-07 §5). Idempotent: at most one REFUND per session.
+-- Result codes: OK, REPLAY (already refunded), NO_SPEND (nothing to refund).
+CREATE OR REPLACE FUNCTION refund_ticket_for_session(p_session UUID)
+RETURNS TABLE (code TEXT, new_balance BIGINT)
+LANGUAGE plpgsql AS $$
+DECLARE
+  v_wallet TEXT;
+  v_balance BIGINT;
+BEGIN
+  SELECT wallet_address INTO v_wallet
+  FROM ticket_ledger
+  WHERE session_id = p_session AND kind = 'SPEND';
+
+  IF v_wallet IS NULL THEN
+    RETURN QUERY SELECT 'NO_SPEND'::TEXT, 0::BIGINT;
+    RETURN;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM ticket_ledger
+    WHERE session_id = p_session AND kind = 'REFUND'
+  ) THEN
+    SELECT balance INTO v_balance FROM ticket_balances WHERE wallet_address = v_wallet;
+    RETURN QUERY SELECT 'REPLAY'::TEXT, COALESCE(v_balance, 0);
+    RETURN;
+  END IF;
+
+  UPDATE ticket_balances
+  SET balance = balance + 1,
+      offchain_debited = offchain_debited - 1,
+      updated_at = now()
+  WHERE wallet_address = v_wallet
+  RETURNING balance INTO v_balance;
+
+  INSERT INTO ticket_ledger (wallet_address, kind, amount, session_id)
+  VALUES (v_wallet, 'REFUND', 1, p_session);
+
+  RETURN QUERY SELECT 'OK'::TEXT, COALESCE(v_balance, 0);
+END;
+$$;

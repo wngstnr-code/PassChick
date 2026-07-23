@@ -51,8 +51,17 @@ import {
   usdcToUint256,
 } from "../services/signatureService.js";
 import { submitSettlementOnchain } from "../services/settlementExecutor.js";
+import {
+  closeV2Session,
+  debitTicketForSession,
+  getPlayerDivision,
+  readMirrorTicketBalance,
+  voidAndRefundSession,
+} from "../services/ticketPlay.js";
+import { getCurrentSeason } from "../services/seasonService.js";
 
 let io: SocketServer;
+const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SIGN_SETTLEMENT_TIMEOUT_MS = 10_000;
 
 type SocialSocketAuthPayload = {
@@ -233,8 +242,20 @@ export function setupGameGateway(httpServer: HttpServer): SocketServer {
       return;
     }
 
-    socket.on("game:start", async (data: { stake: number; onchainSessionId?: string }) => {
-      await handleGameStart(socket, walletAddress, data.stake, data.onchainSessionId);
+    socket.on(
+      "game:start",
+      async (data: { stake?: number; onchainSessionId?: string; clientSessionId?: string }) => {
+        if (env.GAME_V2_TICKET_MODE) {
+          await handleGameStartV2(socket, walletAddress, String(data?.clientSessionId ?? ""));
+          return;
+        }
+        await handleGameStart(socket, walletAddress, Number(data?.stake ?? 0), data?.onchainSessionId);
+      },
+    );
+    // BE-07: the V2 "stop the run" action. Kept alongside game:cashout (same
+    // handler) so the engine can migrate event names without a lockstep deploy.
+    socket.on("game:end_run", async () => {
+      await handleGameCashout(socket, walletAddress);
     });
     socket.on("game:abort_start", async (data: { sessionId?: string; txHash?: string }) => {
       await handleAbortStart(socket, walletAddress, data?.sessionId, data?.txHash);
@@ -382,6 +403,259 @@ async function handleGameStart(
     mapSeed,
     serverTime: Date.now(),
   });
+}
+
+/// ── BE-07 V2 one-ticket flow (docs/be07-game-session-contract.md) ─────────
+
+function emitStartError(
+  socket: Socket,
+  code: string,
+  message: string,
+  retryable: boolean,
+  data?: Record<string, unknown>,
+): void {
+  socket.emit("game:start_error", { success: false, code, message, retryable, ...(data ? { data } : {}) });
+  // Legacy channel so pre-cutover clients still surface something readable.
+  socket.emit("game:error", { message });
+}
+
+async function emitStartedV2(
+  socket: Socket,
+  state: ActiveGameState,
+  clientSessionId: string,
+  seasonId: number | null,
+  ticketBalanceAfter: number,
+  replayed: boolean,
+): Promise<void> {
+  const division = await getPlayerDivision(state.walletAddress);
+  socket.emit("game:started", {
+    success: true,
+    session: {
+      sessionId: state.sessionId,
+      clientSessionId,
+      ticketCost: 1,
+      ticketBalanceAfter: String(ticketBalanceAfter),
+      seasonId,
+      division,
+      startedAt: new Date().toISOString(),
+    },
+    replayed,
+    // Engine-facing extras (same fields the V1 start emitted).
+    sessionId: state.sessionId,
+    mapSeed: state.mapSeed,
+    serverTime: Date.now(),
+  });
+}
+
+async function handleGameStartV2(
+  socket: Socket,
+  walletAddress: string,
+  clientSessionId: string,
+  isRetryAfterConflict = false,
+): Promise<void> {
+  if (!UUID_V4_RE.test(clientSessionId)) {
+    emitStartError(socket, "INVALID_REQUEST", "clientSessionId must be a UUID v4.", false);
+    return;
+  }
+
+  // Idempotent replay: one row per (wallet, client intent).
+  const { data: existing, error: existingError } = await supabase
+    .from("game_sessions")
+    .select("session_id, status, season_id")
+    .eq("wallet_address", walletAddress)
+    .eq("client_session_id", clientSessionId)
+    .maybeSingle();
+
+  if (existingError) {
+    console.error("❌ V2 start intent lookup failed:", existingError);
+    emitStartError(socket, "INTERNAL", "Failed to start the game. Try again.", true);
+    return;
+  }
+
+  if (existing) {
+    const mem = getGameByWallet(walletAddress);
+    if (existing.status === "ACTIVE" && mem && mem.sessionId === String(existing.session_id)) {
+      // Same intent, session alive: rebind the socket and replay the response.
+      mem.socketId = socket.id;
+      const balance = await readMirrorTicketBalance(walletAddress);
+      await emitStartedV2(socket, mem, clientSessionId, existing.season_id ?? null, balance, true);
+      return;
+    }
+    if (existing.status === "ACTIVE") {
+      // Orphan from a previous process: no moves survive a restart, so BE-07
+      // §5 applies - void it, refund the ticket, and ask for a fresh intent.
+      await voidAndRefundSession(String(existing.session_id), walletAddress);
+      emitStartError(
+        socket,
+        "SESSION_CONSUMED",
+        "Your interrupted session was voided and the ticket refunded. Start again.",
+        true,
+      );
+      return;
+    }
+    emitStartError(
+      socket,
+      "SESSION_CONSUMED",
+      "This clientSessionId was already used by a finished session. Generate a new one.",
+      false,
+    );
+    return;
+  }
+
+  if (hasActiveGame(walletAddress)) {
+    const mem = getGameByWallet(walletAddress);
+    emitStartError(socket, "SESSION_ALREADY_ACTIVE", "You already have an active game session.", false, {
+      activeSession: mem ? { sessionId: mem.sessionId } : undefined,
+    });
+    return;
+  }
+
+  const { data: staleActive } = await supabase
+    .from("game_sessions")
+    .select("session_id, client_session_id, created_at")
+    .eq("wallet_address", walletAddress)
+    .eq("status", "ACTIVE")
+    .eq("game_mode", "V2_TICKET")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (staleActive) {
+    emitStartError(socket, "SESSION_ALREADY_ACTIVE", "A previous session is still active. Recover it first.", false, {
+      activeSession: {
+        sessionId: staleActive.session_id,
+        clientSessionId: staleActive.client_session_id,
+        startedAt: staleActive.created_at,
+      },
+    });
+    return;
+  }
+
+  const season = await getCurrentSeason().catch(() => null);
+  if (season && season.status !== "ACTIVE") {
+    emitStartError(socket, "SEASON_FROZEN", "Season reset in progress. Try again in a moment.", true);
+    return;
+  }
+
+  const sessionId = uuidv4();
+  const { error: insertError } = await supabase.from("game_sessions").insert({
+    session_id: sessionId,
+    wallet_address: walletAddress,
+    stake_amount: 0,
+    status: "ACTIVE",
+    game_mode: "V2_TICKET",
+    client_session_id: clientSessionId,
+    season_id: season?.id ?? null,
+  });
+
+  if (insertError) {
+    // 23505 = a concurrent start with the same intent won the insert race;
+    // re-enter once so it resolves through the replay path above.
+    if (insertError.code === "23505" && !isRetryAfterConflict) {
+      await handleGameStartV2(socket, walletAddress, clientSessionId, true);
+      return;
+    }
+    console.error("❌ V2 start insert failed:", insertError);
+    emitStartError(socket, "INTERNAL", "Failed to start the game. Try again.", true);
+    return;
+  }
+
+  let debit;
+  try {
+    debit = await debitTicketForSession(walletAddress, sessionId);
+  } catch (debitError) {
+    console.error("❌ V2 ticket debit failed:", debitError);
+    await supabase.from("game_sessions").delete().eq("session_id", sessionId);
+    emitStartError(socket, "TICKET_STATE_SYNCING", "Ticket balance is syncing. Try again shortly.", true);
+    return;
+  }
+
+  if (debit.code === "INSUFFICIENT_TICKETS") {
+    await supabase.from("game_sessions").delete().eq("session_id", sessionId);
+    emitStartError(socket, "INSUFFICIENT_TICKETS", "You have no tickets. Claim your daily reward or top up.", false, {
+      ticketBalance: String(debit.balance),
+    });
+    return;
+  }
+  if (debit.code === "SESSION_ALREADY_ACTIVE") {
+    await supabase.from("game_sessions").delete().eq("session_id", sessionId);
+    emitStartError(socket, "SESSION_ALREADY_ACTIVE", "Another session already spent a ticket and is still active.", false);
+    return;
+  }
+
+  const { data: player } = await supabase
+    .from("players")
+    .select("total_games")
+    .eq("wallet_address", walletAddress)
+    .single();
+  if (player) {
+    await supabase
+      .from("players")
+      .update({ total_games: player.total_games + 1 })
+      .eq("wallet_address", walletAddress);
+  }
+
+  const state = createGameState(sessionId, "", walletAddress, 0, socket.id, { mode: "V2_TICKET" });
+  console.log(`🎟️ V2 game started: ${walletAddress} | Session: ${sessionId} | Balance after: ${debit.balance}`);
+  await emitStartedV2(socket, state, clientSessionId, season?.id ?? null, debit.balance, false);
+}
+
+/// Closes a V2 session from in-memory state and emits `game:ended`.
+async function closeV2FromState(
+  socket: Socket | null,
+  state: ActiveGameState,
+  status: "CRASHED" | "COMPLETED",
+  reason?: string,
+): Promise<void> {
+  // Disconnect-orphan with zero recorded moves: BE-07 §5 refund policy.
+  if (!socket && status === "CRASHED" && state.moveTimestamps.length === 0) {
+    await voidAndRefundSession(state.sessionId, state.walletAddress);
+    removeGameState(state.walletAddress);
+    return;
+  }
+
+  try {
+    const result = await closeV2Session({
+      sessionId: state.sessionId,
+      walletAddress: state.walletAddress,
+      status,
+      maxRow: state.maxRow,
+    });
+
+    console.log(
+      `🏁 V2 ${status}: ${state.walletAddress} | CP ${result.finalCheckpoint} | +${result.pointsAwarded} pts${reason ? ` | ${reason}` : ""}`,
+    );
+
+    if (socket) {
+      socket.emit("game:ended", {
+        success: true,
+        result: {
+          sessionId: state.sessionId,
+          status: result.status,
+          finalCheckpoint: result.finalCheckpoint,
+          pointsAwarded: result.pointsAwarded,
+          seasonPointsTotal: result.seasonPointsTotal,
+          seasonId: result.seasonId,
+          division: result.division,
+          ticketBalance: String(result.ticketBalance),
+          endedAt: result.endedAt,
+        },
+      });
+      if (status === "CRASHED") {
+        // Engine-facing legacy event so the death animation keeps working.
+        socket.emit("game:crashed", {
+          reason: reason ?? "crashed",
+          finalRow: state.maxRow,
+          sessionId: state.sessionId,
+        });
+      }
+    }
+  } catch (closeError) {
+    console.error(`❌ Failed to close V2 session ${state.sessionId}:`, closeError);
+    socket?.emit("game:error", { message: "Failed to close the game session." });
+  }
+
+  removeGameState(state.walletAddress);
 }
 
 async function canAbortStartSession(txHash?: string): Promise<{ canAbort: boolean; message?: string }> {
@@ -581,6 +855,11 @@ async function handleGameCrash(
     return;
   }
 
+  if (state.mode === "V2_TICKET") {
+    await closeV2FromState(socket, state, "CRASHED", reason);
+    return;
+  }
+
   const effectiveMultBp = state.timer.segmentActive
     ? getEffectiveMultiplierBp(state.multiplierBp, state.timer.segmentStart, Date.now())
     : state.multiplierBp;
@@ -671,6 +950,11 @@ async function handleGameCashout(socket: Socket, walletAddress: string): Promise
     state.timer = onLeaveCheckpoint(state.timer);
     socket.emit("game:cp_expired", { message: "Checkpoint time expired. Keep moving!" });
     socket.emit("game:error", { message: "Checkpoint time expired. Keep moving!" });
+    return;
+  }
+
+  if (state.mode === "V2_TICKET") {
+    await closeV2FromState(socket, state, "COMPLETED");
     return;
   }
 

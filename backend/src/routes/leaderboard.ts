@@ -6,6 +6,14 @@ import {
   TIER_LABELS,
   toFiniteNumber,
 } from "../lib/tiers.js";
+import {
+  computeDivisionMovements,
+  DIVISION_ORDER,
+  getCurrentSeason,
+  rankStandings,
+  type DivisionName,
+  type StandingEntry,
+} from "../services/seasonService.js";
 
 const router = Router();
 
@@ -176,6 +184,211 @@ router.get("/profit", async (_req, res) => {
   } catch (err) {
     console.error("❌ Profit leaderboard error:", err);
     res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+// ── B8: GET /api/leaderboard/season ─────────────────────────────────────
+// Public season standings for a single division (docs/be08-season-leaderboard-api.md).
+
+type SeasonZone = "PROMOTION" | "RELEGATION" | "SAFE" | "PASSIVE";
+
+type SeasonStandingEntry = {
+  rank: number;
+  walletAddress: string;
+  points: number;
+  lastPointAt: string | null;
+  zone: SeasonZone;
+  movement: string | null;
+};
+
+type DivisionStandings = {
+  standings: SeasonStandingEntry[];
+  promotionCount: number;
+  relegationCount: number;
+  activePlayers: number;
+  smallDivision: boolean;
+  total: number;
+};
+
+function isMissingRelationError(err: unknown): boolean {
+  const message = String((err as { message?: string })?.message ?? err ?? "").toLowerCase();
+  return message.includes("does not exist") && message.includes("relation");
+}
+
+async function loadDivisionStandings(
+  seasonId: number,
+  division: DivisionName,
+): Promise<DivisionStandings> {
+  const { data, error } = await supabase
+    .from("season_points")
+    .select("wallet_address, points, last_point_at, movement")
+    .eq("season_id", seasonId)
+    .eq("division", division);
+
+  if (error) throw error;
+
+  const rows = data ?? [];
+  const movementByWallet = new Map<string, string | null>(
+    rows.map((row) => [row.wallet_address as string, (row.movement as string | null) ?? null]),
+  );
+
+  const entries: StandingEntry[] = rows.map((row) => ({
+    walletAddress: row.wallet_address as string,
+    points: row.points as number,
+    lastPointAt: (row.last_point_at as string | null) ?? null,
+  }));
+
+  const ranked = rankStandings(entries);
+  const plan = computeDivisionMovements(division, ranked);
+  const activePlayers = ranked.filter((e) => e.points > 0).length;
+  const smallDivision = activePlayers < 20;
+
+  const standings: SeasonStandingEntry[] = ranked.map((entry, index) => {
+    let zone: SeasonZone;
+    if (entry.points === 0) {
+      zone = "PASSIVE";
+    } else if (plan.promoted.has(entry.walletAddress)) {
+      zone = "PROMOTION";
+    } else if (plan.relegated.has(entry.walletAddress)) {
+      zone = "RELEGATION";
+    } else {
+      zone = "SAFE";
+    }
+
+    return {
+      rank: index + 1,
+      walletAddress: entry.walletAddress,
+      points: entry.points,
+      lastPointAt: entry.lastPointAt,
+      zone,
+      movement: movementByWallet.get(entry.walletAddress) ?? null,
+    };
+  });
+
+  return {
+    standings,
+    promotionCount: plan.promoted.size,
+    relegationCount: plan.relegated.size,
+    activePlayers,
+    smallDivision,
+    total: standings.length,
+  };
+}
+
+router.get("/season", async (req, res) => {
+  try {
+    const divisionParam = String(req.query.division ?? "ROOKIE")
+      .trim()
+      .toUpperCase();
+
+    if (!DIVISION_ORDER.includes(divisionParam as DivisionName)) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid division. Must be one of: ${DIVISION_ORDER.join(", ")}`,
+      });
+      return;
+    }
+    const division = divisionParam as DivisionName;
+
+    let limit = Number.parseInt(String(req.query.limit ?? "50"), 10);
+    if (!Number.isFinite(limit) || limit <= 0) limit = 50;
+    limit = Math.min(limit, 100);
+
+    let offset = Number.parseInt(String(req.query.offset ?? "0"), 10);
+    if (!Number.isFinite(offset) || offset < 0) offset = 0;
+
+    const walletParam = req.query.wallet
+      ? String(req.query.wallet).trim().toLowerCase()
+      : null;
+
+    let season;
+    try {
+      season = await getCurrentSeason();
+    } catch (err) {
+      if (isMissingRelationError(err)) {
+        res.status(503).json({
+          success: false,
+          error: "Season system is not initialized yet.",
+        });
+        return;
+      }
+      throw err;
+    }
+
+    if (!season) {
+      res.status(503).json({
+        success: false,
+        error: "Season system is not initialized yet.",
+      });
+      return;
+    }
+
+    const divisionStandings = await loadDivisionStandings(season.id, division);
+    const page = divisionStandings.standings.slice(offset, offset + limit);
+
+    let viewer: {
+      walletAddress: string;
+      division: DivisionName;
+      rank: number;
+      points: number;
+      zone: SeasonZone;
+    } | null = null;
+
+    if (walletParam) {
+      const { data: divisionRow, error: divisionErr } = await supabase
+        .from("divisions")
+        .select("division")
+        .eq("wallet_address", walletParam)
+        .maybeSingle();
+
+      if (divisionErr) throw divisionErr;
+
+      const viewerDivision = ((divisionRow?.division as DivisionName) ?? "ROOKIE") as DivisionName;
+
+      const viewerStandings =
+        viewerDivision === division
+          ? divisionStandings.standings
+          : (await loadDivisionStandings(season.id, viewerDivision)).standings;
+
+      const entry = viewerStandings.find(
+        (s) => s.walletAddress.toLowerCase() === walletParam,
+      );
+
+      if (entry) {
+        viewer = {
+          walletAddress: entry.walletAddress,
+          division: viewerDivision,
+          rank: entry.rank,
+          points: entry.points,
+          zone: entry.zone,
+        };
+      }
+    }
+
+    res.json({
+      success: true,
+      season: {
+        seasonNumber: season.season_number,
+        startsAt: season.starts_at,
+        endsAt: season.ends_at,
+        status: season.status,
+      },
+      division,
+      standings: page,
+      zones: {
+        promotionCount: divisionStandings.promotionCount,
+        relegationCount: divisionStandings.relegationCount,
+        activePlayers: divisionStandings.activePlayers,
+        smallDivision: divisionStandings.smallDivision,
+      },
+      viewer,
+      total: divisionStandings.total,
+      limit,
+      offset,
+    });
+  } catch (err) {
+    console.error("❌ Season leaderboard error:", err);
+    res.status(500).json({ success: false, error: "Internal server error." });
   }
 });
 

@@ -586,6 +586,44 @@ async function isCurrentOnchainPendingSettlement(session: Record<string, unknown
   }
 }
 
+/// BE-07 §5: V2 session recovery. FE calls this on mount/reconnect before
+/// offering the play button. V1's /active endpoint is left untouched.
+router.get("/session/active", requireAuth, async (req: Request, res: Response) => {
+  const walletAddress = req.walletAddress!;
+
+  const { data, error } = await supabase
+    .from("game_sessions")
+    .select("session_id, client_session_id, created_at")
+    .eq("wallet_address", walletAddress)
+    .eq("status", "ACTIVE")
+    .eq("game_mode", "V2_TICKET")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    // Most likely the V2.2 schema has not been applied yet - fail closed.
+    console.error("❌ Failed to inspect V2 active session:", error);
+    res.status(503).json({ success: false, error: "V2 session state is unavailable." });
+    return;
+  }
+
+  if (!data) {
+    res.json({ active: false });
+    return;
+  }
+
+  res.json({
+    active: true,
+    session: {
+      sessionId: data.session_id,
+      clientSessionId: data.client_session_id,
+      startedAt: data.created_at,
+      resumable: false,
+    },
+  });
+});
+
 router.get("/active", requireAuth, async (req: Request, res: Response) => {
   const walletAddress = req.walletAddress!;
 

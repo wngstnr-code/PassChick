@@ -91,6 +91,12 @@ export const env = {
   // when empty the reward-batch worker degrades gracefully (skips ticking).
   OPERATOR_PRIVATE_KEY: optionalEnv("OPERATOR_PRIVATE_KEY", ""),
   REWARD_BATCH_TICK_MS: Number(optionalEnv("REWARD_BATCH_TICK_MS", "300000")),
+
+  // BE-07 cutover flag (docs/be07-game-session-contract.md): when true the
+  // game gateway runs the V2 one-ticket flow (game:start debits a ticket,
+  // no per-match settlement). Default off so V1 stake flow keeps working
+  // until frontend/backend/engine are deployable together.
+  GAME_V2_TICKET_MODE: optionalEnv("GAME_V2_TICKET_MODE", "false") === "true",
 } as const;
 
 console.log(`🔧 Config loaded:`);

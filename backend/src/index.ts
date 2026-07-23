@@ -9,6 +9,7 @@ import { startBlockchainListener } from "./services/blockchainListener.js";
 import { startRecoveryWorker } from "./services/recoveryWorker.js";
 import { startSeasonScheduler } from "./services/seasonScheduler.js";
 import { startRewardBatchWorker } from "./services/rewardBatchExecutor.js";
+import { startSpendBatchWorker } from "./services/spendBatchExecutor.js";
 import authRoutes from "./routes/auth.js";
 import gameRoutes from "./routes/game.js";
 import leaderboardRoutes from "./routes/leaderboard.js";
@@ -149,6 +150,7 @@ httpServer.listen(env.PORT, "0.0.0.0", () => {
   startRecoveryWorker();
   startSeasonScheduler();
   startRewardBatchWorker();
+  startSpendBatchWorker();
 
   void readBackendSignerHealth()
     .then((backendSigner) => {
