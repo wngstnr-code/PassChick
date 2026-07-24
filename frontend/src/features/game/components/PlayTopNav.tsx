@@ -1824,33 +1824,26 @@ export function PlayTopNav() {
             X
           </button>
           <div className="leaderboard-panel-head">
-            <h3>TOP PLAYERS</h3>
+            <h3>SEASON LEADERBOARD</h3>
             <div
-              className="leaderboard-filter-tabs"
+              id="leaderboard-division-tabs"
+              className="leaderboard-division-tabs"
               role="tablist"
-              aria-label="Leaderboard filter"
+              aria-label="Season division selector"
             >
-              <button
-                id="leaderboard-filter-all"
-                className="active"
-                type="button"
-                role="tab"
-                aria-selected="true"
-              >
-                ALL
-              </button>
-              <button
-                id="leaderboard-filter-verified"
-                type="button"
-                role="tab"
-                aria-selected="false"
-              >
-                VERIFIED
-              </button>
+              <button data-division="ROOKIE" className="active" type="button" role="tab">ROOKIE</button>
+              <button data-division="RUNNER" type="button" role="tab">RUNNER</button>
+              <button data-division="STEADY" type="button" role="tab">STEADY</button>
+              <button data-division="ELITE" type="button" role="tab">ELITE</button>
+              <button data-division="ORACLE" type="button" role="tab">ORACLE</button>
             </div>
           </div>
+          <div id="leaderboard-season-banner" className="leaderboard-season-banner">
+            <span id="leaderboard-season-title">SEASON 1</span>
+            <span id="leaderboard-season-countdown">--:--:--</span>
+          </div>
           <p id="leaderboard-status" className="leaderboard-status">
-            Top 10 players by best hops.
+            Season standings ranked by points.
           </p>
           <div className="leaderboard-self-card">
             <span>YOUR RANK</span>

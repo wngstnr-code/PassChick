@@ -812,7 +812,7 @@ export function GameBridgeClient({
           allowance: 0,
         };
       },
-      loadLeaderboard: async () => {
+      loadLeaderboard: async (requestedDivision?: string) => {
         if (!hasBackendApiConfig) {
           throw new Error("Frontend backend config is incomplete.");
         }
@@ -827,12 +827,22 @@ export function GameBridgeClient({
                 division,
               )}${walletParam}&limit=100&offset=0`,
             ).then(parseSeasonLeaderboard);
-          let seasonBoard = await loadDivision("ROOKIE");
+
+          let seasonBoard;
           if (
-            seasonBoard.viewer &&
-            seasonBoard.viewer.division !== seasonBoard.division
+            requestedDivision &&
+            typeof requestedDivision === "string" &&
+            requestedDivision.trim()
           ) {
-            seasonBoard = await loadDivision(seasonBoard.viewer.division);
+            seasonBoard = await loadDivision(requestedDivision.trim().toUpperCase());
+          } else {
+            seasonBoard = await loadDivision("ROOKIE");
+            if (
+              seasonBoard.viewer &&
+              seasonBoard.viewer.division !== seasonBoard.division
+            ) {
+              seasonBoard = await loadDivision(seasonBoard.viewer.division);
+            }
           }
 
           return {
@@ -850,6 +860,7 @@ export function GameBridgeClient({
             division: seasonBoard.division,
             zones: seasonBoard.zones,
             viewer: seasonBoard.viewer,
+            total: seasonBoard.total,
           };
         }
 

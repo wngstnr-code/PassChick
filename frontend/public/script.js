@@ -5433,6 +5433,14 @@ function initBettingUI() {
         walletEl.appendChild(rewardEl);
       }
 
+      if (entry?.zone) {
+        const zoneEl = document.createElement("span");
+        const zoneClass = String(entry.zone).toLowerCase();
+        zoneEl.className = `leaderboard-zone-badge zone-${zoneClass}`;
+        zoneEl.innerText = String(entry.zone);
+        walletEl.appendChild(zoneEl);
+      }
+
       const scoreEl = document.createElement("strong");
       scoreEl.className = "leaderboard-score";
       scoreEl.innerText = isTicketMode()
@@ -5446,11 +5454,12 @@ function initBettingUI() {
     });
   }
 
-  async function refreshLeaderboard(forceReload = false) {
+  async function refreshLeaderboard(forceReload = false, requestedDivision = null) {
     if (!document.getElementById("leaderboard-modal")) return;
     if (leaderboardBusy) return;
 
     const hasFreshCache =
+      !requestedDivision &&
       leaderboardList &&
       leaderboardList.children.length > 0 &&
       Date.now() - leaderboardLastLoadedAt < 12000;
@@ -5476,7 +5485,7 @@ function initBettingUI() {
         throw new Error("Leaderboard bridge is not ready yet.");
       }
 
-      const payload = await bridge.loadLeaderboard();
+      const payload = await bridge.loadLeaderboard(requestedDivision);
       const leaderboard = Array.isArray(payload?.leaderboard)
         ? [...payload.leaderboard]
         : [];
@@ -5487,6 +5496,29 @@ function initBettingUI() {
       const topTen = leaderboard.slice(0, 10);
       leaderboardCachedEntries = topTen;
       renderLeaderboardRows(leaderboardCachedEntries);
+
+      const activeDiv = payload?.division || requestedDivision || "ROOKIE";
+      const divTabs = document.querySelectorAll("#leaderboard-division-tabs button");
+      divTabs.forEach((tab) => {
+        const isCurrent = tab.getAttribute("data-division") === activeDiv;
+        tab.classList.toggle("active", isCurrent);
+      });
+
+      const seasonTitle = document.getElementById("leaderboard-season-title");
+      const seasonCountdown = document.getElementById("leaderboard-season-countdown");
+      if (seasonTitle && payload?.season) {
+        seasonTitle.innerText = `SEASON ${payload.season.seasonNumber || 1} • ${payload.season.status || "ACTIVE"}`;
+      }
+      if (seasonCountdown && payload?.season?.endsAt) {
+        const endsAtMs = new Date(payload.season.endsAt).getTime();
+        const diffSec = Math.max(0, Math.ceil((endsAtMs - Date.now()) / 1000));
+        const hrs = Math.floor(diffSec / 3600);
+        const mins = Math.floor((diffSec % 3600) / 60);
+        const secs = diffSec % 60;
+        seasonCountdown.innerText = [hrs, mins, secs]
+          .map((v) => String(v).padStart(2, "0"))
+          .join(":");
+      }
 
       const bridgeWallet = bridge?.getWalletAddress
         ? bridge.getWalletAddress()
@@ -5509,13 +5541,15 @@ function initBettingUI() {
             const bestScore = leaderboardBestScore(leaderboard[rankIndex]);
             const rank =
               Number(leaderboard[rankIndex]?.rank) || rankIndex + 1;
+            const zoneText = leaderboard[rankIndex]?.zone ? ` • ${leaderboard[rankIndex].zone}` : "";
             leaderboardYourRank.innerText = isTicketMode()
-              ? `#${rank} (${bestScore} PTS)`
+              ? `#${rank} (${bestScore} PTS${zoneText})`
               : `#${rank} (HOPS ${bestScore})`;
           } else if (isTicketMode() && payload?.viewer) {
+            const vZone = payload.viewer.zone ? ` • ${payload.viewer.zone}` : "";
             leaderboardYourRank.innerText = payload.viewer.rank
-              ? `#${payload.viewer.rank} (${payload.viewer.points} PTS)`
-              : `UNRANKED (${payload.viewer.points} PTS)`;
+              ? `#${payload.viewer.rank} (${payload.viewer.points} PTS${vZone})`
+              : `UNRANKED (${payload.viewer.points} PTS${vZone})`;
           } else if (leaderboard.length > 0) {
             leaderboardYourRank.innerText = "Outside Top 100";
           } else {
