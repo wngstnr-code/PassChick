@@ -13442,80 +13442,47 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .money-card-page .money-action-content {
-    gap: 7px;
+    gap: 10px;
   }
 
   .money-card-page .money-token-option {
-    min-height: 46px;
-    padding: 6px;
+    min-height: 48px;
+    padding: 8px;
   }
 
   .money-card-page .money-amount-block {
-    gap: 5px;
-  }
-
-  .money-card-page .money-amount-block .money-input {
-    min-height: 42px;
-    padding: 8px 12px;
-    font-size: 18px;
-  }
-
-  .money-card-page .money-quick-picks {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 5px;
-  }
-
-  .money-card-page .money-quick-pick {
-    min-height: 32px;
-    padding-inline: 4px;
-    font-size: 7px;
-  }
-
-  .money-card-page .money-ticket-quote {
-    min-height: 42px;
-  }
-
-  .money-card-page .money-primary-btn {
-    min-height: 44px;
-  }
-
-  .money-card-page .money-panel-footer {
-    padding-top: 5px;
-  }
-}
-
-@media (max-width: 380px) and (max-height: 680px) {
-  .money-card.money-card-page {
-    padding: 8px 7px;
     gap: 6px;
   }
 
-  .money-card-page .money-head-badges,
-  .money-card-page .money-subtitle,
-  .money-card-page .money-helper,
-  .money-card-page .money-activity {
-    display: none;
+  .money-card-page .money-amount-block .money-input {
+    min-height: 46px;
+    padding-left: 32px !important;
+    font-size: 20px !important;
   }
 
-  .money-card-page .money-title {
-    font-size: 19px;
+  .money-card-page .money-quick-picks {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
   }
 
-  .money-card-page .money-action-panel {
-    padding: 7px;
+  .money-card-page .money-quick-pick {
+    min-height: 36px;
+    padding-inline: 6px;
+    font-size: 10px;
+    font-weight: 800;
   }
 
-  .money-card-page .money-action-hint {
-    padding: 5px 7px;
-    font-size: 7.5px;
+  .money-card-page .money-ticket-quote {
+    min-height: 48px;
+    padding: 8px 12px;
   }
 
-  .money-card-page .money-token-option {
-    min-height: 42px;
+  .money-card-page .money-primary-btn {
+    min-height: 46px;
   }
 
-  .money-card-page .money-token-option span {
-    font-size: 6px;
+  .money-card-page .money-panel-footer {
+    padding-top: 6px;
   }
 }
 
