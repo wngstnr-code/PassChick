@@ -13412,4 +13412,67 @@ button[class*="-expired"] {
   background: rgba(255, 167, 38, 0.1) !important;
 }
 
+/* Mobile Ticket Pill & Daily Reward Ready Alert */
+.home-nav-ticket-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 10px;
+  background: #ffd84a !important;
+  color: #101522 !important;
+  border: 2px solid #101522 !important;
+  box-shadow: 2px 2px 0 #101522 !important;
+  font-weight: 800;
+  font-size: 11px;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-nav-ticket-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 3px 3px 0 #101522 !important;
+}
+
+.home-nav-ticket-img {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border-radius: 3px;
+}
+
+.home-hero-daily-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  background: #78f0bd !important;
+  color: #101522 !important;
+  border: 3px solid #101522 !important;
+  box-shadow: 4px 4px 0 #101522 !important;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  text-decoration: none;
+  border-radius: 8px;
+  animation: dailyPulse 2s infinite alternate;
+}
+
+@keyframes dailyPulse {
+  0% { transform: scale(1); box-shadow: 4px 4px 0 #101522; }
+  100% { transform: scale(1.02); box-shadow: 6px 6px 0 #101522; }
+}
+
+.home-daily-banner-img {
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+
 

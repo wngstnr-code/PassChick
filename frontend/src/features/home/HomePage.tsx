@@ -3,6 +3,7 @@
 
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ChevronLeft,
@@ -11,6 +12,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useWallet } from "~/features/wallet/WalletProvider";
+import { useDailyClaimStatusQuery, useTicketBalanceQuery } from "../tickets/hooks.ts";
+import { dailyRewardTicketAdapter } from "../daily-reward/runtimeAdapter.ts";
 import { backendFetch } from "~/lib/backend/api";
 import { hasBackendApiConfig } from "~/lib/backend/config";
 
@@ -301,6 +304,11 @@ export function HomePage() {
     clearWalletError,
     disconnectWallet,
   } = useWallet();
+  const ticketBalanceQuery = useTicketBalanceQuery(dailyRewardTicketAdapter);
+  const dailyStatusQuery = useDailyClaimStatusQuery(dailyRewardTicketAdapter);
+  const ticketBalance = ticketBalanceQuery.data?.available ?? 0n;
+  const dailyClaimAvailable = Boolean(dailyStatusQuery.data?.claimable);
+
   const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [showGameGuide, setShowGameGuide] = useState(false);
   const [activeGuideSlide, setActiveGuideSlide] = useState(0);
@@ -748,7 +756,22 @@ export function HomePage() {
         <div className="home-nav-cluster">
           <div className="home-nav-actions">
             {isConnected ? (
-              <div className="home-profile-wrap" ref={profileWrapRef}>
+              <div className="home-profile-wrap" ref={profileWrapRef} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <Link
+                  href="/rewards"
+                  className="flow-btn secondary home-nav-ticket-pill"
+                  title="View Ticket Wallet & Daily Rewards"
+                >
+                  <Image
+                    src="/images/ticket_icon.jpg"
+                    alt="Ticket"
+                    width={18}
+                    height={18}
+                    className="home-nav-ticket-img"
+                  />
+                  <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>
+                </Link>
+
                 <button
                   className="flow-btn secondary home-nav-login"
                   type="button"
@@ -911,6 +934,18 @@ export function HomePage() {
 
               {isConnected && !showHeroConnectPrompt ? (
                 <div className="home-hero-connected-actions">
+                  {dailyClaimAvailable && (
+                    <Link href="/rewards" className="home-hero-daily-banner">
+                      <Image
+                        src="/images/ticket_icon.jpg"
+                        alt=""
+                        width={22}
+                        height={22}
+                        className="home-daily-banner-img"
+                      />
+                      <span>🎁 DAILY REWARD READY (+3 TICKETS)</span>
+                    </Link>
+                  )}
                   <motion.a
                     href="/play"
                     className="flow-btn home-btn-main dashboard-btn dashboard-btn-play"
