@@ -13498,31 +13498,40 @@ button[class*="-expired"] {
   border-radius: 4px;
 }
 
-/* Static Ticket Balance Card in Hero Section (Above PLAY NOW) */
-.home-hero-ticket-card {
+/* Attached Ticket Tab directly on top edge of PLAY NOW button */
+.home-hero-play-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.home-hero-ticket-tab {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 32px;
-  padding: 4px 20px;
+  gap: 6px;
+  height: 24px;
+  padding: 2px 18px 3px;
   background: linear-gradient(180deg, #ffe057 0%, #d49a00 100%);
   color: #1a1200;
-  border: 1.5px solid rgba(255, 245, 170, 0.95);
-  border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 3px 8px rgba(0, 0, 0, 0.35);
+  border: 2px solid #101522;
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 -2px 6px rgba(0, 0, 0, 0.25);
   font-weight: 800;
-  font-size: 12px;
-  letter-spacing: 0.8px;
-  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  margin-bottom: -2px;
+  z-index: 2;
   user-select: none;
   pointer-events: none;
-  align-self: center;
 }
 
-.home-hero-ticket-card-img {
-  width: 16px;
-  height: 16px;
+.home-hero-ticket-tab-img {
+  width: 14px;
+  height: 14px;
   object-fit: contain;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }

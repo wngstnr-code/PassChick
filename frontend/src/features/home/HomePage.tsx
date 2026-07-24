@@ -919,24 +919,26 @@ export function HomePage() {
 
               {isConnected && !showHeroConnectPrompt ? (
                 <div className="home-hero-connected-actions">
-                  <div className="home-hero-ticket-card" title="Your Ticket Balance">
-                    <Image
-                      src="/images/ticket_icon.png"
-                      alt="Ticket"
-                      width={16}
-                      height={16}
-                      className="home-hero-ticket-card-img"
-                    />
-                    <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>
+                  <div className="home-hero-play-container">
+                    <div className="home-hero-ticket-tab" title="Your Ticket Balance">
+                      <Image
+                        src="/images/ticket_icon.png"
+                        alt="Ticket"
+                        width={14}
+                        height={14}
+                        className="home-hero-ticket-tab-img"
+                      />
+                      <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>
+                    </div>
+                    <motion.a
+                      href="/play"
+                      className="flow-btn home-btn-main dashboard-btn dashboard-btn-play"
+                      whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
+                      whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
+                    >
+                      PLAY NOW
+                    </motion.a>
                   </div>
-                  <motion.a
-                    href="/play"
-                    className="flow-btn home-btn-main dashboard-btn dashboard-btn-play"
-                    whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
-                    whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
-                  >
-                    PLAY NOW
-                  </motion.a>
                   <motion.a
                     href="/managemoney"
                     className="flow-btn home-btn-main dashboard-btn dashboard-btn-deposit"
