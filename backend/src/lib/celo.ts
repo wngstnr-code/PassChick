@@ -54,8 +54,15 @@ export const walletClient = createWalletClient({
 });
 
 export const USDC_ADDRESS = getAddress(env.USDC_ADDRESS);
-export const GAME_VAULT_ADDRESS = getAddress(env.GAME_VAULT_ADDRESS);
-export const GAME_SETTLEMENT_ADDRESS = getAddress(env.GAME_SETTLEMENT_ADDRESS);
+// V1 game contracts are optional (kosong di jalur V2/Sepolia). Guard sama seperti
+// TICKET_VAULT/FAUCET/TRUST_PASSPORT di bawah — kalau kosong pakai zero-address
+// alih-alih getAddress("") yang melempar InvalidAddressError saat boot.
+export const GAME_VAULT_ADDRESS = env.GAME_VAULT_ADDRESS
+  ? getAddress(env.GAME_VAULT_ADDRESS)
+  : ("0x0000000000000000000000000000000000000000" as Address);
+export const GAME_SETTLEMENT_ADDRESS = env.GAME_SETTLEMENT_ADDRESS
+  ? getAddress(env.GAME_SETTLEMENT_ADDRESS)
+  : ("0x0000000000000000000000000000000000000000" as Address);
 export const TRUST_PASSPORT_ADDRESS = env.TRUST_PASSPORT_ADDRESS
   ? getAddress(env.TRUST_PASSPORT_ADDRESS)
   : ("0x0000000000000000000000000000000000000000" as Address);
