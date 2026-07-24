@@ -10871,10 +10871,15 @@ body.checkpoint-arrival #hud-scrim::after {
 
   .play-balance-card {
     position: relative;
-    border: 1px solid rgba(184, 212, 255, 0.15) !important;
-    background: rgba(17, 26, 43, 0.65) !important;
+    border: 1.5px solid rgba(184, 212, 255, 0.2) !important;
+    background: rgba(12, 20, 36, 0.85) !important;
     backdrop-filter: blur(8px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+    border-radius: 20px !important;
+    padding: 2px 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 
   .play-balance-card::after {
@@ -10882,13 +10887,40 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .play-balance-card .stat-label {
-    color: rgba(221, 234, 255, 0.82);
+    display: none !important;
   }
 
   .play-balance-card .stat-value {
-    color: #ffe68b;
-    font-size: 13px;
-    margin-top: 3px;
+    color: #ffffff;
+    font-size: 12px;
+    margin-top: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .play-balance-ticket-img {
+    width: 18px;
+    height: 18px;
+    object-fit: contain;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+    flex-shrink: 0;
+  }
+
+  .play-balance-num.is-zero {
+    color: #ef4444 !important;
+    font-weight: 900;
+  }
+
+  .play-balance-num.is-available {
+    color: #ffe887 !important;
+    font-weight: 900;
+  }
+
+  .play-balance-unit {
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 800;
   }
 
   #timer-card {

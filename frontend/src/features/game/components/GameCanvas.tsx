@@ -256,11 +256,14 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
         </div>
         <div id="top-bar-center">
           <div className="stat-card play-balance-card">
-            <div className="stat-label">
-              {GAME_V2_TICKET_MODE ? "TICKETS" : "BALANCE"}
-            </div>
             <div className="stat-value" id="balance">
-              {GAME_V2_TICKET_MODE ? "0 TICKETS" : "$0.00000"}
+              <img
+                src="/images/ticket_icon.png"
+                alt="Ticket"
+                className="play-balance-ticket-img"
+              />
+              <span className="play-balance-num is-zero">0</span>
+              <span className="play-balance-unit">TIX</span>
             </div>
           </div>
           <div className="stat-card timer-card" id="timer-card">

@@ -676,13 +676,19 @@ function formatSignedUsdAmount(amount) {
 }
 
 function renderBalance() {
-  const formatted = isTicketMode()
-    ? `${Math.max(0, Math.floor(Number(bet.balance) || 0))} TICKETS`
-    : formatUsdAmount(bet.balance);
+  const count = Math.max(0, Math.floor(Number(bet.balance) || 0));
   const mainBalance = document.getElementById("balance");
-  if (mainBalance) mainBalance.innerText = formatted;
+  if (mainBalance) {
+    if (isTicketMode()) {
+      mainBalance.innerHTML = `<img src="/images/ticket_icon.png" alt="Ticket" class="play-balance-ticket-img" /><span class="play-balance-num ${count === 0 ? "is-zero" : "is-available"}">${count}</span> <span class="play-balance-unit">TIX</span>`;
+    } else {
+      mainBalance.innerText = formatUsdAmount(bet.balance);
+    }
+  }
   const mobileBalance = document.getElementById("balance-mobile");
-  if (mobileBalance) mobileBalance.innerText = formatted;
+  if (mobileBalance) {
+    mobileBalance.innerText = isTicketMode() ? `${count} TIX` : formatUsdAmount(bet.balance);
+  }
 }
 
 function dispatchPlayStatus({

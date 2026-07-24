@@ -249,7 +249,7 @@ export function DashboardPage() {
                   href="/managemoney"
                   className="flow-btn home-btn-main dashboard-btn dashboard-btn-deposit"
                 >
-                  MANAGE MONEY
+                  TICKET
                 </a>
                 {canDisconnect ? (
                   <button
