@@ -147,12 +147,12 @@
 }
 
 .shell h1 {
-  margin: 6px 0 10px;
-  font-size: clamp(14px, 4vw, 22px);
+  margin: 4px 0 10px;
+  font-size: clamp(11px, 2.8vw, 16px);
   line-height: 1.1;
   letter-spacing: 0.02em;
   color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
 }
 
