@@ -757,21 +757,6 @@ export function HomePage() {
           <div className="home-nav-actions">
             {isConnected ? (
               <div className="home-profile-wrap" ref={profileWrapRef} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <Link
-                  href="/rewards"
-                  className="flow-btn secondary home-nav-ticket-pill"
-                  title="View Ticket Wallet & Daily Rewards"
-                >
-                  <Image
-                    src="/images/ticket_icon.png"
-                    alt="Ticket"
-                    width={18}
-                    height={18}
-                    className="home-nav-ticket-img"
-                  />
-                  <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>
-                </Link>
-
                 <button
                   className="flow-btn secondary home-nav-login"
                   type="button"
@@ -934,6 +919,16 @@ export function HomePage() {
 
               {isConnected && !showHeroConnectPrompt ? (
                 <div className="home-hero-connected-actions">
+                  <div className="home-hero-ticket-card" title="Your Ticket Balance">
+                    <Image
+                      src="/images/ticket_icon.png"
+                      alt="Ticket"
+                      width={16}
+                      height={16}
+                      className="home-hero-ticket-card-img"
+                    />
+                    <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>
+                  </div>
                   <motion.a
                     href="/play"
                     className="flow-btn home-btn-main dashboard-btn dashboard-btn-play"
@@ -967,14 +962,14 @@ export function HomePage() {
         {isConnected ? (
           <motion.button
             type="button"
-            className="home-passport-floating-direct"
+            className="home-floating-circle-btn home-passport-floating-btn"
             aria-label="Open trust passport status"
             onClick={() => void loadTrustPassport(true)}
-            whileHover={reduceMotion ? undefined : { scale: 1.15 }}
-            whileTap={reduceMotion ? undefined : { scale: 0.92 }}
+            whileHover={reduceMotion ? undefined : { y: -3, scale: 1.08 }}
+            whileTap={reduceMotion ? undefined : { y: 1, scale: 0.95 }}
             title="View Trust Passport Status"
           >
-            <img src="/images/pass.png" alt="Trust Passport" className="home-floating-direct-img" />
+            <img src="/images/pass.png" alt="Trust Passport" className="home-floating-circle-img" />
           </motion.button>
         ) : null}
       </section>
@@ -1937,12 +1932,12 @@ export function HomePage() {
 
       <motion.div
         className="home-daily-floating-wrap"
-        whileHover={reduceMotion ? undefined : { scale: 1.15 }}
-        whileTap={reduceMotion ? undefined : { scale: 0.92 }}
+        whileHover={reduceMotion ? undefined : { y: -3, scale: 1.08 }}
+        whileTap={reduceMotion ? undefined : { y: 1, scale: 0.95 }}
       >
         <Link
           href="/rewards"
-          className="home-daily-floating-direct"
+          className="home-floating-circle-btn home-daily-floating-btn"
           aria-label="Open daily rewards"
           title="Open Daily Rewards"
         >
@@ -1951,7 +1946,7 @@ export function HomePage() {
               <span className="home-daily-floating-badge-dot" />
             </span>
           )}
-          <img src="/images/daily_reward_icon.png" alt="Daily Rewards" className="home-floating-direct-img" />
+          <img src="/images/daily_reward_icon.png" alt="Daily Rewards" className="home-floating-circle-img" />
         </Link>
       </motion.div>
     </main>
