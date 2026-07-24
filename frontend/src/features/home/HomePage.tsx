@@ -928,8 +928,8 @@ export function HomePage() {
                       <Image
                         src="/images/ticket_icon.png"
                         alt="Ticket"
-                        width={20}
-                        height={20}
+                        width={26}
+                        height={26}
                         className="home-hero-ticket-tab-img"
                       />
                       <span className="home-hero-ticket-tab-val">
