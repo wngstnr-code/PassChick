@@ -11,6 +11,7 @@ import {
   signDailyClaim,
 } from "../lib/celo.js";
 import { computeStreakDay, DAILY_REWARDS, rollDailyAmount, utcDayIndex } from "../services/dailyClaimService.js";
+import { readMirrorTicketBalance } from "../services/ticketPlay.js";
 
 const router = Router();
 
@@ -63,6 +64,28 @@ function validateTicketScope(req: Request, res: Response): boolean {
 
   return true;
 }
+
+/// GET /api/tickets/balance — spendable ticket balance from the backend mirror.
+/// This is the SPENDABLE authority the FE must render in /play and /rewards.
+/// TicketVault.ticketBalance() on-chain is only the pre-reconciliation ledger
+/// (it does not reflect off-chain SPEND debits from game sessions), so the FE
+/// must never present the on-chain value as usable balance. After
+/// game:started / game:ended the FE should re-fetch / invalidate this value.
+router.get("/balance", requireAuth, async (req: Request, res: Response) => {
+  try {
+    if (!validateTicketScope(req, res)) return;
+    const walletAddress = req.walletAddress!;
+    const balance = await readMirrorTicketBalance(walletAddress);
+    res.json({
+      success: true,
+      balance: String(balance),
+      authority: "backend-mirror",
+    });
+  } catch (error) {
+    console.error("❌ Ticket balance error:", error);
+    res.status(500).json({ success: false, error: "Failed to load ticket balance." });
+  }
+});
 
 /// GET /api/tickets/daily/status — schema per docs/fe05-daily-reward.md.
 /// `/daily-status` is kept as a legacy alias of the same handler.
