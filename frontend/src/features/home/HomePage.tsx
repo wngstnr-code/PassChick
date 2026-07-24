@@ -924,8 +924,8 @@ export function HomePage() {
                       <Image
                         src="/images/ticket_icon.png"
                         alt="Ticket"
-                        width={14}
-                        height={14}
+                        width={22}
+                        height={22}
                         className="home-hero-ticket-tab-img"
                       />
                       <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>
