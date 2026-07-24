@@ -116,4 +116,38 @@ describe("TicketVault production integration", () => {
     assert.equal(calls[0].functionName, "ticketBalance");
     assert.equal(calls[1].functionName, "availableBalanceOf");
   });
+
+  it("prioritizes backend mirror ticket balance when getBackendTicketBalance is provided", async () => {
+    const { createOnchainTicketDataSource } = await import("../production.ts");
+    const scope = createTicketQueryScope(ACCOUNT, CELO_SEPOLIA_CHAIN_ID);
+    assert.ok(scope);
+
+    const source = createOnchainTicketDataSource({
+      getClient() {
+        throw new Error("readContract should not be called when getBackendTicketBalance is supplied.");
+      },
+      getDailyClaimStatus: async () => ({
+        claimable: false,
+        streakDay: 1,
+        nextClaimAtMs: null,
+        expectedTickets: 0n,
+      }),
+      getBackendTicketBalance: async (receivedScope) => {
+        assert.deepEqual(receivedScope, scope);
+        return {
+          available: 0n,
+          authority: "backend-mirror",
+          updatedAtMs: 9999,
+        };
+      },
+    });
+
+    const balance = await source.getTicketBalance(scope);
+    assert.deepEqual(balance, {
+      available: 0n,
+      authority: "backend-mirror",
+      updatedAtMs: 9999,
+    });
+  });
 });
+

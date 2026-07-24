@@ -9,6 +9,7 @@ import {
   type PaymentTokenSymbol,
   type SupportedCeloChainId,
   type SupportedPaymentToken,
+  type TicketBalance,
   type TicketQueryScope,
 } from "./domain.ts";
 
@@ -26,6 +27,8 @@ export type TicketContractReader = {
 export type OnchainTicketDataSourceOptions = {
   getClient: (chainId: SupportedCeloChainId) => TicketContractReader;
   getDailyClaimStatus: (scope: TicketQueryScope) => Promise<DailyClaimStatus>;
+  getBackendTicketBalance?: (scope: TicketQueryScope) => Promise<TicketBalance>;
+  getTicketBalance?: (scope: TicketQueryScope) => Promise<TicketBalance>;
   getConfig?: (chainId: SupportedCeloChainId) => TicketChainConfig;
   now?: () => number;
 };
@@ -74,6 +77,12 @@ export function createOnchainTicketDataSource(
 
   return {
     async getTicketBalance(scope) {
+      if (options.getBackendTicketBalance) {
+        return options.getBackendTicketBalance(scope);
+      }
+      if (options.getTicketBalance) {
+        return options.getTicketBalance(scope);
+      }
       const config = getConfig(scope.chainId);
       const contract = requireTicketVault(config);
       const available = await options.getClient(scope.chainId).readContract({
