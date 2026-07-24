@@ -303,7 +303,7 @@ export function ManageMoneyVaultCard({
                 {topUp.mutation.isSuccess ? <p className="flow-success" role="status">+{topUp.mutation.data.tickets} tickets added. Balance refreshed.</p> : null}
 
                 <fieldset className="money-token-fieldset">
-                  <legend className="flow-label">1. PAY WITH STABLECOIN</legend>
+                  <legend className="flow-label">PAY WITH STABLECOIN</legend>
                   <div className="money-token-grid">
                     {tokens.map((token) => {
                       const snapshot = topUp.snapshots.find((entry) => entry.token.symbol === token.symbol);
@@ -329,7 +329,7 @@ export function ManageMoneyVaultCard({
                 </fieldset>
 
                 <div className="money-amount-block">
-                  <label className="flow-label" htmlFor="ticket-top-up-amount">2. AMOUNT (USD)</label>
+                  <label className="flow-label" htmlFor="ticket-top-up-amount">AMOUNT (USD)</label>
                   <div className="money-input-wrapper">
                     <span className="money-currency-prefix">$</span>
                     <input
@@ -374,7 +374,7 @@ export function ManageMoneyVaultCard({
                   </div>
                   <div className="money-quote-value-col">
                     <Image
-                      src="/images/ticket_icon_3d.jpg"
+                      src="/images/ticket_icon.png"
                       alt="Ticket"
                       width={28}
                       height={28}
@@ -399,10 +399,7 @@ export function ManageMoneyVaultCard({
 
                 {topUp.insufficientBalance ? (
                   <aside className="money-add-cash" aria-labelledby="money-deposit-title">
-                    <div className="money-add-cash-info">
-                      <strong id="money-deposit-title">Need {topUp.selectedToken?.symbol} balance?</strong>
-                      <p>Top up USDC/USDT directly in your MiniPay wallet, then return here.</p>
-                    </div>
+                    <strong id="money-deposit-title">Need {topUp.selectedToken?.symbol} balance?</strong>
                     <a
                       ref={depositFallbackRef}
                       className="money-add-cash-link"
