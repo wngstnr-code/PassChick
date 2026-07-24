@@ -148,21 +148,21 @@
 
 .shell h1 {
   margin: 6px 0 10px;
-  font-size: clamp(24px, 8vw, 40px);
-  line-height: 1.05;
+  font-size: clamp(14px, 4.5vw, 32px);
+  line-height: 1.1;
   letter-spacing: 0.02em;
   color: #ffffff;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
 }
 
 .intro {
   max-width: 520px;
   margin: 0 0 16px;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-weight: 500;
-  font-size: 13px;
+  font-family: inherit;
+  font-size: 8px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.6;
 }
 
 .balanceBar {
@@ -379,10 +379,10 @@
 
 .claimCopy p {
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 8px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .crate {
@@ -527,9 +527,9 @@
   margin: 12px 0 0;
   text-align: center;
   color: var(--text-muted);
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 11px;
-  font-weight: 500;
+  font-family: inherit;
+  font-size: 7px;
+  line-height: 1.5;
 }
 
 .notice,
@@ -539,10 +539,9 @@
   margin-top: 14px;
   padding: 14px;
   border-radius: 12px;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
+  font-family: inherit;
+  font-size: 7.5px;
+  line-height: 1.5;
 }
 
 .notice {
@@ -586,10 +585,10 @@
 
 .seasonRewardsHead p {
   margin: 0 0 16px;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 11px;
+  font-family: inherit;
+  font-size: 7.5px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .seasonRewardsGrid {
@@ -691,10 +690,10 @@
 
 .seasonRewardInfo p {
   margin: 6px 0 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  font-size: 11px;
+  font-family: inherit;
+  font-size: 7.5px;
   color: var(--text-muted);
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .seasonClaimBtn {
