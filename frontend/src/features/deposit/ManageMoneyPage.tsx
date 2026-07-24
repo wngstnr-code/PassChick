@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import type { KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -220,56 +221,77 @@ export function ManageMoneyVaultCard({
 
       <header className="money-header">
         <div className="money-head-top">
-          <p className="flow-eyebrow">PASSCHICK TICKET DESK</p>
+          <div className="money-head-title-row">
+            <span className="money-head-eyebrow">PASSCHICK TICKET DESK</span>
+          </div>
           <div className="money-head-badges" aria-label="Wallet and payment status">
             <span className={`money-head-badge money-head-badge-${topUp.account && topUp.isAppChain ? "ready" : "warning"}`}>
+              <span className="money-badge-dot" />
               {walletStatus}
             </span>
-            <span className="money-head-badge">STABLECOIN FEE</span>
+            <span className="money-head-badge money-head-badge-fee">STABLECOIN FEE</span>
           </div>
         </div>
-        <h1 className="flow-title money-title">GET TICKETS</h1>
-        <p className="money-subtitle">Pay with an enabled digital dollar. Every $1 adds 20 tickets.</p>
+        <div className="money-head-main">
+          <h1 className="flow-title money-title">GET TICKETS</h1>
+          <div className="money-rate-pill">
+            <span className="money-rate-tag">$1 USD</span>
+            <span className="money-rate-arrow">=</span>
+            <span className="money-rate-val">20 TICKETS</span>
+          </div>
+        </div>
       </header>
 
       <div className="money-grid">
         <section className="flow-status money-status-panel">
           <p className="money-section-label">PLAYER SNAPSHOT</p>
           <div className="money-status-grid">
-            <div className="money-status-row"><span>Ticket Balance</span><strong>{ticketBalance.isLoading ? "..." : (ticketBalance.data?.available ?? 0n).toString()} TIX</strong></div>
-            <div className="money-status-row"><span>Ticket Rate</span><strong>$1 = 20 TIX</strong></div>
-            <div className="money-status-row"><span>Payment Tokens</span><strong>{enabledTokens.length ? enabledTokens.map((token) => token.symbol).join(" · ") : "SHOP CLOSED"}</strong></div>
-            {showLegacyWithdraw ? <div className="money-status-row"><span>Legacy Vault</span><strong>{formatTokenUnits(legacyUnits, 6)} USDC</strong></div> : null}
+            <div className="money-status-row">
+              <span>Ticket Balance</span>
+              <strong>{ticketBalance.isLoading ? "..." : (ticketBalance.data?.available ?? 0n).toString()} TIX</strong>
+            </div>
+            <div className="money-status-row">
+              <span>Exchange Rate</span>
+              <strong>$1 = 20 TIX</strong>
+            </div>
+            <div className="money-status-row">
+              <span>Payment Tokens</span>
+              <strong>{enabledTokens.length ? enabledTokens.map((token) => token.symbol).join(" · ") : "SHOP CLOSED"}</strong>
+            </div>
+            {showLegacyWithdraw ? (
+              <div className="money-status-row">
+                <span>Legacy Vault</span>
+                <strong>{formatTokenUnits(legacyUnits, 6)} USDC</strong>
+              </div>
+            ) : null}
           </div>
         </section>
 
         <section className="money-action-panel">
-          <div className="money-action-tabs" role="tablist" aria-label="Ticket and legacy vault actions" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
-            {tabs.map((tab) => (
-              <button
-                key={tab.mode}
-                id={`money-action-${tab.mode}`}
-                type="button"
-                role="tab"
-                aria-selected={activeMoneyAction === tab.mode}
-                aria-controls="money-action-panel"
-                tabIndex={activeMoneyAction === tab.mode ? 0 : -1}
-                className={`money-action-tab${activeMoneyAction === tab.mode ? " active" : ""}`}
-                onClick={() => setMoneyAction(tab.mode)}
-                onKeyDown={onTabKeyDown}
-              >{tab.label}</button>
-            ))}
-          </div>
+          {showLegacyWithdraw ? (
+            <div className="money-action-tabs" role="tablist" aria-label="Ticket and legacy vault actions" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.mode}
+                  id={`money-action-${tab.mode}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeMoneyAction === tab.mode}
+                  aria-controls="money-action-panel"
+                  tabIndex={activeMoneyAction === tab.mode ? 0 : -1}
+                  className={`money-action-tab${activeMoneyAction === tab.mode ? " active" : ""}`}
+                  onClick={() => setMoneyAction(tab.mode)}
+                  onKeyDown={onTabKeyDown}
+                >{tab.label}</button>
+              ))}
+            </div>
+          ) : null}
 
           <div id="money-action-panel" role="tabpanel" aria-labelledby={`money-action-${activeMoneyAction}`}>
             {activeMoneyAction === "withdraw" ? (
               <LegacyWithdrawPanel availableUnits={legacyUnits} onRefresh={legacyBalance.refetch} />
             ) : (
               <div className="money-action-content">
-                <p id="money-action-hint" className="money-action-hint">
-                  Choose an enabled stablecoin, enter whole digital dollars, then confirm in your wallet.
-                </p>
-
                 {supportedTokens.isLoading || topUp.snapshotQuery.isLoading ? <p className="money-loading" role="status">READING CELO BALANCES...</p> : null}
                 {supportedTokens.isError || topUp.snapshotQuery.isError ? (
                   <p className="flow-alert" role="alert">Ticket payment balances could not be loaded. Retry the Celo read.</p>
@@ -281,7 +303,7 @@ export function ManageMoneyVaultCard({
                 {topUp.mutation.isSuccess ? <p className="flow-success" role="status">+{topUp.mutation.data.tickets} tickets added. Balance refreshed.</p> : null}
 
                 <fieldset className="money-token-fieldset">
-                  <legend className="flow-label">PAY WITH</legend>
+                  <legend className="flow-label">1. PAY WITH STABLECOIN</legend>
                   <div className="money-token-grid">
                     {tokens.map((token) => {
                       const snapshot = topUp.snapshots.find((entry) => entry.token.symbol === token.symbol);
@@ -295,7 +317,10 @@ export function ManageMoneyVaultCard({
                           aria-pressed={topUp.selectedToken?.symbol === token.symbol}
                           onClick={() => topUp.setSelectedSymbol(token.symbol as PaymentTokenSymbol)}
                         >
-                          <strong>{token.symbol}</strong>
+                          <div className="money-token-head">
+                            <strong>{token.symbol}</strong>
+                            {topUp.selectedToken?.symbol === token.symbol ? <span className="money-token-check">✓</span> : null}
+                          </div>
                           <span>{available ? `${formatTokenUnits(snapshot?.balanceUnits ?? 0n, token.decimals)} available` : "Unavailable"}</span>
                         </button>
                       );
@@ -304,36 +329,88 @@ export function ManageMoneyVaultCard({
                 </fieldset>
 
                 <div className="money-amount-block">
-                  <label className="flow-label" htmlFor="ticket-top-up-amount">DIGITAL DOLLARS</label>
-                  <input
-                    id="ticket-top-up-amount"
-                    className="flow-input money-input"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    autoComplete="off"
-                    value={topUp.amount}
-                    aria-describedby="ticket-top-up-quote"
-                    onChange={(event) => topUp.setAmount(event.target.value.replace(/[^0-9]/g, ""))}
-                  />
+                  <label className="flow-label" htmlFor="ticket-top-up-amount">2. AMOUNT (USD)</label>
+                  <div className="money-input-wrapper">
+                    <span className="money-currency-prefix">$</span>
+                    <input
+                      id="ticket-top-up-amount"
+                      className="flow-input money-input"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      autoComplete="off"
+                      value={topUp.amount}
+                      aria-describedby="ticket-top-up-quote"
+                      onChange={(event) => topUp.setAmount(event.target.value.replace(/[^0-9]/g, ""))}
+                    />
+                  </div>
                   <div className="money-quick-picks">
-                    {[1, 2, 5, 10].map((amount) => <button key={amount} type="button" className="money-quick-pick" onClick={() => topUp.setAmount(String(amount))}>${amount}</button>)}
-                    {maxWholeDollars > 0n ? <button type="button" className="money-quick-pick money-quick-pick-max" onClick={() => topUp.setAmount(maxWholeDollars.toString())}>MAX ${maxWholeDollars.toString()}</button> : null}
+                    {[1, 2, 5, 10].map((amount) => (
+                      <button
+                        key={amount}
+                        type="button"
+                        className={`money-quick-pick${topUp.amount === String(amount) ? " active" : ""}`}
+                        onClick={() => topUp.setAmount(String(amount))}
+                      >
+                        ${amount}
+                      </button>
+                    ))}
+                    {maxWholeDollars > 0n ? (
+                      <button
+                        type="button"
+                        className="money-quick-pick money-quick-pick-max"
+                        onClick={() => topUp.setAmount(maxWholeDollars.toString())}
+                      >
+                        MAX (${maxWholeDollars.toString()})
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
                 <div id="ticket-top-up-quote" className="money-ticket-quote" aria-live="polite">
-                  <span>YOU RECEIVE</span><strong>{topUp.quote ? `${topUp.quote.ticketAmount} TIX` : "—"}</strong>
+                  <div className="money-quote-label-col">
+                    <span className="money-quote-eyebrow">YOU RECEIVE</span>
+                    <span className="money-quote-sub">Rate: 1 USD = 20 Tickets</span>
+                  </div>
+                  <div className="money-quote-value-col">
+                    <Image
+                      src="/images/ticket_icon_3d.jpg"
+                      alt="Ticket"
+                      width={28}
+                      height={28}
+                      className="money-quote-icon"
+                      unoptimized
+                    />
+                    <strong className="money-quote-number">
+                      {topUp.quote ? `${topUp.quote.ticketAmount} TIX` : "0 TIX"}
+                    </strong>
+                  </div>
                 </div>
 
-                <button className="flow-btn money-primary-btn" type="button" disabled={topUpDisabled} onClick={() => void handleTopUp()}>{topUpButtonLabel}</button>
-                <p className="money-helper">Network fee is paid with a supported stablecoin. No CELO balance is required.</p>
+                <button
+                  className="flow-btn money-primary-btn"
+                  type="button"
+                  disabled={topUpDisabled}
+                  onClick={() => void handleTopUp()}
+                >
+                  {topUpButtonLabel}
+                </button>
+                <p className="money-helper">Gas fee paid in stablecoins. No CELO required.</p>
 
                 {topUp.insufficientBalance ? (
                   <aside className="money-add-cash" aria-labelledby="money-deposit-title">
-                    <strong id="money-deposit-title">Need more {topUp.selectedToken?.symbol}?</strong>
-                    <p>Deposit USDC, USDT, or USDm in MiniPay, then return and retry.</p>
-                    <a ref={depositFallbackRef} className="flow-btn money-add-cash-link" href={topUp.addCashUrl} {...depositLinkProps}>DEPOSIT IN MINIPAY</a>
+                    <div className="money-add-cash-info">
+                      <strong id="money-deposit-title">Need {topUp.selectedToken?.symbol} balance?</strong>
+                      <p>Top up USDC/USDT directly in your MiniPay wallet, then return here.</p>
+                    </div>
+                    <a
+                      ref={depositFallbackRef}
+                      className="money-add-cash-link"
+                      href={topUp.addCashUrl}
+                      {...depositLinkProps}
+                    >
+                      Deposit in MiniPay ↗
+                    </a>
                   </aside>
                 ) : null}
               </div>
