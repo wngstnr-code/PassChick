@@ -919,7 +919,11 @@ export function HomePage() {
 
               {isConnected && !showHeroConnectPrompt ? (
                 <div className="home-hero-connected-actions">
-                  <div className="home-hero-play-container">
+                  <motion.div
+                    className="home-hero-play-container"
+                    whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
+                    whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
+                  >
                     <div className="home-hero-ticket-tab" title="Your Ticket Balance">
                       <Image
                         src="/images/ticket_icon.png"
@@ -930,15 +934,13 @@ export function HomePage() {
                       />
                       <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>
                     </div>
-                    <motion.a
+                    <a
                       href="/play"
                       className="flow-btn home-btn-main dashboard-btn dashboard-btn-play"
-                      whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
-                      whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
                     >
                       PLAY NOW
-                    </motion.a>
-                  </div>
+                    </a>
+                  </motion.div>
                   <motion.a
                     href="/managemoney"
                     className="flow-btn home-btn-main dashboard-btn dashboard-btn-deposit"

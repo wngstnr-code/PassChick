@@ -13505,6 +13505,8 @@ button[class*="-expired"] {
   align-items: center;
   position: relative;
   width: 100%;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .home-hero-ticket-tab {
@@ -13524,11 +13526,17 @@ button[class*="-expired"] {
   font-weight: 800;
   font-size: 13px;
   letter-spacing: 0.8px;
-  margin-bottom: -2px;
+  margin-bottom: -1px;
   z-index: 2;
   box-sizing: border-box;
   user-select: none;
   pointer-events: none;
+}
+
+.home-hero-play-container .dashboard-btn-play {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  margin-top: 0 !important;
 }
 
 .home-hero-ticket-tab-img {
