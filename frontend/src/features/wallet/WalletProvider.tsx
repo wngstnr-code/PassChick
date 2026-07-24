@@ -43,6 +43,7 @@ import {
 import { readRawErrorMessage, toUserFacingWalletError } from "~/lib/errors";
 import {
   buildSiweMessage,
+  createSingleFlight,
   selectBackendAuthRoute,
   signSiweMessage,
 } from "./authDomain";
@@ -110,6 +111,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [backendAuthError, setBackendAuthError] = useState("");
   const accountRef = useRef("");
   const cleanupRef = useRef<(() => void) | null>(null);
+  const backendAuthSingleFlightRef = useRef(createSingleFlight<boolean>());
   const backendSessionRef = useRef<{
     inFlight: Promise<boolean> | null;
     lastCheckedAt: number;
@@ -442,16 +444,19 @@ export function WalletProvider({ children }: WalletProviderProps) {
     if (!hasBackendConfig) {
       return false;
     }
-    if (isBackendAuthenticated) {
-      return true;
-    }
 
-    const hasExistingSession = await refreshBackendSession();
-    if (hasExistingSession) {
-      return true;
-    }
+    return backendAuthSingleFlightRef.current(async () => {
+      if (isBackendAuthenticated) {
+        return true;
+      }
 
-    return authenticateBackend();
+      const hasExistingSession = await refreshBackendSession();
+      if (hasExistingSession) {
+        return true;
+      }
+
+      return authenticateBackend();
+    });
   }
 
   async function logoutBackend() {
