@@ -9901,6 +9901,12 @@ body.checkpoint-arrival #hud-scrim::after {
   border: 2px solid rgba(164, 132, 255, 0.76);
 }
 
+.dashboard-btn-rewards {
+  background: linear-gradient(180deg, #ff9436 0%, #d85c00 100%);
+  color: #fff6ed;
+  border: 2px solid rgba(255, 178, 110, 0.86);
+}
+
 .dashboard-btn-how,
 .dashboard-btn-guide {
   background: linear-gradient(180deg, #5279e8 0%, #2f4bb5 100%);

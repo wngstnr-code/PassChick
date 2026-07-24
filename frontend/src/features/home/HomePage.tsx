@@ -955,6 +955,14 @@ export function HomePage() {
                     PLAY NOW
                   </motion.a>
                   <motion.a
+                    href="/rewards"
+                    className="flow-btn home-btn-main dashboard-btn dashboard-btn-rewards"
+                    whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
+                    whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
+                  >
+                    DAILY REWARDS {dailyClaimAvailable ? "🎁" : ""}
+                  </motion.a>
+                  <motion.a
                     href="/managemoney"
                     className="flow-btn home-btn-main dashboard-btn dashboard-btn-deposit"
                     whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
