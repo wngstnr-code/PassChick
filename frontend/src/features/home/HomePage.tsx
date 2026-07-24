@@ -763,7 +763,7 @@ export function HomePage() {
                   title="View Ticket Wallet & Daily Rewards"
                 >
                   <Image
-                    src="/images/ticket_icon.jpg"
+                    src="/images/ticket_icon.png"
                     alt="Ticket"
                     width={18}
                     height={18}
@@ -937,7 +937,7 @@ export function HomePage() {
                   {dailyClaimAvailable && (
                     <Link href="/rewards" className="home-hero-daily-banner">
                       <Image
-                        src="/images/ticket_icon.jpg"
+                        src="/images/ticket_icon.png"
                         alt=""
                         width={22}
                         height={22}

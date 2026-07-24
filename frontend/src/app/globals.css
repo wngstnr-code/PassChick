@@ -7372,13 +7372,22 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .home-nav-login {
   min-width: 108px;
-  padding: 8px 12px;
+  height: 30px;
+  min-height: 30px;
+  padding: 6px 14px;
   font-size: 10px;
+  font-weight: 800;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
   color: #fff4dd;
   border: 1px solid rgba(246, 171, 77, 0.7) !important;
   background: linear-gradient(180deg, #b66215 0%, #7a3f06 100%) !important;
+  border-radius: 999px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  box-sizing: border-box;
   transition: all 0.2s ease;
 }
 
@@ -13422,33 +13431,39 @@ button[class*="-expired"] {
 .home-nav-ticket-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  min-height: 34px;
-  padding: 4px 8px;
-  background: #ffd84a !important;
-  color: #101522 !important;
-  border: 2px solid #101522 !important;
-  box-shadow: 2px 2px 0 #101522 !important;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  min-height: 30px;
+  padding: 6px 14px;
+  background: linear-gradient(180deg, #ffe057 0%, #d49a00 100%) !important;
+  color: #1a1200 !important;
+  border: 1px solid rgba(255, 235, 130, 0.85) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3) !important;
   font-weight: 800;
   font-size: 10px;
+  line-height: 1;
   text-decoration: none;
-  border-radius: 6px;
+  border-radius: 999px !important;
   white-space: nowrap;
   flex-shrink: 0;
   z-index: 1;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
 }
 
 .home-nav-ticket-pill:hover {
-  transform: translateY(-2px);
-  box-shadow: 3px 3px 0 #101522 !important;
+  transform: translateY(-1px);
+  filter: brightness(1.08);
 }
 
 .home-nav-ticket-img {
-  width: 18px;
-  height: 18px;
-  object-fit: cover;
-  border-radius: 3px;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  background: transparent !important;
+  border-radius: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
 .home-hero-daily-banner {
