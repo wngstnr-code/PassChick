@@ -135,6 +135,10 @@ function buildPassportStatusMessage(status: ChickenBridgePassportStatus) {
     return `PASSPORT VALID - TIER ${passport.tier} - EXP ${formatPassportDate(passport.expiry)}`;
   }
 
+  if (passport.expired) {
+    return `TIER EXPIRED - RENEWAL READY (TIER ${passport.tier})`;
+  }
+
   if (status.eligibility.eligible) {
     return `ELIGIBLE TIER ${status.eligibility.tier} - READY TO CLAIM`;
   }
@@ -1068,11 +1072,13 @@ export function PlayTopNav() {
         ? "offline"
         : passportStatus.passport.valid
           ? "valid"
-          : passportStatus.eligibility.eligible
-            ? "ready"
-            : "progress";
+          : passportStatus.passport.expired
+            ? "expired"
+            : passportStatus.eligibility.eligible
+              ? "ready"
+              : "progress";
   const canClaimPassport =
-    Boolean(passportStatus?.eligibility.eligible) &&
+    (Boolean(passportStatus?.eligibility.eligible) || Boolean(passportStatus?.passport.expired)) &&
     Boolean(passportStatus?.passport.configured) &&
     !passportStatus?.passport.valid &&
     !passportStatus?.passport.revoked;
@@ -1082,13 +1088,15 @@ export function PlayTopNav() {
       ? "LOAD STATUS"
       : passportStatus.passport.valid
         ? "ALREADY CLAIMED"
-        : !passportConfigured
-          ? "UNAVAILABLE"
-          : passportStatus.passport.revoked
-            ? "REVOKED"
-            : passportStatus.eligibility.eligible
-              ? "CLAIM EGGPASS"
-              : "LOCKED";
+        : passportStatus.passport.expired
+          ? "RENEW TIER"
+          : !passportConfigured
+            ? "UNAVAILABLE"
+            : passportStatus.passport.revoked
+              ? "REVOKED"
+              : passportStatus.eligibility.eligible
+                ? "CLAIM EGGPASS"
+                : "LOCKED";
   const hasPassportBadgeStatus = Boolean(isConnected && passportStatus);
   const passportBadgeTier = passportStatus?.passport.valid
     ? passportStatus.passport.tier

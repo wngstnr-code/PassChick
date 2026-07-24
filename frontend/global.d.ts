@@ -189,6 +189,7 @@ type ChickenBridgePassportEligibility = {
 type ChickenBridgePassportOnchainStatus = {
   configured: boolean;
   valid: boolean;
+  expired?: boolean;
   tier: number;
   issuedAt: number;
   expiry: number;

@@ -13399,3 +13399,17 @@ body.checkpoint-arrival #hud-scrim::after {
   border: 1px solid rgba(158, 158, 158, 0.3);
 }
 
+/* FE-09 Passport Expired State Styling */
+.play-passport-badge-expired,
+button[class*="-expired"] {
+  border-color: #ff9800 !important;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.4) !important;
+}
+
+.passport-status-expired {
+  color: #ffa726 !important;
+  border: 1px solid rgba(255, 167, 38, 0.3) !important;
+  background: rgba(255, 167, 38, 0.1) !important;
+}
+
+
