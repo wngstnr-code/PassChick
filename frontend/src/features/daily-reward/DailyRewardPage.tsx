@@ -89,7 +89,7 @@ export function DailyRewardPage() {
 
       <section className={styles.shell} aria-labelledby="daily-reward-title">
         <div className={styles.eyebrow}>PASSCHICK PLAYER PERK</div>
-        <h1 id="daily-reward-title">DAILY PUNCH CARD</h1>
+        <h1 id="daily-reward-title">DAILY REWARDS</h1>
         <p className={styles.intro}>Check in every day. Miss a day and your card restarts at Day 1.</p>
 
         <div className={styles.balanceBar}>
