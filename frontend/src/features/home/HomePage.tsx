@@ -934,18 +934,6 @@ export function HomePage() {
 
               {isConnected && !showHeroConnectPrompt ? (
                 <div className="home-hero-connected-actions">
-                  {dailyClaimAvailable && (
-                    <Link href="/rewards" className="home-hero-daily-banner">
-                      <Image
-                        src="/images/ticket_icon.png"
-                        alt=""
-                        width={22}
-                        height={22}
-                        className="home-daily-banner-img"
-                      />
-                      <span>🎁 DAILY REWARD READY (+3 TICKETS)</span>
-                    </Link>
-                  )}
                   <motion.a
                     href="/play"
                     className="flow-btn home-btn-main dashboard-btn dashboard-btn-play"
@@ -953,14 +941,6 @@ export function HomePage() {
                     whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
                   >
                     PLAY NOW
-                  </motion.a>
-                  <motion.a
-                    href="/rewards"
-                    className="flow-btn home-btn-main dashboard-btn dashboard-btn-rewards"
-                    whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
-                    whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
-                  >
-                    DAILY REWARDS {dailyClaimAvailable ? "🎁" : ""}
                   </motion.a>
                   <motion.a
                     href="/managemoney"
@@ -987,19 +967,14 @@ export function HomePage() {
         {isConnected ? (
           <motion.button
             type="button"
-            className="home-passport-hero"
+            className="home-passport-floating-direct"
             aria-label="Open trust passport status"
             onClick={() => void loadTrustPassport(true)}
-            whileHover={reduceMotion ? undefined : { y: -5, scale: 1.03 }}
-            whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
+            whileHover={reduceMotion ? undefined : { scale: 1.15 }}
+            whileTap={reduceMotion ? undefined : { scale: 0.92 }}
+            title="View Trust Passport Status"
           >
-            <span className="home-passport-hero-icon" aria-hidden="true">
-              <img src="/images/pass.png" alt="" />
-            </span>
-            <span className="home-passport-hero-copy">
-              <strong>TRUST PASSPORT</strong>
-              <small>View status and tier</small>
-            </span>
+            <img src="/images/pass.png" alt="Trust Passport" className="home-floating-direct-img" />
           </motion.button>
         ) : null}
       </section>
@@ -1961,13 +1936,13 @@ export function HomePage() {
       ) : null}
 
       <motion.div
-        whileHover={reduceMotion ? undefined : { y: -4, scale: 1.03 }}
-        whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
-        style={{ position: "fixed", right: 0, bottom: 0, zIndex: 90 }}
+        className="home-daily-floating-wrap"
+        whileHover={reduceMotion ? undefined : { scale: 1.15 }}
+        whileTap={reduceMotion ? undefined : { scale: 0.92 }}
       >
         <Link
           href="/rewards"
-          className="home-daily-floating-btn"
+          className="home-daily-floating-direct"
           aria-label="Open daily rewards"
           title="Open Daily Rewards"
         >
@@ -1976,13 +1951,7 @@ export function HomePage() {
               <span className="home-daily-floating-badge-dot" />
             </span>
           )}
-          <span className="home-daily-floating-icon" aria-hidden="true">
-            <img src="/images/daily_reward_icon.jpg" alt="" />
-          </span>
-          <span className="home-daily-floating-copy">
-            <strong>DAILY REWARDS</strong>
-            <small>{dailyClaimAvailable ? "Claim ready (+3 TIX)" : "Check perks & streak"}</small>
-          </span>
+          <img src="/images/daily_reward_icon.png" alt="Daily Rewards" className="home-floating-direct-img" />
         </Link>
       </motion.div>
     </main>
