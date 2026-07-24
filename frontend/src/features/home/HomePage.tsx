@@ -928,11 +928,14 @@ export function HomePage() {
                       <Image
                         src="/images/ticket_icon.png"
                         alt="Ticket"
-                        width={18}
-                        height={18}
+                        width={20}
+                        height={20}
                         className="home-hero-ticket-tab-img"
                       />
-                      <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>
+                      <span className="home-hero-ticket-tab-val">
+                        <span className="home-hero-ticket-tab-num">{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()}</span>
+                        <span className="home-hero-ticket-tab-unit">TIX</span>
+                      </span>
                     </div>
                     <a
                       href="/play"
