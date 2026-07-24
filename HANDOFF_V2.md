@@ -13,7 +13,7 @@ Kalau kalian sudah membaca versi sebelumnya, empat hal ini yang baru:
 |---|---|---|
 | 🔴 | **Koreksi §2.3:** dokumen lama menyuruh listener memantau `TicketSpent` untuk mirror. **Itu salah** — kalau diikuti, spend terpotong dua kali | Pastikan tidak ada yang "memperbaiki" mengikuti versi lama |
 | 🔴 | **Syarat sign-off SC untuk BE-07** (§2.7): settle `spendBatch` hanya untuk sesi terminal | Konfirmasi implementasi kalian sudah begitu |
-| ✅ | **Role `operator` aktif** di kedua chain — `0x72b77349…61d8` | Worker batch siap jalan |
+| ✅ | **Role `operator` aktif** di kedua chain — `0x48a838CB…1a33` (dirotasi dari `0x72b77349…` yang kini dicabut) | Worker batch siap jalan |
 | ✅ | **S9 selesai** (§4.1) — gate reward tidak lagi membaca expiry | FE-10 tidak perlu paksa renewal tier |
 
 ---
@@ -57,11 +57,11 @@ ABI ada di `sc/out/TicketVault.sol/TicketVault.json` setelah `forge build`, atau
 | Peran | Alamat | Siapa pegang | Boleh apa |
 |---|---|---|---|
 | **Backend signer** | `0xCa9298971140d120F010D5901DeC4f297C72c7Da` | server backend | Tanda tangan EIP-712 `DailyClaim` & `PassportClaim`. Tidak bisa kirim transaksi ke kontrak |
-| **Operator** | `0x72b77349d70574fB853f00708a9DeB5Fa00061d8` | server backend (Railway) | **Hanya** `creditBatch` & `spendBatch` |
+| **Operator** | `0x48a838CBB3283D105716E1231b90B4802dc31a33` | server backend (Railway) | **Hanya** `creditBatch` & `spendBatch` — didanai 1 CELO gas di mainnet |
 | **Owner** | `0x57394581E832cD31EE0233618c58035033D3cFB9` | keystore terenkripsi, mesin SC | Upgrade, `setTreasury`, `setToken`, `pause`, `setOperator`, `rescueToken` |
 | **Treasury** | `0xEf29d941Be65495631f908EC3211625555D374b9` | terpisah, kunci tidak di mesin mana pun | Hanya menerima. Tidak pernah tanda tangan |
 
-**Status role operator: ✅ aktif di kedua chain** (mainnet `0xe3074d2d…26aab0`, sepolia `0x9cda5000…9f9c8f`).
+**Status role operator: ✅ aktif di kedua chain**, alamat `0x48a838CB…1a33`. Dirotasi 2026-07-23 dari operator awal `0x72b77349…` (pasang baru dulu → cabut lama, tanpa jendela kosong); yang lama sekarang `false` di kedua chain. Gas mainnet sudah didanai 1 CELO.
 
 Terbukti lewat simulasi: `creditBatch`/`spendBatch` dari operator lolos; dari alamat lain → `UnauthorizedOperator` (`0x740fbe61`); `setTreasury`/`upgradeToAndCall` dari operator → `OwnableUnauthorizedAccount` (`0x118cdaa7`).
 
