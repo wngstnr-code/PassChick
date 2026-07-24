@@ -741,34 +741,15 @@ export function HomePage() {
   return (
     <main className="flow-page home-page">
       <header className="home-nav home-nav-global">
-        <div className="home-brand" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div className="home-brand-badge">
-              <img src="/favicon.png" alt="GM" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-            </div>
-            <div className="home-brand-copy">
-              <div className="home-brand-name home-wordmark">
-                <span className="home-wordmark-egg">PASS</span>
-                <span className="home-wordmark-rest">CHICK</span>
-              </div>
-            </div>
+        <div className="home-brand">
+          <div className="home-brand-badge">
+            <img src="/favicon.png" alt="GM" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <Link
-              href="/rewards"
-              className="flow-btn secondary home-nav-reward-btn"
-              style={{ padding: "6px 12px", fontSize: "9px", textDecoration: "none" }}
-            >
-              REWARD
-            </Link>
-            <button
-              type="button"
-              className="flow-btn secondary home-nav-how-btn"
-              onClick={openGameGuide}
-              style={{ padding: "6px 12px", fontSize: "9px" }}
-            >
-              HOW
-            </button>
+          <div className="home-brand-copy">
+            <div className="home-brand-name home-wordmark">
+              <span className="home-wordmark-egg">PASS</span>
+              <span className="home-wordmark-rest">CHICK</span>
+            </div>
           </div>
         </div>
 
@@ -971,7 +952,7 @@ export function HomePage() {
                     whileHover={reduceMotion ? undefined : { y: -3, scale: 1.02 }}
                     whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
                   >
-                    TICKET
+                    MANAGE MONEY
                   </motion.a>
                   <motion.button
                     type="button"

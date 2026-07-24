@@ -464,6 +464,22 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
         </div>
       </div>
 
+      <a
+        href="/rewards"
+        id="game-reward-btn"
+        className="fixed-reward"
+        title="Daily Rewards"
+        aria-label="Daily Rewards"
+      >
+        <Image
+          src="/images/daily_reward_icon.png"
+          alt="Daily Rewards"
+          width={96}
+          height={96}
+          className="fixed-reward-image"
+          aria-hidden="true"
+        />
+      </a>
       <button
         id="game-help-btn"
         className="fixed-help"

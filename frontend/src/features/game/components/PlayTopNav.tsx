@@ -1398,7 +1398,7 @@ export function PlayTopNav() {
           onClick={onManageMoneyClick}
           data-menu-open={isMenuOpen}
         >
-          MANAGE MONEY
+          TICKET
         </button>
         {isMobile ? (
           <div className={`play-bottom-navbar-v2${isMenuOpen ? " hidden" : ""}`}>
@@ -1418,10 +1418,10 @@ export function PlayTopNav() {
               type="button"
               className="play-bottom-nav-tab play-bottom-nav-tab-money"
               onClick={onManageMoneyClick}
-              aria-label="Manage money"
+              aria-label="Manage tickets"
             >
               <WalletCards aria-hidden="true" />
-              <span>MONEY</span>
+              <span>TICKET</span>
             </button>
             <div className="play-bottom-nav-center">
               <button

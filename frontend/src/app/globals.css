@@ -637,7 +637,8 @@ canvas.game {
 
 
 
-.fixed-help {
+.fixed-help,
+.fixed-reward {
   position: fixed;
   right: 32px;
   bottom: 32px;
@@ -657,12 +658,18 @@ canvas.game {
     box-shadow 0.05s ease;
 }
 
-.fixed-help:active {
+.fixed-reward {
+  right: 120px;
+}
+
+.fixed-help:active,
+.fixed-reward:active {
   transform: translate(2px, 3px) scale(0.98);
   box-shadow: none;
 }
 
-.fixed-help-image {
+.fixed-help-image,
+.fixed-reward-image {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -12372,12 +12379,17 @@ body.checkpoint-arrival #hud-scrim::after {
     bottom: calc(98px + var(--play-safe-bottom));
   }
 
-  .fixed-help {
+  .fixed-help,
+  .fixed-reward {
     width: 50px;
     height: 50px;
     right: 16px;
     bottom: calc(92px + var(--play-safe-bottom));
     z-index: 32;
+  }
+
+  .fixed-reward {
+    right: 74px;
   }
 }
 
@@ -12418,9 +12430,14 @@ body.checkpoint-arrival #hud-scrim::after {
     transform-origin: center;
   }
 
-  .fixed-help {
+  .fixed-help,
+  .fixed-reward {
     width: 46px;
     height: 46px;
+  }
+
+  .fixed-reward {
+    right: 68px;
   }
 
   .play-nav-balance-value {
