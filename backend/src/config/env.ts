@@ -79,6 +79,15 @@ export const env = {
     optionalEnv("DAILY_CLAIM_SIGNATURE_TTL_SECONDS", "600"),
     10,
   ),
+  /// Back-dates `issuedAt` on signed daily claims to absorb clock skew
+  /// between this server and the chain's block.timestamp. Without it a
+  /// server clock a few seconds ahead produces `issuedAt > block.timestamp`,
+  /// which the TicketVault rejects ("Daily claim was issued in the future").
+  /// Requested by the FE team after FE-05 staging; 30s is the recommended buffer.
+  DAILY_CLAIM_ISSUED_AT_BUFFER_SECONDS: parseInt(
+    optionalEnv("DAILY_CLAIM_ISSUED_AT_BUFFER_SECONDS", "30"),
+    10,
+  ),
 
   SOCIAL_AUTH_ENABLED:
     optionalEnv("SOCIAL_AUTH_ENABLED", "true").toLowerCase() === "true",

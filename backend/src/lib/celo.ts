@@ -609,10 +609,14 @@ export interface SignedDailyClaim {
 }
 
 /// Signs a TicketVault `DailyClaim` EIP-712 struct. `issuedAt` is always
-/// stamped as "now" server-side (never trusted from the caller) so the TTL
-/// window is meaningful. `expiresAt` (issuedAt + TTL) is informational only,
-/// for the frontend to know when to stop showing a cached signature - the
-/// contract itself is the source of truth for expiry enforcement.
+/// stamped server-side (never trusted from the caller) so the TTL window is
+/// meaningful. It is back-dated by DAILY_CLAIM_ISSUED_AT_BUFFER_SECONDS to
+/// absorb clock skew: if this server's clock runs a few seconds ahead of the
+/// chain's block.timestamp, a bare "now" yields `issuedAt > block.timestamp`
+/// and the contract rejects the claim as issued in the future (FE-05 staging).
+/// `expiresAt` (issuedAt + TTL) is informational only, for the frontend to
+/// know when to stop showing a cached signature - the contract itself is the
+/// source of truth for expiry enforcement.
 export async function signDailyClaim(params: {
   user: string;
   dayIndex: number;
@@ -620,7 +624,7 @@ export async function signDailyClaim(params: {
   nonce: bigint;
 }): Promise<SignedDailyClaim> {
   const address = normalizePlayerAddress(params.user);
-  const issuedAt = Math.floor(Date.now() / 1000);
+  const issuedAt = Math.floor(Date.now() / 1000) - env.DAILY_CLAIM_ISSUED_AT_BUFFER_SECONDS;
   const expiresAt = issuedAt + env.DAILY_CLAIM_SIGNATURE_TTL_SECONDS;
 
   const signature = await walletClient.signTypedData({
