@@ -163,6 +163,118 @@
 .notice button { min-height: 44px; padding: 8px; border: 2px solid var(--ink); background: white; font: inherit; font-size: 8px; cursor: pointer; }
 .success { color: #123b2c; background: var(--mint); }
 
+.seasonRewardsSection {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 3px dashed var(--ink);
+}
+
+.seasonRewardsHead h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+  letter-spacing: -0.02em;
+}
+
+.seasonRewardsHead p {
+  margin: 0 0 14px;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  color: #5c523d;
+  line-height: 1.35;
+}
+
+.seasonRewardsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.seasonRewardCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.seasonRewardIcon {
+  font-size: 24px;
+  flex: 0 0 auto;
+}
+
+.seasonRewardInfo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.seasonRewardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.seasonRewardHeader h4 {
+  margin: 0;
+  font-size: 10px;
+}
+
+.stateBadge {
+  padding: 2px 6px;
+  font-size: 6px;
+  font-weight: 800;
+  border: 1px solid var(--ink);
+}
+
+.badgeCLAIMABLE {
+  background: var(--mint);
+  color: var(--ink);
+}
+
+.badgeCLAIMED {
+  background: #b9e7ce;
+  color: #27523c;
+}
+
+.badgeINELIGIBLE {
+  background: #e0d8c3;
+  color: #706855;
+}
+
+.badgePENDING {
+  background: #fff3c4;
+  color: #7a5c00;
+}
+
+.seasonRewardInfo p {
+  margin: 4px 0 0;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  color: #555;
+  line-height: 1.3;
+}
+
+.seasonClaimBtn {
+  min-height: 36px;
+  padding: 0 14px;
+  background: var(--sun);
+  border: 2px solid var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  font: inherit;
+  font-size: 9px;
+  font-weight: bold;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.claimedCheck {
+  font-size: 8px;
+  font-weight: bold;
+  color: #27523c;
+}
+
 @media (max-width: 410px) {
   .page { padding-inline: 8px; }
   .shell { padding: 13px 11px 16px; }

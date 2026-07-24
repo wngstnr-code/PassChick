@@ -7,6 +7,7 @@ import { useDailyClaimStatusQuery, useTicketBalanceQuery } from "../tickets/hook
 import { buildRewardWeek, classifyDailyClaimError, formatClaimCountdown } from "./domain.ts";
 import { dailyRewardTicketAdapter } from "./runtimeAdapter.ts";
 import { useDailyRewardClaim } from "./useDailyRewardClaim";
+import { classifySeasonReward } from "./__tests__/seasonRewards.test.mjs";
 import styles from "./DailyRewardPage.module.css";
 
 function shortAddress(address: string) {
@@ -19,6 +20,7 @@ function readQueryError(error: unknown) {
 
 export function DailyRewardPage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [claimedSeasonRewards, setClaimedSeasonRewards] = useState<string[]>([]);
   const { account, isAppChain, isConnecting, connectWallet } = useWallet();
   const statusQuery = useDailyClaimStatusQuery(dailyRewardTicketAdapter);
   const balanceQuery = useTicketBalanceQuery(dailyRewardTicketAdapter);
@@ -146,6 +148,43 @@ export function DailyRewardPage() {
         {claim.isSuccess ? (
           <div className={styles.success}>+{claim.data.amount} TICKETS PUNCHED · BALANCE REFRESHED</div>
         ) : null}
+
+        <div className={styles.seasonRewardsSection}>
+          <div className={styles.seasonRewardsHead}>
+            <h3>SEASON 1 PERKS & REWARDS</h3>
+            <p>Active non-monetary perks & career titles. Monetary pools unlock in Season 2 with Celo Passport verification.</p>
+          </div>
+
+          <div className={styles.seasonRewardsGrid}>
+            {[
+              classifySeasonReward({ rewardKind: "founder-badge", claimedIds: claimedSeasonRewards }),
+              classifySeasonReward({ rewardKind: "career-title", claimedIds: claimedSeasonRewards }),
+              classifySeasonReward({ rewardKind: "monetary-pool" }),
+            ].map((item) => (
+              <div key={item.id} className={`${styles.seasonRewardCard} ${styles[`state${item.state}`]}`}>
+                <div className={styles.seasonRewardIcon}>{item.icon}</div>
+                <div className={styles.seasonRewardInfo}>
+                  <div className={styles.seasonRewardHeader}>
+                    <h4>{item.title}</h4>
+                    <span className={`${styles.stateBadge} ${styles[`badge${item.state}`]}`}>{item.badgeLabel}</span>
+                  </div>
+                  <p>{item.description}</p>
+                </div>
+                {item.state === "CLAIMABLE" ? (
+                  <button
+                    type="button"
+                    className={styles.seasonClaimBtn}
+                    onClick={() => setClaimedSeasonRewards((prev) => [...prev, item.id])}
+                  >
+                    CLAIM
+                  </button>
+                ) : item.state === "CLAIMED" ? (
+                  <span className={styles.claimedCheck}>✓ CLAIMED</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
     </main>
   );
