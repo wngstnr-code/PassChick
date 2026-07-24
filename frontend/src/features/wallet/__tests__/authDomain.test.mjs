@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   buildSiweMessage,
+  createSingleFlight,
   selectBackendAuthRoute,
   signSiweMessage,
 } from "../authDomain.ts";
@@ -145,5 +146,52 @@ describe("SIWE message and signing", () => {
       () => signSiweMessage(provider, "SIWE message", ACCOUNT),
       /signature/i,
     );
+  });
+});
+
+describe("backend auth single-flight", () => {
+  it("shares one pending auth attempt between concurrent callers", async () => {
+    const runSingleFlight = createSingleFlight();
+    let resolveAuth;
+    let attempts = 0;
+    const authenticate = () => {
+      attempts += 1;
+      return new Promise((resolve) => {
+        resolveAuth = resolve;
+      });
+    };
+
+    const homeAuth = runSingleFlight(authenticate);
+    const playAuth = runSingleFlight(authenticate);
+
+    assert.equal(homeAuth, playAuth);
+    assert.equal(attempts, 1);
+
+    resolveAuth(true);
+    assert.equal(await homeAuth, true);
+    assert.equal(await playAuth, true);
+  });
+
+  it("allows a fresh auth attempt after the previous attempt settles", async () => {
+    const runSingleFlight = createSingleFlight();
+    let attempts = 0;
+    const authenticate = async () => {
+      attempts += 1;
+      return attempts;
+    };
+
+    assert.equal(await runSingleFlight(authenticate), 1);
+    assert.equal(await runSingleFlight(authenticate), 2);
+  });
+
+  it("clears a failed auth attempt so the user can retry", async () => {
+    const runSingleFlight = createSingleFlight();
+    const failure = new Error("User rejected signature");
+
+    await assert.rejects(
+      () => runSingleFlight(async () => Promise.reject(failure)),
+      failure,
+    );
+    assert.equal(await runSingleFlight(async () => true), true);
   });
 });
