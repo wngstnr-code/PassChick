@@ -7,7 +7,7 @@ import { useDailyClaimStatusQuery, useTicketBalanceQuery } from "../tickets/hook
 import { buildRewardWeek, classifyDailyClaimError, formatClaimCountdown } from "./domain.ts";
 import { dailyRewardTicketAdapter } from "./runtimeAdapter.ts";
 import { useDailyRewardClaim } from "./useDailyRewardClaim";
-import { classifySeasonReward } from "./__tests__/seasonRewards.test.mjs";
+import { classifySeasonReward } from "./seasonRewards.ts";
 import styles from "./DailyRewardPage.module.css";
 
 function shortAddress(address: string) {

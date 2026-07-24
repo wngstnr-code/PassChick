@@ -13416,17 +13416,20 @@ button[class*="-expired"] {
 .home-nav-ticket-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 0 10px;
+  gap: 5px;
+  min-height: 34px;
+  padding: 4px 8px;
   background: #ffd84a !important;
   color: #101522 !important;
   border: 2px solid #101522 !important;
   box-shadow: 2px 2px 0 #101522 !important;
   font-weight: 800;
-  font-size: 11px;
+  font-size: 10px;
   text-decoration: none;
   border-radius: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  z-index: 1;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
