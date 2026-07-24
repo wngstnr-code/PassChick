@@ -928,8 +928,8 @@ export function HomePage() {
                       <Image
                         src="/images/ticket_icon.png"
                         alt="Ticket"
-                        width={22}
-                        height={22}
+                        width={18}
+                        height={18}
                         className="home-hero-ticket-tab-img"
                       />
                       <span>{ticketBalanceQuery.isLoading ? "…" : ticketBalance.toString()} TIX</span>

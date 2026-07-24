@@ -13510,40 +13510,36 @@ button[class*="-expired"] {
 }
 
 .home-hero-ticket-tab {
-  width: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 30px;
-  padding: 4px 16px 5px;
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
-  color: #0f172a;
-  border: 2px solid #94a3b8;
+  gap: 6px;
+  height: 25px;
+  padding: 2px 16px 3px;
+  background: linear-gradient(180deg, #ffe057 0%, #d49a00 100%);
+  color: #1a1200;
+  border: 2px solid #101522;
   border-bottom: none;
-  border-radius: 10px 10px 0 0;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 -2px 6px rgba(0, 0, 0, 0.15);
+  border-radius: 12px 12px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 -2px 6px rgba(0, 0, 0, 0.25);
   font-weight: 800;
-  font-size: 13px;
-  letter-spacing: 0.8px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
   margin-bottom: -1px;
   z-index: 2;
-  box-sizing: border-box;
   user-select: none;
   pointer-events: none;
 }
 
 .home-hero-play-container .dashboard-btn-play {
-  border-top-left-radius: 0 !important;
-  border-top-right-radius: 0 !important;
   margin-top: 0 !important;
 }
 
 .home-hero-ticket-tab-img {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
 /* Circular Container Wrappers for Floating Action Buttons (Bottom Left & Bottom Right) */
