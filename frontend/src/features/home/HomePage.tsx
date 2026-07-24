@@ -1960,45 +1960,31 @@ export function HomePage() {
         </div>
       ) : null}
 
-      <div className="home-help-stack" aria-label="Quick help links">
-        <a
-          className="home-help-btn fixed-help home-help-doc-btn"
-          href="https://passchick.gitbook.io/passchick"
-          target="_blank"
-          rel="noreferrer"
-          title="Open Documentation"
-          aria-label="Open documentation"
+      <motion.div
+        whileHover={reduceMotion ? undefined : { y: -4, scale: 1.03 }}
+        whileTap={reduceMotion ? undefined : { y: 1, scale: 0.98 }}
+        style={{ position: "fixed", right: 0, bottom: 0, zIndex: 90 }}
+      >
+        <Link
+          href="/rewards"
+          className="home-daily-floating-btn"
+          aria-label="Open daily rewards"
+          title="Open Daily Rewards"
         >
-          <svg
-            className="home-help-doc-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <path
-              d="M8 3h6l4 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M14 3v4h4"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M10 12h6M10 16h6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </a>
-      </div>
+          {dailyClaimAvailable && (
+            <span className="home-daily-floating-badge" aria-label="Reward ready">
+              <span className="home-daily-floating-badge-dot" />
+            </span>
+          )}
+          <span className="home-daily-floating-icon" aria-hidden="true">
+            <img src="/images/daily_reward_icon.jpg" alt="" />
+          </span>
+          <span className="home-daily-floating-copy">
+            <strong>DAILY REWARDS</strong>
+            <small>{dailyClaimAvailable ? "Claim ready (+3 TIX)" : "Check perks & streak"}</small>
+          </span>
+        </Link>
+      </motion.div>
     </main>
   );
 }
