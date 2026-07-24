@@ -23,6 +23,32 @@ const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 const SIWE_NONCE_PATTERN = /^[a-zA-Z0-9]{8,}$/;
 const BACKEND_SOCIAL_PROVIDERS = new Set(["google", "apple", "discord", "x"]);
 
+export function createSingleFlight<T>() {
+  let inFlight: Promise<T> | null = null;
+
+  return (task: () => Promise<T>) => {
+    if (inFlight) {
+      return inFlight;
+    }
+
+    const current = task();
+    inFlight = current;
+    void current.then(
+      () => {
+        if (inFlight === current) {
+          inFlight = null;
+        }
+      },
+      () => {
+        if (inFlight === current) {
+          inFlight = null;
+        }
+      },
+    );
+    return current;
+  };
+}
+
 export function selectBackendAuthRoute({
   isMiniPay,
   embeddedAuthProvider,
