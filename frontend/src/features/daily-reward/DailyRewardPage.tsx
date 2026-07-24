@@ -74,8 +74,8 @@ export function DailyRewardPage() {
     <main className={styles.page}>
       <div className={styles.skyGrid} aria-hidden="true" />
       <header className={styles.header}>
-        <Link className={styles.back} href="/dashboard" aria-label="Back to dashboard">
-          ← DASHBOARD
+        <Link className={styles.back} href="/" aria-label="Back to home">
+          ◀ BACK
         </Link>
         <div className={styles.wallet}>
           <span className={styles.dot} />
