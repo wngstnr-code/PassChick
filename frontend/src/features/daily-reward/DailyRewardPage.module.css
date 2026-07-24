@@ -1,14 +1,20 @@
 .page {
-  --ink: #101522;
-  --cream: #fff5d6;
-  --sun: #ffd84a;
-  --orange: #ff7a2f;
+  --ink: #0a1428;
+  --shell-bg: linear-gradient(180deg, rgba(15, 26, 47, 0.98) 0%, rgba(9, 16, 31, 0.99) 100%);
+  --cyan-glow: rgba(142, 238, 223, 0.38);
+  --gold: #ffe887;
+  --gold-glow: #ffd700;
   --mint: #78f0bd;
+  --mint-dark: #27523c;
+  --orange: #ff7a2f;
+  --text-primary: #f4f7ff;
+  --text-muted: #a3b8cc;
+
   height: 100dvh;
   min-height: 100dvh;
-  padding: max(14px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom));
-  color: var(--ink);
-  background: #4f72d8;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  color: var(--text-primary);
+  background: #070e1d;
   overflow-x: hidden;
   overflow-y: auto;
   touch-action: pan-y;
@@ -20,14 +26,32 @@
   box-sizing: border-box;
 }
 
-.skyGrid {
+.bg {
   position: fixed;
   inset: 0;
+  z-index: 0;
+  overflow: hidden;
   pointer-events: none;
-  opacity: .22;
-  background-image: linear-gradient(rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.35) 1px, transparent 1px);
-  background-size: 24px 24px;
-  mask-image: linear-gradient(to bottom, #000, transparent 70%);
+}
+
+.bgFrame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0.85;
+  filter: blur(6px) saturate(0.95) brightness(0.78);
+  transform: scale(1.05);
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 222, 119, 0.15) 0%, rgba(255, 222, 119, 0) 30%),
+    radial-gradient(circle at 78% 8%, rgba(87, 220, 196, 0.18) 0%, rgba(87, 220, 196, 0) 32%),
+    linear-gradient(180deg, rgba(7, 14, 29, 0.45) 0%, rgba(7, 14, 29, 0.82) 100%);
 }
 
 .header,
@@ -43,165 +67,570 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
   font-size: 8px;
   max-width: 100%;
 }
 
 .back,
 .wallet {
-  min-height: 44px;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
-  padding: 0 12px;
-  color: white;
-  background: var(--ink);
-  border: 3px solid white;
-  box-shadow: 4px 4px 0 rgba(16, 21, 34, .45);
+  padding: 0 14px;
+  border-radius: 999px;
   text-decoration: none;
+  font-family: inherit;
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.back { flex: 0 0 auto; }
+.back {
+  flex: 0 0 auto;
+  color: #ffffff;
+  font-weight: bold;
+  background: linear-gradient(180deg, #ff4d4d 0%, #c91818 100%);
+  border: 2px solid #850b0b;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.back:hover {
+  background: linear-gradient(180deg, #ff6666 0%, #e62222 100%);
+  border-color: #ffa3a3;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.5);
+}
+
 .wallet {
   min-width: 0;
-  max-width: 50%;
-  gap: 7px;
+  max-width: 60%;
+  gap: 8px;
   overflow: hidden;
   white-space: nowrap;
+  background: linear-gradient(180deg, #ffd47a 0%, #f28b1d 100%);
+  border: 2px solid #9b5a0c;
+  color: #3a2105;
+  font-weight: bold;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 0 rgba(255, 244, 210, 0.5);
 }
-.dot { width: 7px; height: 7px; background: var(--mint); box-shadow: 0 0 0 2px rgba(120,240,189,.25); }
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: none;
+  flex-shrink: 0;
+}
 
 .shell {
-  padding: 18px;
-  background: var(--cream);
-  border: 4px solid var(--ink);
-  box-shadow: 8px 8px 0 rgba(16, 21, 34, .5);
+  padding: 22px;
+  background: var(--shell-bg);
+  border: 2px solid rgba(124, 160, 210, 0.42);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(142, 238, 223, 0.1),
+    0 28px 70px rgba(0, 0, 0, 0.72);
 }
 
-.eyebrow { color: #765524; font-size: 8px; letter-spacing: .08em; }
-.shell h1 { margin: 8px 0 10px; font-size: clamp(25px, 10vw, 47px); line-height: .98; letter-spacing: -.04em; }
-.intro { max-width: 520px; margin: 0 0 14px; font-family: Arial, sans-serif; font-weight: 800; font-size: 13px; line-height: 1.35; }
+.eyebrow {
+  color: var(--gold);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.shell h1 {
+  margin: 6px 0 10px;
+  font-size: clamp(24px, 8vw, 40px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.intro {
+  max-width: 520px;
+  margin: 0 0 16px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
 
 .balanceBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 45px;
-  padding: 8px 12px;
-  color: white;
-  background: var(--ink);
+  min-height: 48px;
+  padding: 10px 16px;
+  color: var(--text-primary);
+  background: rgba(8, 14, 28, 0.85);
+  border: 1px solid rgba(142, 238, 223, 0.2);
+  border-radius: 12px;
   font-size: 8px;
+  margin-bottom: 16px;
 }
-.balanceBar strong { color: var(--sun); font-size: 19px; }
+
+.balanceLabel {
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.balanceValueGroup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.balanceTicketIcon {
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(255, 232, 135, 0.4));
+  flex-shrink: 0;
+}
+
+.balanceBar strong {
+  color: var(--gold);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
 
 .week {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 6px;
   padding: 0;
-  margin: 13px 0;
+  margin: 16px 0;
   list-style: none;
 }
 
+/* Base 7-Day Card Styles with Depth & Gradients */
 .day {
   min-width: 0;
-  height: 76px;
+  height: 78px;
   display: grid;
   place-items: center;
   align-content: center;
-  gap: 6px;
-  border: 2px solid var(--ink);
-  background: #e4dcc2;
-  box-shadow: 2px 2px 0 var(--ink);
+  gap: 5px;
+  border-radius: 12px;
+  border: 1px solid rgba(142, 238, 223, 0.25);
+  background: linear-gradient(180deg, rgba(20, 34, 60, 0.9) 0%, rgba(10, 18, 34, 0.95) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 4px 10px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
-.dayLabel, .ticketMark { font-size: 6px; }
-.rewardValue { font-size: 14px; }
-.claimed { color: #476255; background: #b9e7ce; }
-.current { background: var(--sun); transform: translateY(-3px); box-shadow: 3px 5px 0 var(--ink); }
-.locked { color: #857f72; }
+
+.day:hover {
+  transform: translateY(-3px);
+  border-color: rgba(142, 238, 223, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 6px 14px rgba(0, 0, 0, 0.45);
+}
+
+.dayLabel {
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.rewardValue {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffffff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+.ticketMark {
+  font-size: 6px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  color: rgba(163, 184, 204, 0.75);
+}
+
+/* 1. Claimed Days Status (Emerald Green Gradient & Glow) */
+.claimed {
+  background: linear-gradient(180deg, rgba(20, 58, 42, 0.95) 0%, rgba(12, 36, 26, 0.98) 100%);
+  border-color: rgba(120, 240, 189, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 10px rgba(120, 240, 189, 0.2);
+}
+
+.claimed .dayLabel {
+  color: #78f0bd;
+}
+
+.claimed .rewardValue {
+  color: #ffffff;
+}
+
+.claimed .ticketMark {
+  color: var(--mint);
+  font-size: 10px;
+  text-shadow: 0 0 6px var(--mint);
+}
+
+/* 2. Current Active Day Status (Gold Arcade Glow & Pulse) */
+.current {
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 122, 47, 0.22) 100%);
+  border: 2px solid var(--gold);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 18px rgba(255, 232, 135, 0.45);
+  transform: translateY(-3px);
+  animation: dayPulse 2.5s ease-in-out infinite;
+}
+
+.current .dayLabel {
+  color: var(--gold);
+  text-shadow: 0 0 4px rgba(255, 232, 135, 0.6);
+}
+
+.current .rewardValue {
+  color: var(--gold);
+  font-size: 16px;
+  text-shadow: 0 0 10px rgba(255, 232, 135, 0.7);
+}
+
+.current .ticketMark {
+  color: #ffa86e;
+  font-weight: bold;
+}
+
+@keyframes dayPulse {
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 14px rgba(255, 232, 135, 0.4); }
+  50% { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 24px rgba(255, 232, 135, 0.7); }
+}
+
+/* 3. Mystery Box Days (Purple/Indigo Arcade Glow) */
+.mysteryDay:not(.claimed) {
+  background: linear-gradient(180deg, rgba(45, 26, 75, 0.9) 0%, rgba(22, 14, 40, 0.95) 100%);
+  border-color: rgba(186, 120, 255, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 10px rgba(186, 120, 255, 0.2);
+}
+
+.mysteryDay:not(.claimed) .rewardValue {
+  color: #e0b3ff;
+  font-size: 16px;
+  text-shadow: 0 0 8px rgba(186, 120, 255, 0.6);
+}
+
+.mysteryDay:not(.claimed) .ticketMark {
+  color: #ba78ff;
+}
+
+/* 4. Future/Locked Days */
+.locked:not(.mysteryDay) {
+  opacity: 0.75;
+}
 
 .claimPanel {
   display: grid;
-  grid-template-columns: 1fr 74px;
+  grid-template-columns: 1fr 80px;
   align-items: center;
-  min-height: 112px;
-  padding: 14px;
-  color: white;
-  background: var(--orange);
-  border: 3px solid var(--ink);
-  box-shadow: 4px 4px 0 var(--ink);
+  min-height: 110px;
+  padding: 18px;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, rgba(255, 122, 47, 0.2) 0%, rgba(255, 232, 135, 0.12) 100%);
+  border: 1px solid rgba(255, 232, 135, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  margin-bottom: 16px;
 }
-.panelLabel { color: #382017; font-size: 7px; }
-.claimCopy h2 { margin: 8px 0; font-size: clamp(15px, 5vw, 25px); }
-.claimCopy p { margin: 0; font-family: Arial, sans-serif; font-weight: 800; font-size: 12px; }
-.crate { width: 60px; height: 60px; display: grid; place-items: center; justify-self: end; color: var(--sun); background: var(--ink); border: 3px solid white; font-size: 25px; transform: rotate(3deg); }
 
-.statusGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
-.statusGrid div { min-height: 53px; padding: 10px; border-left: 5px solid var(--ink); background: #e9dfc1; }
-.statusGrid span { display: block; margin-bottom: 7px; color: #766c55; font-size: 6px; }
-.statusGrid strong { display: block; font-size: 9px; line-height: 1.35; }
+.panelLabel {
+  display: inline-block;
+  padding: 3px 8px;
+  background: rgba(255, 122, 47, 0.3);
+  border: 1px solid rgba(255, 122, 47, 0.5);
+  border-radius: 4px;
+  color: #ffb088;
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.claimCopy h2 {
+  margin: 4px 0 6px;
+  font-size: clamp(16px, 4vw, 24px);
+  color: var(--gold);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.claimCopy p {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.crate {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  justify-self: end;
+  background: rgba(10, 18, 35, 0.9);
+  border: 1px solid rgba(255, 232, 135, 0.4);
+  border-radius: 14px;
+  box-shadow:
+    0 0 16px rgba(255, 232, 135, 0.25),
+    inset 0 0 12px rgba(255, 122, 47, 0.2);
+}
+
+.crateImage {
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+  animation: floatChest 3s ease-in-out infinite;
+}
+
+.crateLoading {
+  font-size: 24px;
+  color: var(--gold);
+}
+
+@keyframes floatChest {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.statusGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.statusBox {
+  min-height: 58px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(142, 238, 223, 0.28);
+  background: linear-gradient(180deg, rgba(16, 28, 52, 0.88) 0%, rgba(9, 16, 31, 0.95) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.statusBox:hover {
+  transform: translateY(-2px);
+  border-color: rgba(142, 238, 223, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+.statusBoxLabel {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--gold);
+  font-size: 7px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(255, 232, 135, 0.2);
+}
+
+.statusBoxVal {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1.3;
+  color: #78f0bd;
+  white-space: nowrap;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotActive {
+  background: #78f0bd;
+  box-shadow: 0 0 6px #78f0bd;
+}
+
+.dotInactive {
+  background: #ffb088;
+  box-shadow: 0 0 6px rgba(255, 176, 136, 0.5);
+}
 
 .claimButton {
   width: 100%;
   min-height: 52px;
-  padding: 10px;
-  color: var(--ink);
-  background: var(--mint);
-  border: 3px solid var(--ink);
-  box-shadow: 5px 5px 0 var(--ink);
+  padding: 12px;
+  color: #030814;
+  background: linear-gradient(180deg, #ffe887 0%, #ffc83b 100%);
+  border: 1px solid #ffe887;
+  border-radius: 12px;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
   font: inherit;
   font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.claimButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45);
+}
+
+.claimButton:disabled {
+  cursor: not-allowed;
+  background: rgba(30, 44, 70, 0.8);
+  border-color: rgba(142, 238, 223, 0.15);
+  color: var(--text-muted);
+  box-shadow: none;
+  opacity: 0.65;
+}
+
+.claimButton:focus-visible,
+.notice button:focus-visible,
+.back:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+.feeNote {
+  margin: 12px 0 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.notice,
+.success {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.notice {
+  background: rgba(255, 122, 47, 0.15);
+  border: 1px solid rgba(255, 122, 47, 0.4);
+  color: #ffc4a3;
+}
+
+.notice button {
+  min-height: 38px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--cyan-glow);
+  background: rgba(15, 26, 47, 0.9);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 8px;
   cursor: pointer;
 }
-.claimButton:hover:not(:disabled) { transform: translate(2px, 2px); box-shadow: 3px 3px 0 var(--ink); }
-.claimButton:disabled { cursor: not-allowed; filter: grayscale(.7); opacity: .7; }
-.claimButton:focus-visible, .notice button:focus-visible, .back:focus-visible { outline: 4px solid white; outline-offset: 3px; }
 
-.feeNote { margin: 10px 0 0; text-align: center; color: #6d634f; font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; }
-.notice, .success { display: grid; gap: 8px; margin-top: 12px; padding: 11px; border: 2px solid var(--ink); font-family: Arial, sans-serif; font-size: 12px; font-weight: 800; line-height: 1.35; }
-.notice { background: #ffe0bd; }
-.notice button { min-height: 44px; padding: 8px; border: 2px solid var(--ink); background: white; font: inherit; font-size: 8px; cursor: pointer; }
-.success { color: #123b2c; background: var(--mint); }
+.success {
+  color: var(--mint);
+  background: rgba(39, 82, 60, 0.5);
+  border: 1px solid var(--mint);
+}
 
+/* Season 1 Perks & Rewards Section (Upgraded Arcade Glassmorphism) */
 .seasonRewardsSection {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 3px dashed var(--ink);
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px dashed rgba(142, 238, 223, 0.28);
 }
 
 .seasonRewardsHead h3 {
-  margin: 0 0 4px;
-  font-size: 14px;
-  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 8px rgba(255, 232, 135, 0.3);
 }
 
 .seasonRewardsHead p {
-  margin: 0 0 14px;
-  font-family: Arial, sans-serif;
+  margin: 0 0 16px;
+  font-family: system-ui, -apple-system, sans-serif;
   font-size: 11px;
-  color: #5c523d;
-  line-height: 1.35;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .seasonRewardsGrid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .seasonRewardCard {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  background: white;
-  border: 2px solid var(--ink);
-  box-shadow: 3px 3px 0 var(--ink);
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(18, 32, 58, 0.9) 0%, rgba(9, 16, 31, 0.95) 100%);
+  border: 1px solid rgba(142, 238, 223, 0.28);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 6px 18px rgba(0, 0, 0, 0.4);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.seasonRewardCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(142, 238, 223, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 .seasonRewardIcon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
   font-size: 24px;
   flex: 0 0 auto;
+  border-radius: 12px;
+  background: rgba(8, 15, 30, 0.85);
+  border: 1px solid rgba(142, 238, 223, 0.3);
+  box-shadow:
+    0 0 12px rgba(87, 220, 196, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .seasonRewardInfo {
@@ -212,79 +641,143 @@
 .seasonRewardHeader {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .seasonRewardHeader h4 {
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
+  color: #ffffff;
+  letter-spacing: 0.02em;
 }
 
 .stateBadge {
-  padding: 2px 6px;
-  font-size: 6px;
-  font-weight: 800;
-  border: 1px solid var(--ink);
+  padding: 3px 8px;
+  font-size: 7px;
+  font-weight: 700;
+  border-radius: 5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .badgeCLAIMABLE {
-  background: var(--mint);
-  color: var(--ink);
+  background: rgba(120, 240, 189, 0.18);
+  border: 1px solid var(--mint);
+  color: var(--mint);
+  box-shadow: 0 0 8px rgba(120, 240, 189, 0.3);
 }
 
 .badgeCLAIMED {
-  background: #b9e7ce;
-  color: #27523c;
+  background: rgba(39, 82, 60, 0.45);
+  border: 1px solid #3ca574;
+  color: #6ee7b7;
 }
 
 .badgeINELIGIBLE {
-  background: #e0d8c3;
-  color: #706855;
+  background: rgba(87, 220, 196, 0.12);
+  border: 1px solid rgba(87, 220, 196, 0.35);
+  color: #8eeedf;
 }
 
 .badgePENDING {
-  background: #fff3c4;
-  color: #7a5c00;
+  background: rgba(255, 232, 135, 0.15);
+  border: 1px solid rgba(255, 232, 135, 0.5);
+  color: var(--gold);
+  box-shadow: 0 0 8px rgba(255, 232, 135, 0.25);
 }
 
 .seasonRewardInfo p {
-  margin: 4px 0 0;
-  font-family: Arial, sans-serif;
-  font-size: 10px;
-  color: #555;
-  line-height: 1.3;
+  margin: 6px 0 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
 }
 
 .seasonClaimBtn {
-  min-height: 36px;
-  padding: 0 14px;
-  background: var(--sun);
-  border: 2px solid var(--ink);
-  box-shadow: 2px 2px 0 var(--ink);
+  min-height: 40px;
+  padding: 0 18px;
+  background: linear-gradient(180deg, #ffe887 0%, #ffc83b 100%);
+  border: 1px solid #ffe887;
+  border-radius: 10px;
+  color: #030814;
   font: inherit;
-  font-size: 9px;
+  font-size: 8px;
   font-weight: bold;
+  letter-spacing: 0.04em;
   cursor: pointer;
   flex: 0 0 auto;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s ease;
+}
+
+.seasonClaimBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45);
 }
 
 .claimedCheck {
-  font-size: 8px;
+  font-size: 9px;
   font-weight: bold;
-  color: #27523c;
+  color: #6ee7b7;
+  letter-spacing: 0.04em;
 }
 
-@media (max-width: 410px) {
-  .page { padding-inline: 8px; }
-  .shell { padding: 13px 11px 16px; }
-  .header { margin-bottom: 8px; }
-  .back, .wallet { padding-inline: 8px; font-size: 6px; }
-  .shell h1 { font-size: 30px; }
-  .day { height: 68px; }
-  .statusGrid strong { font-size: 7px; }
+@media (max-width: 480px) {
+  .page {
+    padding-inline: 10px;
+  }
+  .shell {
+    padding: 16px 14px;
+    border-radius: 14px;
+  }
+  .header {
+    margin-bottom: 10px;
+  }
+  .back,
+  .wallet {
+    padding-inline: 10px;
+    font-size: 7px;
+  }
+  .shell h1 {
+    font-size: 26px;
+  }
+  .week {
+    gap: 4px;
+  }
+  .day {
+    height: 66px;
+  }
+  .claimPanel {
+    grid-template-columns: 1fr 64px;
+    padding: 14px;
+  }
+  .crate {
+    width: 60px;
+    height: 60px;
+  }
+  .seasonRewardCard {
+    padding: 12px;
+    gap: 12px;
+  }
+  .seasonRewardIcon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .claimButton:hover:not(:disabled) { transform: none; }
+  .claimButton:hover:not(:disabled),
+  .seasonClaimBtn:hover,
+  .back:hover,
+  .day:hover,
+  .seasonRewardCard:hover {
+    transform: none;
+  }
+  .crateImage,
+  .current {
+    animation: none;
+  }
 }

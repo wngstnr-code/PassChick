@@ -6243,6 +6243,7 @@ body.checkpoint-arrival #hud-scrim::after {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  margin-bottom: 10px;
 }
 
 .money-head-badge {
@@ -6295,6 +6296,7 @@ body.checkpoint-arrival #hud-scrim::after {
   justify-content: center;
   text-align: center;
   gap: 8px;
+  margin-top: 10px;
 }
 
 .money-title {
@@ -6746,10 +6748,14 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .money-footer-actions .money-panel-nav-btn.money-nav-home-btn {
   min-height: 44px;
-  background: linear-gradient(180deg, #43566f 0%, #304157 100%) !important;
-  border: 2px solid #7891b3 !important;
-  color: #e8f1ff !important;
-  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.12) !important;
+  background: linear-gradient(180deg, #ffe887 0%, #ffc83b 100%) !important;
+  border: 2px solid #ffe887 !important;
+  color: #030814 !important;
+  font-weight: bold !important;
+  box-shadow:
+    0 4px 14px rgba(255, 215, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+  text-shadow: none !important;
 }
 
 .money-footer-actions .money-panel-nav-btn.money-nav-play-btn {
@@ -6760,7 +6766,14 @@ body.checkpoint-arrival #hud-scrim::after {
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.18) !important;
 }
 
-.money-footer-actions .money-panel-nav-btn.money-nav-home-btn:hover,
+.money-footer-actions .money-panel-nav-btn.money-nav-home-btn:hover {
+  background: linear-gradient(180deg, #fff0a3 0%, #ffd452 100%) !important;
+  border-color: #fff0a3 !important;
+  box-shadow:
+    0 6px 18px rgba(255, 215, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
 .money-footer-actions .money-panel-nav-btn.money-nav-home-btn:active,
 .money-footer-actions .money-panel-nav-btn.money-nav-play-btn:hover,
 .money-footer-actions .money-panel-nav-btn.money-nav-play-btn:active {
@@ -13286,18 +13299,24 @@ body.checkpoint-arrival #hud-scrim::after {
   outline-offset: 2px;
 }
 
+.money-amount-block .flow-label {
+  text-align: center;
+}
+
 .money-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   width: 100%;
 }
 
 .money-currency-prefix {
   position: absolute;
-  left: 14px;
+  left: 50%;
+  transform: translateX(-40px);
   color: #eab308;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   pointer-events: none;
   z-index: 2;
@@ -13305,7 +13324,9 @@ body.checkpoint-arrival #hud-scrim::after {
 
 .money-amount-block .money-input {
   width: 100%;
-  padding-left: 32px !important;
+  text-align: center !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
   font-size: 22px !important;
   font-weight: 800 !important;
   color: #ffffff !important;
@@ -13360,7 +13381,9 @@ body.checkpoint-arrival #hud-scrim::after {
 .money-quote-value-col {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
 .money-quote-icon {
@@ -13368,6 +13391,7 @@ body.checkpoint-arrival #hud-scrim::after {
   height: 28px;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  flex-shrink: 0;
 }
 
 .money-quote-number {
@@ -13376,6 +13400,10 @@ body.checkpoint-arrival #hud-scrim::after {
   font-weight: 900;
   letter-spacing: 0.5px;
   text-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .money-helper {

@@ -72,7 +72,11 @@ export function DailyRewardPage() {
 
   return (
     <main className={styles.page}>
-      <div className={styles.skyGrid} aria-hidden="true" />
+      <div className={styles.bg} aria-hidden="true">
+        <iframe className={styles.bgFrame} src="/play?bg=1" title="In-game background" tabIndex={-1} />
+      </div>
+      <div className={styles.overlay} aria-hidden="true" />
+
       <header className={styles.header}>
         <Link className={styles.back} href="/" aria-label="Back to home">
           ◀ BACK
@@ -89,13 +93,19 @@ export function DailyRewardPage() {
         <p className={styles.intro}>Check in every day. Miss a day and your card restarts at Day 1.</p>
 
         <div className={styles.balanceBar}>
-          <span>TICKET WALLET</span>
-          <strong>{balanceQuery.isLoading ? "…" : (balanceQuery.data?.available ?? 0n).toString()}</strong>
+          <span className={styles.balanceLabel}>TICKET WALLET</span>
+          <div className={styles.balanceValueGroup}>
+            <img src="/images/ticket_icon.png" alt="Ticket Icon" className={styles.balanceTicketIcon} width={22} height={22} />
+            <strong>{balanceQuery.isLoading ? "…" : `${(balanceQuery.data?.available ?? 0n).toString()} TIX`}</strong>
+          </div>
         </div>
 
         <ol className={styles.week} aria-label="Seven-day reward streak">
           {week.map((reward) => (
-            <li className={`${styles.day} ${styles[status ? reward.state : "locked"]}`} key={reward.day}>
+            <li
+              className={`${styles.day} ${styles[status ? reward.state : "locked"]} ${reward.rewardKind === "mystery" ? styles.mysteryDay : ""}`}
+              key={reward.day}
+            >
               <span className={styles.dayLabel}>D{reward.day}</span>
               <span className={styles.rewardValue} aria-label={reward.rewardKind === "mystery" ? "Mystery reward" : `${reward.baseTickets} tickets`}>
                 {reward.rewardKind === "mystery" ? "?" : reward.baseTickets?.toString()}
@@ -111,17 +121,35 @@ export function DailyRewardPage() {
             <h2>{rewardTitle}</h2>
             <p>{rewardDescription}</p>
           </div>
-          <div className={styles.crate} aria-hidden="true">{!status ? "…" : current.rewardKind === "mystery" ? "?" : "★"}</div>
+          <div className={styles.crate} aria-hidden="true">
+            {!status ? (
+              <span className={styles.crateLoading}>…</span>
+            ) : (
+              <img
+                src="/images/daily_reward_icon.png"
+                alt="Daily Reward Chest"
+                className={styles.crateImage}
+                width={52}
+                height={52}
+              />
+            )}
+          </div>
         </section>
 
         <div className={styles.statusGrid}>
-          <div>
-            <span>NEXT DROP</span>
-            <strong>{!status ? statusQuery.isError ? "OFFLINE" : "CHECKING" : status.claimable ? "READY" : countdown}</strong>
+          <div className={styles.statusBox}>
+            <span className={styles.statusBoxLabel}>NEXT DROP</span>
+            <span className={styles.statusBoxVal}>
+              <span className={`${styles.statusDot} ${status?.claimable ? styles.dotActive : styles.dotInactive}`} />
+              {!status ? (statusQuery.isError ? "OFFLINE" : "CHECKING") : status.claimable ? "READY" : countdown}
+            </span>
           </div>
-          <div>
-            <span>PASSPORT PERK</span>
-            <strong>{passportLabel}</strong>
+          <div className={styles.statusBox}>
+            <span className={styles.statusBoxLabel}>PASSPORT PERK</span>
+            <span className={styles.statusBoxVal}>
+              <span className={`${styles.statusDot} ${status?.passportPerkApplied ? styles.dotActive : styles.dotInactive}`} />
+              {passportLabel}
+            </span>
           </div>
         </div>
 
