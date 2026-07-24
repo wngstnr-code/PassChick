@@ -80,7 +80,9 @@ router.post("/verify", async (req, res) => {
     }
 
     const siweMessage = new SiweMessage(message);
-    const result = await siweMessage.verify({ signature });
+    // suppressExceptions: verify() otherwise THROWS on signature mismatch,
+    // which would surface as a 500 instead of a clean 401.
+    const result = await siweMessage.verify({ signature }, { suppressExceptions: true });
 
     if (!result.success) {
       res.status(401).json({ error: "Invalid signature." });

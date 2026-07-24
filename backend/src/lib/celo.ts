@@ -54,8 +54,15 @@ export const walletClient = createWalletClient({
 });
 
 export const USDC_ADDRESS = getAddress(env.USDC_ADDRESS);
-export const GAME_VAULT_ADDRESS = getAddress(env.GAME_VAULT_ADDRESS);
-export const GAME_SETTLEMENT_ADDRESS = getAddress(env.GAME_SETTLEMENT_ADDRESS);
+// V1 game contracts are optional (kosong di jalur V2/Sepolia). Guard sama seperti
+// TICKET_VAULT/FAUCET/TRUST_PASSPORT di bawah — kalau kosong pakai zero-address
+// alih-alih getAddress("") yang melempar InvalidAddressError saat boot.
+export const GAME_VAULT_ADDRESS = env.GAME_VAULT_ADDRESS
+  ? getAddress(env.GAME_VAULT_ADDRESS)
+  : ("0x0000000000000000000000000000000000000000" as Address);
+export const GAME_SETTLEMENT_ADDRESS = env.GAME_SETTLEMENT_ADDRESS
+  ? getAddress(env.GAME_SETTLEMENT_ADDRESS)
+  : ("0x0000000000000000000000000000000000000000" as Address);
 export const TRUST_PASSPORT_ADDRESS = env.TRUST_PASSPORT_ADDRESS
   ? getAddress(env.TRUST_PASSPORT_ADDRESS)
   : ("0x0000000000000000000000000000000000000000" as Address);
@@ -602,10 +609,14 @@ export interface SignedDailyClaim {
 }
 
 /// Signs a TicketVault `DailyClaim` EIP-712 struct. `issuedAt` is always
-/// stamped as "now" server-side (never trusted from the caller) so the TTL
-/// window is meaningful. `expiresAt` (issuedAt + TTL) is informational only,
-/// for the frontend to know when to stop showing a cached signature - the
-/// contract itself is the source of truth for expiry enforcement.
+/// stamped server-side (never trusted from the caller) so the TTL window is
+/// meaningful. It is back-dated by DAILY_CLAIM_ISSUED_AT_BUFFER_SECONDS to
+/// absorb clock skew: if this server's clock runs a few seconds ahead of the
+/// chain's block.timestamp, a bare "now" yields `issuedAt > block.timestamp`
+/// and the contract rejects the claim as issued in the future (FE-05 staging).
+/// `expiresAt` (issuedAt + TTL) is informational only, for the frontend to
+/// know when to stop showing a cached signature - the contract itself is the
+/// source of truth for expiry enforcement.
 export async function signDailyClaim(params: {
   user: string;
   dayIndex: number;
@@ -613,7 +624,7 @@ export async function signDailyClaim(params: {
   nonce: bigint;
 }): Promise<SignedDailyClaim> {
   const address = normalizePlayerAddress(params.user);
-  const issuedAt = Math.floor(Date.now() / 1000);
+  const issuedAt = Math.floor(Date.now() / 1000) - env.DAILY_CLAIM_ISSUED_AT_BUFFER_SECONDS;
   const expiresAt = issuedAt + env.DAILY_CLAIM_SIGNATURE_TTL_SECONDS;
 
   const signature = await walletClient.signTypedData({

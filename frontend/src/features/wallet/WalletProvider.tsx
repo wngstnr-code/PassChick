@@ -41,6 +41,12 @@ import {
   waitForInjectedProvider,
 } from "~/lib/web3/celo";
 import { readRawErrorMessage, toUserFacingWalletError } from "~/lib/errors";
+import {
+  buildSiweMessage,
+  createSingleFlight,
+  selectBackendAuthRoute,
+  signSiweMessage,
+} from "./authDomain";
 
 type WalletContextValue = {
   account: string;
@@ -105,6 +111,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   const [backendAuthError, setBackendAuthError] = useState("");
   const accountRef = useRef("");
   const cleanupRef = useRef<(() => void) | null>(null);
+  const backendAuthSingleFlightRef = useRef(createSingleFlight<boolean>());
   const backendSessionRef = useRef<{
     inFlight: Promise<boolean> | null;
     lastCheckedAt: number;
@@ -344,9 +351,15 @@ export function WalletProvider({ children }: WalletProviderProps) {
     setBackendAuthError("");
 
     try {
-      let authResult: { success: boolean; address: string; token?: string };
-      if (miniPayDetected) {
-        // MiniPay: use dedicated endpoint — no signature required, trustless by wallet context
+      let authResult: { success: boolean; address?: string; token?: string };
+      const authRoute = selectBackendAuthRoute({
+        isMiniPay: miniPayDetected,
+        embeddedAuthProvider: appKitAccount.embeddedWalletInfo?.authProvider,
+        walletProviderName,
+      });
+
+      if (authRoute.method === "minipay") {
+        // MiniPay must never receive a sign-message prompt.
         authResult = await backendPost<{
           success: boolean;
           address: string;
@@ -355,20 +368,48 @@ export function WalletProvider({ children }: WalletProviderProps) {
           address: account,
           chainId: Number(CELO_CHAIN_ID_HEX),
         });
-      } else {
+      } else if (authRoute.method === "social") {
         authResult = await backendPost<{
           success: boolean;
           address: string;
           token?: string;
         }>("/auth/social", {
           address: account,
-          walletProvider: walletProviderName || "reown",
+          chainId: Number(CELO_CHAIN_ID_HEX),
+          walletProvider: authRoute.walletProvider,
+        });
+      } else {
+        const provider = walletProvider || readInjectedEvmProvider();
+        if (!provider) {
+          throw new Error("External wallet provider is unavailable for SIWE.");
+        }
+
+        const { nonce } = await backendFetch<{ nonce: string }>("/auth/nonce");
+        const message = buildSiweMessage({
+          address: account,
+          chainId: Number(CELO_CHAIN_ID_HEX),
+          nonce,
+          origin: window.location.origin,
+        });
+        const signature = await signSiweMessage(provider, message, account);
+        authResult = await backendPost<{
+          success: boolean;
+          token?: string;
+        }>("/auth/verify", {
+          message,
+          signature,
         });
       }
 
-      // MiniPay's WebView blocks the cross-site session cookie — persist the
-      // token so backendFetch and the socket can authenticate via Bearer header.
-      setSessionToken(authResult.token || "");
+      // Persist the token so both cross-site WebViews and the socket can
+      // authenticate via the Bearer header.
+      const sessionToken = String(authResult.token || "").trim();
+      if (!sessionToken) {
+        throw new Error(
+          "Backend authenticated the wallet without returning a session token.",
+        );
+      }
+      setSessionToken(sessionToken);
 
       setBackendAddress(account);
       backendSessionRef.current = {
@@ -403,16 +444,19 @@ export function WalletProvider({ children }: WalletProviderProps) {
     if (!hasBackendConfig) {
       return false;
     }
-    if (isBackendAuthenticated) {
-      return true;
-    }
 
-    const hasExistingSession = await refreshBackendSession();
-    if (hasExistingSession) {
-      return true;
-    }
+    return backendAuthSingleFlightRef.current(async () => {
+      if (isBackendAuthenticated) {
+        return true;
+      }
 
-    return authenticateBackend();
+      const hasExistingSession = await refreshBackendSession();
+      if (hasExistingSession) {
+        return true;
+      }
+
+      return authenticateBackend();
+    });
   }
 
   async function logoutBackend() {

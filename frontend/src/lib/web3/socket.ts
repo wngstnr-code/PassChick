@@ -1,7 +1,7 @@
 import { io, type Socket } from "socket.io-client";
+import { buildSocketSessionAuth } from "~/features/game/v2Domain";
 import { BACKEND_API_URL } from "../backend/config";
 import { getSessionToken } from "../backend/session";
-import { CELO_CHAIN_ID } from "./celo";
 
 let socket: Socket | null = null;
 
@@ -18,6 +18,50 @@ export interface GameStartedPayload {
   stakeAmountUnits: string;
   mapSeed: number;
   serverTime: number;
+}
+
+export interface GameStartedV2Payload {
+  success: true;
+  session: {
+    sessionId: string;
+    clientSessionId: string;
+    ticketCost: number;
+    ticketBalanceAfter: string;
+    seasonId: string | number | null;
+    division: string;
+    startedAt: string;
+  };
+  replayed: boolean;
+}
+
+export interface GameStartErrorPayload {
+  success: false;
+  code: string;
+  message?: string;
+  retryable?: boolean;
+  data?: {
+    ticketBalance?: string;
+    activeSession?: {
+      sessionId?: string;
+      clientSessionId?: string;
+      startedAt?: string;
+    };
+  };
+}
+
+export interface GameEndedV2Payload {
+  success: true;
+  result: {
+    sessionId: string;
+    status: string;
+    finalCheckpoint: number;
+    pointsAwarded: number;
+    seasonPointsTotal: number;
+    seasonId: string | number | null;
+    division: string;
+    ticketBalance: string;
+    endedAt: string;
+  };
 }
 
 export interface GameStatePayload {
@@ -91,7 +135,9 @@ export interface GameCpExpiredPayload {
 }
 
 export type GameEventMap = {
-  "game:started": (payload: GameStartedPayload) => void;
+  "game:started": (payload: GameStartedPayload | GameStartedV2Payload) => void;
+  "game:start_error": (payload: GameStartErrorPayload) => void;
+  "game:ended": (payload: GameEndedV2Payload) => void;
   "game:state": (payload: GameStatePayload) => void;
   "game:crashed": (payload: GameCrashedPayload) => void;
   "game:cashout_result": (payload: GameCashoutResultPayload) => void;
@@ -104,17 +150,17 @@ export type GameEventMap = {
 };
 
 type OutboundGameEventMap = {
-  "game:start": { stake: number; onchainSessionId?: string };
+  "game:start":
+    | { stake: number; onchainSessionId?: string }
+    | { clientSessionId: string };
   "game:move": { direction: string };
   "game:crash": Record<string, never>;
   "game:cashout": Record<string, never>;
+  "game:end_run": Record<string, never>;
   "game:abort_start": { sessionId?: string; txHash?: string };
 };
 
-export function initializeSocket(
-  walletAddress?: string,
-  walletProvider?: string
-): Promise<Socket> {
+export function initializeSocket(): Promise<Socket> {
   return new Promise((resolve, reject) => {
     if (socket && socket.connected) {
       resolve(socket);
@@ -122,15 +168,12 @@ export function initializeSocket(
     }
 
     const socketUrl = BACKEND_API_URL.replace(/\/$/, "");
+    const auth = buildSocketSessionAuth(getSessionToken());
 
-    const auth = walletAddress
-      ? {
-          walletAddress,
-          walletProvider: walletProvider || "default",
-          chainId: CELO_CHAIN_ID,
-          token: getSessionToken(),
-        }
-      : undefined;
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
 
     socket = io(socketUrl, {
       reconnection: true,
@@ -139,7 +182,7 @@ export function initializeSocket(
       reconnectionAttempts: 5,
       transports: ["websocket", "polling"],
       withCredentials: true,
-      ...(auth && { auth }),
+      auth,
     });
 
     socket.on("connect", () => {
@@ -193,7 +236,7 @@ export function onGameEvent<K extends keyof GameEventMap>(
 }
 
 export function disconnectSocket(): void {
-  if (socket && socket.connected) {
+  if (socket) {
     socket.disconnect();
     socket = null;
   }
@@ -207,6 +250,10 @@ export function emitGameStart(stake: number, onchainSessionId?: string): boolean
   return emitGameEvent("game:start", { stake, onchainSessionId });
 }
 
+export function emitGameStartV2(clientSessionId: string): boolean {
+  return emitGameEvent("game:start", { clientSessionId });
+}
+
 export function emitGameMove(direction: string): boolean {
   return emitGameEvent("game:move", { direction });
 }
@@ -217,6 +264,10 @@ export function emitGameCrash(): boolean {
 
 export function emitGameCashout(): boolean {
   return emitGameEvent("game:cashout", {});
+}
+
+export function emitGameEndRun(): boolean {
+  return emitGameEvent("game:end_run", {});
 }
 
 export function emitAbortStart(sessionId?: string, txHash?: string): boolean {
