@@ -472,7 +472,7 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
         aria-label="Daily Rewards"
       >
         <Image
-          src="/images/daily_reward_icon.png"
+          src="/images/reward_badge.png"
           alt="Daily Rewards"
           width={96}
           height={96}

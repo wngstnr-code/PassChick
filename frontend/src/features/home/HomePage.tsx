@@ -1955,7 +1955,7 @@ export function HomePage() {
               <span className="home-daily-floating-badge-dot" />
             </span>
           )}
-          <img src="/images/daily_reward_icon.png" alt="Daily Rewards" className="home-floating-circle-img" />
+          <img src="/images/daily_reward_chest.png" alt="Daily Rewards" className="home-floating-circle-img" />
         </Link>
       </motion.div>
     </main>

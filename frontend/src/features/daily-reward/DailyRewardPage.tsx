@@ -126,7 +126,7 @@ export function DailyRewardPage() {
               <span className={styles.crateLoading}>…</span>
             ) : (
               <img
-                src="/images/daily_reward_icon.png"
+                src="/images/daily_reward_chest.png"
                 alt="Daily Reward Chest"
                 className={styles.crateImage}
                 width={52}

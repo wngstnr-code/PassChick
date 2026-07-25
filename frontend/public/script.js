@@ -1040,7 +1040,50 @@ function reachCheckpoint(rowIndex) {
   bet.cpEnterTime = Date.now();
   bet.segmentActive = false;
 
+  updateTimeOfDayTheme(bet.currentCp);
   renderBetHud();
+}
+
+function getThemeIndexForCheckpoint(cp) {
+  if (cp <= 1) return 0; // Day (Siang)
+  return (cp - 1) % 3;   // CP 2 -> Sunset (1), CP 3 -> Night (2), CP 4 -> Day (0)...
+}
+
+function updateTimeOfDayTheme(cp) {
+  const themeIndex = getThemeIndexForCheckpoint(cp);
+  const body = document.body;
+  if (body) {
+    body.classList.remove("theme-day", "theme-sunset", "theme-night");
+    if (themeIndex === 1) {
+      body.classList.add("theme-sunset");
+    } else if (themeIndex === 2) {
+      body.classList.add("theme-night");
+    } else {
+      body.classList.add("theme-day");
+    }
+  }
+
+  if (typeof ambientLight !== "undefined" && typeof hemiLight !== "undefined" && ambientLight && hemiLight) {
+    if (themeIndex === 1) {
+      // Sunset (Sore)
+      ambientLight.color.setHex(0xffa066);
+      ambientLight.intensity = 0.50;
+      hemiLight.color.setHex(0xff8844);
+      hemiLight.groundColor.setHex(0x664422);
+    } else if (themeIndex === 2) {
+      // Night (Malam)
+      ambientLight.color.setHex(0x5577aa);
+      ambientLight.intensity = 0.32;
+      hemiLight.color.setHex(0x223355);
+      hemiLight.groundColor.setHex(0x111c29);
+    } else {
+      // Day (Siang)
+      ambientLight.color.setHex(0xffffff);
+      ambientLight.intensity = 0.45;
+      hemiLight.color.setHex(0xb3d9ff);
+      hemiLight.groundColor.setHex(0x88c070);
+    }
+  }
 }
 
 function showCheckpointArrivalCue() {
@@ -4941,6 +4984,8 @@ function initializeGame() {
   bet.cpStayRemainingMs = 0;
   bet.isDecaying = false;
   setBetButtonState();
+
+  updateTimeOfDayTheme(0);
 
   if (scoreDOM) scoreDOM.innerText = "0";
   if (scoreCpDOM) scoreCpDOM.innerText = "0";

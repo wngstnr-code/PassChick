@@ -19,6 +19,31 @@ body {
       #a9dcff 45%,
       #ffd6a5 80%,
       #ffb08a 100%);
+  transition: background 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body.theme-day {
+  background: linear-gradient(180deg,
+      #6ec6ff 0%,
+      #a9dcff 45%,
+      #ffd6a5 80%,
+      #ffb08a 100%);
+}
+
+body.theme-sunset {
+  background: linear-gradient(180deg,
+      #ff6e40 0%,
+      #ff9e80 40%,
+      #ffab40 75%,
+      #d84315 100%);
+}
+
+body.theme-night {
+  background: linear-gradient(180deg,
+      #0b132b 0%,
+      #1c2541 45%,
+      #3a506b 80%,
+      #101424 100%);
 }
 
 html.page-scroll-unlock,
@@ -659,7 +684,8 @@ canvas.game {
 }
 
 .fixed-reward {
-  right: 120px;
+  left: 32px;
+  right: auto;
 }
 
 .fixed-help:active,
@@ -12389,7 +12415,8 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .fixed-reward {
-    right: 74px;
+    left: 16px;
+    right: auto;
   }
 }
 
@@ -12437,7 +12464,8 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   .fixed-reward {
-    right: 68px;
+    left: 16px;
+    right: auto;
   }
 
   .play-nav-balance-value {
