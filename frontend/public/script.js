@@ -1040,17 +1040,18 @@ function reachCheckpoint(rowIndex) {
   bet.cpEnterTime = Date.now();
   bet.segmentActive = false;
 
-  updateTimeOfDayTheme(bet.currentCp);
+  updateTimeOfDayTheme(position.currentRow || 0);
   renderBetHud();
 }
 
-function getThemeIndexForCheckpoint(cp) {
-  if (cp <= 1) return 0; // Day (Siang)
-  return (cp - 1) % 3;   // CP 2 -> Sunset (1), CP 3 -> Night (2), CP 4 -> Day (0)...
+function getZoneThemeForRow(rowIndex) {
+  const effectiveRow = Math.max(0, rowIndex - 1);
+  const zoneSegment = Math.floor(effectiveRow / CP_INTERVAL);
+  return zoneSegment % 3; // 0 = Day (Siang), 1 = Sunset (Sore), 2 = Night (Malam)
 }
 
-function updateTimeOfDayTheme(cp) {
-  const themeIndex = getThemeIndexForCheckpoint(cp);
+function updateTimeOfDayTheme(rowIndex = 0) {
+  const themeIndex = getZoneThemeForRow(rowIndex);
   const body = document.body;
   if (body) {
     body.classList.remove("theme-day", "theme-sunset", "theme-night");
@@ -2405,8 +2406,18 @@ function Grass(rowIndex, isCheckpoint) {
       new THREE.MeshLambertMaterial({ color }),
     );
 
-  const middleColor = 0xbaf455;
-  const sideColor = 0x99c846;
+  const zoneTheme = getZoneThemeForRow(rowIndex);
+  let middleColor = 0xbaf455;
+  let sideColor = 0x99c846;
+  if (zoneTheme === 1) {
+    // Sunset Zone (Sore)
+    middleColor = 0xee9b44;
+    sideColor = 0xc87b28;
+  } else if (zoneTheme === 2) {
+    // Night Zone (Malam)
+    middleColor = 0x224455;
+    sideColor = 0x162f3d;
+  }
 
   const middle = createSection(middleColor);
   middle.receiveShadow = true;
@@ -3076,6 +3087,8 @@ function stepCompleted() {
   if (direction === "left") position.currentTile -= 1;
   if (direction === "right") position.currentTile += 1;
 
+  updateTimeOfDayTheme(position.currentRow);
+
   if (hasLiveBridge()) {
     getBridge().sendMove(direction);
   }
@@ -3204,26 +3217,42 @@ function Road(rowIndex) {
   const road = new THREE.Group();
   road.position.y = rowIndex * tileSize;
 
+  const zoneTheme = getZoneThemeForRow(rowIndex);
+  let middleColor = 0x454a59;
+  let sideColor = 0x393d49;
+  let curbColor = 0xd6d8dd;
+  if (zoneTheme === 1) {
+    // Sunset Zone (Sore)
+    middleColor = 0x5c4238;
+    sideColor = 0x4d372e;
+    curbColor = 0xe0c8b0;
+  } else if (zoneTheme === 2) {
+    // Night Zone (Malam)
+    middleColor = 0x1f2736;
+    sideColor = 0x181f2b;
+    curbColor = 0x7c8a9e;
+  }
+
   const createSection = (color) =>
     new THREE.Mesh(
       new THREE.PlaneGeometry(tilesPerRow * tileSize, tileSize),
       new THREE.MeshLambertMaterial({ color }),
     );
 
-  const middle = createSection(0x454a59);
+  const middle = createSection(middleColor);
   middle.receiveShadow = true;
   road.add(middle);
 
-  const left = createSection(0x393d49);
+  const left = createSection(sideColor);
   left.position.x = -tilesPerRow * tileSize;
   road.add(left);
 
-  const right = createSection(0x393d49);
+  const right = createSection(sideColor);
   right.position.x = tilesPerRow * tileSize;
   road.add(right);
 
   const curbMat = new THREE.MeshLambertMaterial({
-    color: 0xd6d8dd,
+    color: curbColor,
     flatShading: true,
   });
   const curbFront = new THREE.Mesh(
@@ -3260,8 +3289,21 @@ function River(rowIndex, opts = {}) {
   const bankFrontEnabled = opts.bankFront !== false;
   const flowDirection = opts.direction === false ? -1 : 1;
 
-  const waterMat = new THREE.MeshLambertMaterial({ color: 0x3aa3d6 });
-  const sideMat = new THREE.MeshLambertMaterial({ color: 0x276f9f });
+  const zoneTheme = getZoneThemeForRow(rowIndex);
+  let waterColor = 0x3aa3d6;
+  let sideColor = 0x276f9f;
+  if (zoneTheme === 1) {
+    // Sunset Zone (Sore)
+    waterColor = 0xdf7846;
+    sideColor = 0xb85628;
+  } else if (zoneTheme === 2) {
+    // Night Zone (Malam)
+    waterColor = 0x143854;
+    sideColor = 0x0c2538;
+  }
+
+  const waterMat = new THREE.MeshLambertMaterial({ color: waterColor });
+  const sideMat = new THREE.MeshLambertMaterial({ color: sideColor });
 
   const middle = new THREE.Mesh(
     new THREE.BoxGeometry(tilesPerRow * tileSize, tileSize, 3),
@@ -3775,7 +3817,20 @@ function Rail(rowIndex, rowData) {
   const rail = new THREE.Group();
   rail.position.y = rowIndex * tileSize;
 
-  const groundMat = new THREE.MeshLambertMaterial({ color: 0x55504a });
+  const zoneTheme = getZoneThemeForRow(rowIndex);
+  let groundColor = 0x55504a;
+  let sideColor = 0x3f3b35;
+  if (zoneTheme === 1) {
+    // Sunset Zone (Sore)
+    groundColor = 0x6e5246;
+    sideColor = 0x543e34;
+  } else if (zoneTheme === 2) {
+    // Night Zone (Malam)
+    groundColor = 0x252e3d;
+    sideColor = 0x1b2330;
+  }
+
+  const groundMat = new THREE.MeshLambertMaterial({ color: groundColor });
   const middle = new THREE.Mesh(
     new THREE.PlaneGeometry(tilesPerRow * tileSize, tileSize),
     groundMat,
@@ -3783,7 +3838,7 @@ function Rail(rowIndex, rowData) {
   middle.receiveShadow = true;
   rail.add(middle);
 
-  const sideMat = new THREE.MeshLambertMaterial({ color: 0x3f3b35 });
+  const sideMat = new THREE.MeshLambertMaterial({ color: sideColor });
   const left = new THREE.Mesh(
     new THREE.PlaneGeometry(tilesPerRow * tileSize, tileSize),
     sideMat,

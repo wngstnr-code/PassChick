@@ -1232,10 +1232,15 @@ export function PlayTopNav() {
           </div>
           {passportBadgeButton("play-nav-passport-badge")}
           <div className="play-nav-balance-chip" aria-live="polite">
-            <span className="play-nav-balance-label">BALANCE</span>
-            <strong id="balance-mobile" className="play-nav-balance-value">
-              $0.00000
-            </strong>
+            <div className="stat-value" id="balance">
+              <img
+                src="/images/ticket_icon.png"
+                alt="Ticket"
+                className="play-balance-ticket-img"
+              />
+              <span className="play-balance-num is-zero">0</span>
+              <span className="play-balance-unit">TIX</span>
+            </div>
           </div>
           <div className="play-nav-actions">
             {isMobile ? (

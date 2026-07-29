@@ -7361,6 +7361,10 @@ body.checkpoint-arrival #hud-scrim::after {
 .play-bg-mode #stats-btn,
 .play-bg-mode #stats-modal,
 .play-bg-mode #game-help-btn,
+.play-bg-mode #game-reward-btn,
+.play-bg-mode .fixed-reward,
+.play-bg-mode .fixed-help,
+.play-bg-mode #hud-scrim,
 .play-bg-mode #character-btn,
 .play-bg-mode #game-help-modal {
   display: none !important;
@@ -11326,6 +11330,27 @@ body.checkpoint-arrival #hud-scrim::after {
   display: none;
 }
 
+/* Keep the high-resolution ticket artwork from using its intrinsic 1024px size.
+   The same image is used by both the compact mobile chip and the desktop HUD. */
+.play-balance-ticket-img {
+  width: clamp(18px, 1.4vw, 24px);
+  height: clamp(18px, 1.4vw, 24px);
+  min-width: 18px;
+  max-width: 100%;
+  object-fit: contain;
+  display: block;
+  flex: 0 0 auto;
+}
+
+.play-balance-card .stat-value,
+.play-nav-balance-chip .stat-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .play-nav-passport-badge {
   display: none;
 }
@@ -11663,13 +11688,29 @@ body.checkpoint-arrival #hud-scrim::after {
     background: #0b111d; 
     box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.8), 0 1px 1px rgba(255, 255, 255, 0.05); 
     display: inline-flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 6px;
     pointer-events: none;
     z-index: 1;
     box-sizing: border-box;
+  }
+
+  .play-nav-balance-chip .stat-value {
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 800;
+    margin-top: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* The compact ticket count belongs in the top rail; do not repeat it in
+     the HUD or show the old BALANCE label on small screens. */
+  .play-nav-balance-chip .play-nav-balance-label {
+    display: none !important;
   }
 
   .play-nav-passport-badge {
@@ -11759,7 +11800,7 @@ body.checkpoint-arrival #hud-scrim::after {
   }
 
   #top-bar-center > .play-balance-card {
-    display: none;
+    display: none !important;
   }
 
   .play-wallet-trigger {

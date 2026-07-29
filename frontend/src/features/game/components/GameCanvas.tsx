@@ -151,19 +151,19 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
       <canvas className="game" />
 
       {!backgroundMode ? (
-        <div id="loading-screen">
-          <div className="loading-content">
-            <div className="loading-spinner" aria-hidden="true" />
-            <h2><span>PASS</span>CHICK</h2>
-            <p>LOADING GAME...</p>
+        <>
+          <div id="loading-screen">
+            <div className="loading-content">
+              <div className="loading-spinner" aria-hidden="true" />
+              <h2><span>PASS</span>CHICK</h2>
+              <p>LOADING GAME...</p>
+            </div>
+            <div className="loading-bar-track">
+              <div className="loading-bar-fill" />
+            </div>
           </div>
-          <div className="loading-bar-track">
-            <div className="loading-bar-fill" />
-          </div>
-        </div>
-      ) : null}
 
-      <div id="hud-scrim" aria-hidden="true" />
+          <div id="hud-scrim" aria-hidden="true" />
 
       <div id="top-bar">
         <div id="top-bar-left">
@@ -255,17 +255,6 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
           </div>
         </div>
         <div id="top-bar-center">
-          <div className="stat-card play-balance-card">
-            <div className="stat-value" id="balance">
-              <img
-                src="/images/ticket_icon.png"
-                alt="Ticket"
-                className="play-balance-ticket-img"
-              />
-              <span className="play-balance-num is-zero">0</span>
-              <span className="play-balance-unit">TIX</span>
-            </div>
-          </div>
           <div className="stat-card timer-card" id="timer-card">
             <div className="stat-label" id="timer-label">
               RUSH
@@ -681,6 +670,8 @@ export function GameCanvas({ backgroundMode = false }: GameCanvasProps) {
           </button>
         </div>
       </div>
+        </>
+      ) : null}
 
       {isGameEngineDependencyReady ? (
         <Script src="/script.js" strategy="afterInteractive" type="module" />
