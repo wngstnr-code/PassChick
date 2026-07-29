@@ -19,6 +19,14 @@ type BuildSiweMessageInput = {
   issuedAt?: string;
 };
 
+type BackendAuthRecoveryInput = {
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error?: string;
+};
+
+export type BackendAuthRecoveryMode = "none" | "waiting" | "manual";
+
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 const SIWE_NONCE_PATTERN = /^[a-zA-Z0-9]{8,}$/;
 const BACKEND_SOCIAL_PROVIDERS = new Set(["google", "apple", "discord", "x"]);
@@ -47,6 +55,16 @@ export function createSingleFlight<T>() {
     );
     return current;
   };
+}
+
+export function getBackendAuthRecoveryMode({
+  isAuthenticated,
+  isLoading,
+  error,
+}: BackendAuthRecoveryInput): BackendAuthRecoveryMode {
+  if (isAuthenticated) return "none";
+  if (isLoading || !String(error || "").trim()) return "waiting";
+  return "manual";
 }
 
 export function selectBackendAuthRoute({

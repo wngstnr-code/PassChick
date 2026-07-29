@@ -13,6 +13,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { ManageMoneyVaultCard } from "~/features/deposit/ManageMoneyPage";
+import { getBackendAuthRecoveryMode } from "~/features/wallet/authDomain";
 import { useWallet } from "~/features/wallet/WalletProvider";
 
 function shortAddress(address: string, isMobile: boolean = false) {
@@ -163,7 +164,7 @@ export function PlayTopNav() {
     isBackendAuthenticated,
     isBackendAuthLoading,
     backendAuthError,
-    authenticateBackend,
+    ensureBackendSession,
     hasBackendApiConfig,
   } = useWallet();
   const [isWalletMenuOpen, setIsWalletMenuOpen] = useState(false);
@@ -202,7 +203,6 @@ export function PlayTopNav() {
   const menuRootRef = useRef<HTMLDivElement | null>(null);
   const statusTimeoutRef = useRef<number | null>(null);
   const lastNonZeroSfxVolumeRef = useRef(90);
-  const syncRetryTimerRef = useRef<number | null>(null);
   const passportDeepLinkHandledRef = useRef(false);
   const loadPassportStatusRef = useRef<
     ((
@@ -654,7 +654,7 @@ export function PlayTopNav() {
     }
 
     if (hasBackendApiConfig && !isBackendAuthenticated) {
-      await authenticateBackend();
+      await ensureBackendSession();
     }
   }
 
@@ -726,47 +726,6 @@ export function PlayTopNav() {
     isBackendAuthenticated,
     isConnected,
     isAppChain,
-  ]);
-
-  useEffect(() => {
-    if (syncRetryTimerRef.current) {
-      window.clearTimeout(syncRetryTimerRef.current);
-      syncRetryTimerRef.current = null;
-    }
-
-    if (!hasBackendApiConfig || !isConnected || !isAppChain) {
-      return;
-    }
-
-    if (isBackendAuthenticated || isBackendAuthLoading) {
-      return;
-    }
-
-    const runSync = async () => {
-      await authenticateBackend();
-    };
-
-    void runSync();
-    syncRetryTimerRef.current = window.setTimeout(() => {
-      if (!isBackendAuthenticated && !isBackendAuthLoading) {
-        void runSync();
-      }
-    }, 9000);
-
-    return () => {
-      if (syncRetryTimerRef.current) {
-        window.clearTimeout(syncRetryTimerRef.current);
-        syncRetryTimerRef.current = null;
-      }
-    };
-  }, [
-    account,
-    authenticateBackend,
-    hasBackendApiConfig,
-    isAppChain,
-    isBackendAuthenticated,
-    isBackendAuthLoading,
-    isConnected,
   ]);
 
   useEffect(() => {
@@ -985,6 +944,12 @@ export function PlayTopNav() {
     };
   }, []);
 
+  const backendAuthRecoveryMode = getBackendAuthRecoveryMode({
+    isAuthenticated: isBackendAuthenticated,
+    isLoading: isBackendAuthLoading,
+    error: backendAuthError,
+  });
+
   let statusTone: PlayStatusTone = "ready";
   let statusMessage = "READY TO PLAY";
   let statusActionLabel = "";
@@ -1009,15 +974,16 @@ export function PlayTopNav() {
   } else if (!isAppChain) {
     statusTone = "warning";
     statusMessage = "SWITCH TO CELO NETWORK";
-  } else if (hasBackendApiConfig && isBackendAuthLoading) {
+  } else if (
+    hasBackendApiConfig &&
+    backendAuthRecoveryMode === "waiting"
+  ) {
     statusTone = "busy";
     statusMessage = "SYNCING DATA...";
-  } else if (hasBackendApiConfig && backendAuthError) {
-    statusTone = "busy";
-    statusMessage = "RETRYING DATA SYNC...";
-  } else if (hasBackendApiConfig && !isBackendAuthenticated) {
-    statusTone = "busy";
-    statusMessage = "SYNCING DATA...";
+  } else if (hasBackendApiConfig && backendAuthRecoveryMode === "manual") {
+    statusTone = "warning";
+    statusMessage = "SIGN TO CONTINUE";
+    statusActionLabel = "SIGN";
   } else if (isResolvingPlayBlocker) {
     statusTone = "busy";
     statusMessage = "ENDING PREV BET...";
