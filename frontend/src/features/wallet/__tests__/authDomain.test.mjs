@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   buildSiweMessage,
   createSingleFlight,
+  getBackendAuthRecoveryMode,
   selectBackendAuthRoute,
   signSiweMessage,
 } from "../authDomain.ts";
@@ -193,5 +194,40 @@ describe("backend auth single-flight", () => {
       failure,
     );
     assert.equal(await runSingleFlight(async () => true), true);
+  });
+});
+
+describe("backend auth prompt recovery", () => {
+  it("waits while the global wallet auth attempt is still running", () => {
+    assert.equal(
+      getBackendAuthRecoveryMode({
+        isAuthenticated: false,
+        isLoading: true,
+        error: "",
+      }),
+      "waiting",
+    );
+  });
+
+  it("requires an explicit user retry after a rejected or failed signature", () => {
+    assert.equal(
+      getBackendAuthRecoveryMode({
+        isAuthenticated: false,
+        isLoading: false,
+        error: "User rejected signature",
+      }),
+      "manual",
+    );
+  });
+
+  it("does not request recovery when the backend session is already valid", () => {
+    assert.equal(
+      getBackendAuthRecoveryMode({
+        isAuthenticated: true,
+        isLoading: false,
+        error: "",
+      }),
+      "none",
+    );
   });
 });
