@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   buildSiweMessage,
   createSingleFlight,
+  getBackendAuthRecoveryCopy,
   getBackendAuthRecoveryMode,
   selectBackendAuthRoute,
   signSiweMessage,
@@ -198,6 +199,13 @@ describe("backend auth single-flight", () => {
 });
 
 describe("backend auth prompt recovery", () => {
+  it("uses provider-neutral recovery copy for MiniPay, social, and SIWE wallets", () => {
+    assert.deepEqual(getBackendAuthRecoveryCopy(), {
+      message: "RECONNECT TO CONTINUE",
+      actionLabel: "RETRY",
+    });
+  });
+
   it("waits while the global wallet auth attempt is still running", () => {
     assert.equal(
       getBackendAuthRecoveryMode({
