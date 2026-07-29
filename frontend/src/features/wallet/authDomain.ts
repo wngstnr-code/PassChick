@@ -29,8 +29,8 @@ export type BackendAuthRecoveryMode = "none" | "waiting" | "manual";
 
 export function getBackendAuthRecoveryCopy() {
   return {
-    message: "RECONNECT TO CONTINUE",
-    actionLabel: "RETRY",
+    message: "COULDN'T LOAD GAME DATA",
+    actionLabel: "TRY AGAIN",
   } as const;
 }
 
