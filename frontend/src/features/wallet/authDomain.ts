@@ -27,6 +27,13 @@ type BackendAuthRecoveryInput = {
 
 export type BackendAuthRecoveryMode = "none" | "waiting" | "manual";
 
+export function getBackendAuthRecoveryCopy() {
+  return {
+    message: "RECONNECT TO CONTINUE",
+    actionLabel: "RETRY",
+  } as const;
+}
+
 const EVM_ADDRESS_PATTERN = /^0x[a-fA-F0-9]{40}$/;
 const SIWE_NONCE_PATTERN = /^[a-zA-Z0-9]{8,}$/;
 const BACKEND_SOCIAL_PROVIDERS = new Set(["google", "apple", "discord", "x"]);

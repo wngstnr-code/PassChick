@@ -13,7 +13,10 @@ import {
   WalletCards,
 } from "lucide-react";
 import { ManageMoneyVaultCard } from "~/features/deposit/ManageMoneyPage";
-import { getBackendAuthRecoveryMode } from "~/features/wallet/authDomain";
+import {
+  getBackendAuthRecoveryCopy,
+  getBackendAuthRecoveryMode,
+} from "~/features/wallet/authDomain";
 import { useWallet } from "~/features/wallet/WalletProvider";
 
 function shortAddress(address: string, isMobile: boolean = false) {
@@ -981,9 +984,10 @@ export function PlayTopNav() {
     statusTone = "busy";
     statusMessage = "SYNCING DATA...";
   } else if (hasBackendApiConfig && backendAuthRecoveryMode === "manual") {
+    const recoveryCopy = getBackendAuthRecoveryCopy();
     statusTone = "warning";
-    statusMessage = "SIGN TO CONTINUE";
-    statusActionLabel = "SIGN";
+    statusMessage = recoveryCopy.message;
+    statusActionLabel = recoveryCopy.actionLabel;
   } else if (isResolvingPlayBlocker) {
     statusTone = "busy";
     statusMessage = "ENDING PREV BET...";
