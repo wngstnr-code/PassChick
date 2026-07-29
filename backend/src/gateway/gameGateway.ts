@@ -54,8 +54,10 @@ import {
   closeV2Session,
   debitTicketForSession,
   getPlayerDivision,
+  readLastEndedV2Session,
   readMirrorTicketBalance,
   voidAndRefundSession,
+  type ClosedV2Session,
 } from "../services/ticketPlay.js";
 import { getCurrentSeason } from "../services/seasonService.js";
 
@@ -578,6 +580,42 @@ async function handleGameStartV2(
   await emitStartedV2(socket, state, clientSessionId, season?.id ?? null, debit.balance, false);
 }
 
+/// A duplicate crash/end_run should still land within seconds of the real one;
+/// anything older is treated as "no active session" instead of a replay.
+const V2_END_REPLAY_WINDOW_MS = 60 * 1000;
+
+function emitEndedV2(socket: Socket, sessionId: string, result: ClosedV2Session): void {
+  socket.emit("game:ended", {
+    success: true,
+    result: {
+      sessionId,
+      status: result.status,
+      finalCheckpoint: result.finalCheckpoint,
+      pointsAwarded: result.pointsAwarded,
+      seasonPointsTotal: result.seasonPointsTotal,
+      seasonId: result.seasonId,
+      division: result.division,
+      ticketBalance: String(result.ticketBalance),
+      endedAt: result.endedAt,
+    },
+  });
+}
+
+/// Replays `game:ended` for a session that closed moments ago (BE-07 §4:
+/// sending crash/end_run twice returns the same result, never double points).
+/// Returns false when there is nothing recent to replay, so the caller can
+/// fall back to its usual "no active session" error.
+async function replayRecentV2End(socket: Socket, walletAddress: string): Promise<boolean> {
+  if (!env.GAME_V2_TICKET_MODE) return false;
+  const last = await readLastEndedV2Session(walletAddress, V2_END_REPLAY_WINDOW_MS).catch((err: unknown) => {
+    console.error("❌ V2 end replay lookup failed:", err);
+    return null;
+  });
+  if (!last) return false;
+  emitEndedV2(socket, last.sessionId, last);
+  return true;
+}
+
 /// Closes a V2 session from in-memory state and emits `game:ended`.
 async function closeV2FromState(
   socket: Socket | null,
@@ -605,20 +643,7 @@ async function closeV2FromState(
     );
 
     if (socket) {
-      socket.emit("game:ended", {
-        success: true,
-        result: {
-          sessionId: state.sessionId,
-          status: result.status,
-          finalCheckpoint: result.finalCheckpoint,
-          pointsAwarded: result.pointsAwarded,
-          seasonPointsTotal: result.seasonPointsTotal,
-          seasonId: result.seasonId,
-          division: result.division,
-          ticketBalance: String(result.ticketBalance),
-          endedAt: result.endedAt,
-        },
-      });
+      emitEndedV2(socket, state.sessionId, result);
       if (status === "CRASHED") {
         // Engine-facing legacy event so the death animation keeps working.
         socket.emit("game:crashed", {
@@ -830,6 +855,9 @@ async function handleGameCrash(
 ): Promise<void> {
   const state = getGameByWallet(walletAddress);
   if (!state) {
+    // `socket` is null for server-side crashes (disconnect sweep); only a real
+    // client resending game:crash needs the idempotent replay.
+    if (socket) await replayRecentV2End(socket, walletAddress);
     return;
   }
 
@@ -915,6 +943,7 @@ async function handleGameCrash(
 async function handleGameCashout(socket: Socket, walletAddress: string): Promise<void> {
   const state = getGameByWallet(walletAddress);
   if (!state) {
+    if (await replayRecentV2End(socket, walletAddress)) return;
     socket.emit("game:error", { message: "No active game session." });
     return;
   }

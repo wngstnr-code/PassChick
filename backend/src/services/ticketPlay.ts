@@ -179,6 +179,42 @@ export async function closeV2Session(params: {
   };
 }
 
+/// Reads the stored result of the wallet's most recently ended V2 session.
+/// Lets the gateway answer a duplicate `game:crash` / `game:end_run` with the
+/// same `game:ended` payload (BE-07 §4) even after the in-memory state is gone.
+/// `withinMs` keeps this to genuine duplicates: an `end_run` sent long after
+/// the fact is not a duplicate and must still surface as an error.
+export async function readLastEndedV2Session(
+  walletAddress: string,
+  withinMs: number,
+): Promise<(ClosedV2Session & { sessionId: string }) | null> {
+  const { data } = await supabase
+    .from("game_sessions")
+    .select("session_id, status, final_checkpoint, points_awarded, season_id, ended_at")
+    .eq("wallet_address", walletAddress)
+    .eq("game_mode", "V2_TICKET")
+    .in("status", ["CRASHED", "COMPLETED"])
+    .order("ended_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data?.ended_at) return null;
+  if (Date.now() - new Date(String(data.ended_at)).getTime() > withinMs) return null;
+
+  const seasonId = data.season_id == null ? null : Number(data.season_id);
+  return {
+    sessionId: String(data.session_id),
+    status: (data.status as "CRASHED" | "COMPLETED"),
+    finalCheckpoint: Number(data.final_checkpoint ?? 0),
+    pointsAwarded: Number(data.points_awarded ?? 0),
+    seasonPointsTotal: seasonId === null ? 0 : await readSeasonPoints(seasonId, walletAddress),
+    seasonId,
+    division: await getPlayerDivision(walletAddress),
+    ticketBalance: await readMirrorTicketBalance(walletAddress),
+    endedAt: String(data.ended_at),
+  };
+}
+
 async function readSeasonPoints(seasonId: number, walletAddress: string): Promise<number> {
   const { data } = await supabase
     .from("season_points")

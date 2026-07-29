@@ -3,7 +3,12 @@
 **Status:** DIIMPLEMENTASIKAN di backend di belakang flag `GAME_V2_TICKET_MODE`
 (default off) — menunggu sign-off FE untuk cutover FE-07. Perubahan kontrak
 masih bisa dinegosiasikan sebelum flag dinyalakan.
-**Updated:** 2026-07-23
+**Terverifikasi end-to-end 2026-07-29** dengan flag ON di Celo Sepolia:
+38/38 cek lolos lewat `backend/scripts/e2e-v2-ticket-play.mjs` (debit tiket,
+replay idempotent, SESSION_ALREADY_ACTIVE, poin §5.1, crash, INSUFFICIENT_TICKETS,
+SESSION_CONSUMED, recovery GET, dan refund orphan tanpa move). Satu deviasi §4
+ditemukan dan diperbaiki di run itu — lihat catatan di §4.
+**Updated:** 2026-07-29
 **Sumber kebijakan:** `update_v2.md` §5.1, §9.2, §13.3-B4; `docs/frontend-v2-roadmap.md` FE-07
 
 Kontrak ini menggantikan flow stake USDC + GameSettlement V1. Setelah cutover,
@@ -135,6 +140,13 @@ Dua jalan, dua-duanya idempotent per `sessionId`:
   server dari checkpoint yang server lacak. `0` sah (di bawah ambang divisi).
 - Mengirim `game:crash`/`game:end_run` dua kali untuk sesi yang sudah tutup →
   balasan `game:ended` yang sama, tanpa poin ganda.
+  > Tes E2E 2026-07-29 menemukan backend dulu membalas `game:error`
+  > ("No active game session") untuk pengiriman kedua, karena state in-memory
+  > sudah dibuang. Poin tidak pernah ganda, tapi FE bisa menampilkan error
+  > padahal match-nya sukses. Sudah diperbaiki: gateway membaca hasil tersimpan
+  > dan mengulang `game:ended` yang sama. Jendela replay **60 detik** sejak
+  > `ended_at` — di luar itu tetap `game:error`, karena `end_run` yang datang
+  > jauh belakangan bukan duplikat melainkan memang tidak punya sesi aktif.
 - Setelah `game:ended`, FE cukup invalidate query tiket + season (roadmap FE-07
   butir 2); tidak ada submit settlement dan tidak ada pending-settlement di path V2.
 
