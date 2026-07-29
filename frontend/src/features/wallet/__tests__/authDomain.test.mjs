@@ -201,8 +201,8 @@ describe("backend auth single-flight", () => {
 describe("backend auth prompt recovery", () => {
   it("uses provider-neutral recovery copy for MiniPay, social, and SIWE wallets", () => {
     assert.deepEqual(getBackendAuthRecoveryCopy(), {
-      message: "SESSION SYNC FAILED",
-      actionLabel: "RETRY",
+      message: "COULDN'T LOAD GAME DATA",
+      actionLabel: "TRY AGAIN",
     });
   });
 
