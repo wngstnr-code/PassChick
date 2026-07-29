@@ -327,3 +327,38 @@ BEGIN
   RETURN QUERY SELECT 'OK'::TEXT, COALESCE(v_balance, 0);
 END;
 $$;
+
+-- ── V2.3 — chain event catch-up (missed-claim fix) ──────────────────────
+-- Problem this solves: the listener only ever saw events that arrived while
+-- the process was alive. `ticket_balances.last_synced_block` was written but
+-- never read back, so any TicketClaimed landing during a restart/deploy was
+-- lost forever and the player's tickets silently never arrived.
+--
+-- Two pieces: a resumable cursor, and a per-log dedupe key so a backfill can
+-- overlap the live watcher without double-crediting. `transactions.tx_hash`
+-- cannot serve as that key: one `creditBatch` tx emits one TicketCredited per
+-- user, and they would all collapse onto the same primary key.
+
+CREATE TABLE IF NOT EXISTS chain_sync_state (
+  id                   TEXT PRIMARY KEY,   -- e.g. 'ticket_vault:42220'
+  last_processed_block BIGINT NOT NULL DEFAULT 0,
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ticket_event_log (
+  tx_hash        TEXT    NOT NULL,
+  log_index      INTEGER NOT NULL,
+  event_name     TEXT    NOT NULL,
+  wallet_address TEXT    NOT NULL,
+  amount         BIGINT  NOT NULL,
+  block_number   BIGINT  NOT NULL,
+  processed_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (tx_hash, log_index)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_event_log_wallet
+  ON ticket_event_log (wallet_address, block_number DESC);
+
+-- Service-role only, like ticket_balances and ticket_ledger.
+ALTER TABLE chain_sync_state ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ticket_event_log ENABLE ROW LEVEL SECURITY;
