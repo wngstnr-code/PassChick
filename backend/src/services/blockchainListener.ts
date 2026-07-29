@@ -76,23 +76,6 @@ function dayIndexToDateString(dayIndex: number): string {
   return new Date(dayIndex * 86400 * 1000).toISOString().slice(0, 10);
 }
 
-/// Mirrors ticket_balances against the on-chain TicketVault ledger.
-///
-/// Column semantics (see database/schema_v2.sql):
-///  - `onchain_credited` accumulates credit-shaped events (claim, purchase,
-///    creditBatch). On-chain spends TIDAK dikurangkan di sini (lihat di bawah).
-///  - `offchain_debited` accumulates in-match ticket debits (debit RPC) and
-///    is relieved only by refunds. It is NOT relieved when a spend batch
-///    settles on-chain — the pair (credited stays high, debited stays high)
-///    cancels out, so `balance` stays correct.
-///  - `balance = onchain_credited - offchain_debited` is what the app shows.
-///
-/// KOREKSI SC (menggantikan HANDOFF_V2.md §2.3): TicketSpent TIDAK dipakai
-/// untuk mirror. Settlement spendBatch dicatat oleh spendBatchExecutor lewat
-/// `reconciled_tx_hash` — event delivery di sini at-least-once, dan
-/// double-apply akan merusak komponen ledger (offchain_debited bisa negatif).
-/// Jangan "memperbaiki" dengan menambahkan kembali mirror spend di sini.
-/// Fungsi ini sekarang hanya menangani credit-shaped events.
 let warnedMissingEventLog = false;
 
 /// PostgREST reports an absent table either by the Postgres code (42P01) or by
@@ -156,6 +139,23 @@ async function claimTicketEvent(params: {
   return false;
 }
 
+/// Mirrors ticket_balances against the on-chain TicketVault ledger.
+///
+/// Column semantics (see database/schema_v2.sql):
+///  - `onchain_credited` accumulates credit-shaped events (claim, purchase,
+///    creditBatch). On-chain spends TIDAK dikurangkan di sini (lihat di bawah).
+///  - `offchain_debited` accumulates in-match ticket debits (debit RPC) and
+///    is relieved only by refunds. It is NOT relieved when a spend batch
+///    settles on-chain — the pair (credited stays high, debited stays high)
+///    cancels out, so `balance` stays correct.
+///  - `balance = onchain_credited - offchain_debited` is what the app shows.
+///
+/// KOREKSI SC (menggantikan HANDOFF_V2.md §2.3): TicketSpent TIDAK dipakai
+/// untuk mirror. Settlement spendBatch dicatat oleh spendBatchExecutor lewat
+/// `reconciled_tx_hash` — event delivery di sini at-least-once, dan
+/// double-apply akan merusak komponen ledger (offchain_debited bisa negatif).
+/// Jangan "memperbaiki" dengan menambahkan kembali mirror spend di sini.
+/// Fungsi ini sekarang hanya menangani credit-shaped events.
 async function applyTicketMirrorDelta(
   walletAddress: string,
   amount: bigint,
@@ -215,10 +215,10 @@ const toBig = (value: bigint | number) => (typeof value === "bigint" ? value : B
 /// `claimTicketEvent`, so the boot backfill and the live watcher can both see
 /// the same log and only one of them will apply it.
 
-async function handleTicketClaimedLog(log: TicketEventLog): Promise<void> {
+async function handleTicketClaimedLog(log: TicketEventLog): Promise<boolean> {
   const walletAddress = log.args.user;
   const { dayIndex, amount } = log.args;
-  if (!walletAddress || dayIndex === undefined || amount === undefined) return;
+  if (!walletAddress || dayIndex === undefined || amount === undefined) return false;
 
   const claimed = await claimTicketEvent({
     txHash: String(log.transactionHash ?? ""),
@@ -228,7 +228,7 @@ async function handleTicketClaimedLog(log: TicketEventLog): Promise<void> {
     amount: toBig(amount),
     blockNumber: log.blockNumber ?? null,
   });
-  if (!claimed) return;
+  if (!claimed) return false;
 
   await ensurePlayer(walletAddress);
   await logTransaction({
@@ -239,12 +239,13 @@ async function handleTicketClaimedLog(log: TicketEventLog): Promise<void> {
   });
   await applyTicketMirrorDelta(walletAddress, toBig(amount), log.blockNumber ?? null);
   await advanceDailyStreak(walletAddress, Number(dayIndex));
+  return true;
 }
 
-async function handleTicketPurchasedLog(log: TicketEventLog): Promise<void> {
+async function handleTicketPurchasedLog(log: TicketEventLog): Promise<boolean> {
   const walletAddress = log.args.user;
   const { tickets } = log.args;
-  if (!walletAddress || tickets === undefined) return;
+  if (!walletAddress || tickets === undefined) return false;
 
   const claimed = await claimTicketEvent({
     txHash: String(log.transactionHash ?? ""),
@@ -254,7 +255,7 @@ async function handleTicketPurchasedLog(log: TicketEventLog): Promise<void> {
     amount: toBig(tickets),
     blockNumber: log.blockNumber ?? null,
   });
-  if (!claimed) return;
+  if (!claimed) return false;
 
   await ensurePlayer(walletAddress);
   // `amount` recorded here is the ticket count granted (not the USD spent or
@@ -267,12 +268,13 @@ async function handleTicketPurchasedLog(log: TicketEventLog): Promise<void> {
     amount: Number(tickets),
   });
   await applyTicketMirrorDelta(walletAddress, toBig(tickets), log.blockNumber ?? null);
+  return true;
 }
 
-async function handleTicketCreditedLog(log: TicketEventLog): Promise<void> {
+async function handleTicketCreditedLog(log: TicketEventLog): Promise<boolean> {
   const walletAddress = log.args.user;
   const { amount } = log.args;
-  if (!walletAddress || amount === undefined) return;
+  if (!walletAddress || amount === undefined) return false;
 
   const claimed = await claimTicketEvent({
     txHash: String(log.transactionHash ?? ""),
@@ -282,7 +284,7 @@ async function handleTicketCreditedLog(log: TicketEventLog): Promise<void> {
     amount: toBig(amount),
     blockNumber: log.blockNumber ?? null,
   });
-  if (!claimed) return;
+  if (!claimed) return false;
 
   await ensurePlayer(walletAddress);
   await logTransaction({
@@ -292,12 +294,13 @@ async function handleTicketCreditedLog(log: TicketEventLog): Promise<void> {
     amount: Number(amount),
   });
   await applyTicketMirrorDelta(walletAddress, toBig(amount), log.blockNumber ?? null);
+  return true;
 }
 
-async function handleTicketSpentLog(log: TicketEventLog): Promise<void> {
+async function handleTicketSpentLog(log: TicketEventLog): Promise<boolean> {
   const walletAddress = log.args.user;
   const { amount } = log.args;
-  if (!walletAddress || amount === undefined) return;
+  if (!walletAddress || amount === undefined) return false;
 
   const claimed = await claimTicketEvent({
     txHash: String(log.transactionHash ?? ""),
@@ -307,7 +310,7 @@ async function handleTicketSpentLog(log: TicketEventLog): Promise<void> {
     amount: toBig(amount),
     blockNumber: log.blockNumber ?? null,
   });
-  if (!claimed) return;
+  if (!claimed) return false;
 
   await ensurePlayer(walletAddress);
   // KOREKSI SC: hanya catat riwayat transaksi. JANGAN apply mirror delta di
@@ -319,6 +322,7 @@ async function handleTicketSpentLog(log: TicketEventLog): Promise<void> {
     type: "TICKET_SPEND",
     amount: Number(amount),
   });
+  return true;
 }
 
 /// ── Catch-up backfill ────────────────────────────────────────────────────
@@ -368,7 +372,10 @@ async function writeSyncCursor(block: bigint): Promise<void> {
   }
 }
 
-async function dispatchTicketLog(log: TicketEventLog & { eventName?: string }): Promise<void> {
+/// Returns true only when the log was actually applied - a log already seen by
+/// the live watcher is skipped, and the backfill must not report it as work
+/// done or the logs read as if tickets were credited twice.
+async function dispatchTicketLog(log: TicketEventLog & { eventName?: string }): Promise<boolean> {
   switch (log.eventName) {
     case "TicketClaimed":
       return handleTicketClaimedLog(log);
@@ -379,7 +386,7 @@ async function dispatchTicketLog(log: TicketEventLog & { eventName?: string }): 
     case "TicketSpent":
       return handleTicketSpentLog(log);
     default:
-      return;
+      return false;
   }
 }
 
@@ -419,8 +426,9 @@ export async function backfillTicketEvents(): Promise<void> {
 
     for (const log of logs) {
       try {
-        await dispatchTicketLog(log as TicketEventLog & { eventName?: string });
-        applied += 1;
+        if (await dispatchTicketLog(log as TicketEventLog & { eventName?: string })) {
+          applied += 1;
+        }
       } catch (err) {
         console.error("❌ Ticket backfill failed to apply a log:", err);
         return;
